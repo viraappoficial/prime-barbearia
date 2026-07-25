@@ -1,0 +1,7 @@
+- [Confirm understanding + no deferring](feedback_confirm-understanding.md) — paraphrase back when asked "me entende?"; execute now, don't punt to "depois".
+- [Push periodically](feedback_push-periodically.md) — commit/push to origin routinely without asking each time on prime-barbearia.
+- [Advise model switching](feedback_advise-model-switching.md) — proactively tell Gabriel when to switch to a lighter/stronger model per task.
+- [Approve visuals + stepwise](feedback_approve-visuals-stepwise.md) — show every image/visual for approval before finalizing; build features one step at a time.
+- [Backend migration plan](project_backend-migration-plan.md) — future move off localStorage to Supabase + LGPD checklist, deferred, tracked in ROADMAP Fase 6.
+- [Conciliação financeira plan](project_conciliacao-financeira-plan.md) — future taxa real/DRE feature, full spec written by Gabriel, awaiting his fee-table data before starting.
+- [Contas a pagar plan](project_contas-a-pagar-plan.md) — future expense-side upgrade (fornecedor, vencimento, parcelamento, pago/banco), modeled on Hiper ERP screenshots, deliberately on hold.
