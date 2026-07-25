@@ -5,3 +5,4 @@
 - [Backend migration plan](project_backend-migration-plan.md) — future move off localStorage to Supabase + LGPD checklist, deferred, tracked in ROADMAP Fase 6.
 - [Conciliação financeira plan](project_conciliacao-financeira-plan.md) — future taxa real/DRE feature, full spec written by Gabriel, awaiting his fee-table data before starting.
 - [Contas a pagar plan](project_contas-a-pagar-plan.md) — future expense-side upgrade (fornecedor, vencimento, parcelamento, pago/banco), modeled on Hiper ERP screenshots, deliberately on hold.
+- [Sync memory to git](feedback_sync-memory-to-git.md) — mirror memory/*.md into repo's memoria-claude/ folder + push, so other machines can read context.
