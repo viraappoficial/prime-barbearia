@@ -7403,14 +7403,24 @@ function primeMakeCarousel(prefix, maxVisible){
   }
   function autoStart(){ clearInterval(timer); timer = setInterval(()=>nav(1), 3800); }
   function autoStop(){ clearInterval(timer); }
-  function init(){
+  function init(opts){
+    const stickyPause = opts && opts.stickyPause; // não retoma sozinho por timer — só quando o usuário sai de perto de vez
     const el = document.getElementById(carId);
     if(!el) return;
     let resumeTimer = null;
     el.addEventListener('mouseenter', autoStop);
     el.addEventListener('mouseleave', autoStart);
     el.addEventListener('touchstart', ()=>{ clearTimeout(resumeTimer); autoStop(); }, {passive:true});
-    el.addEventListener('touchend', ()=>{ resumeTimer = setTimeout(autoStart, 4000); }, {passive:true});
+    el.addEventListener('touchend', ()=>{
+      if(stickyPause) return; // vídeo pode continuar rodando bem além do touch — não força a troca de post
+      resumeTimer = setTimeout(autoStart, 4000);
+    }, {passive:true});
+    if(stickyPause){
+      document.addEventListener('scroll', ()=>{
+        const r = el.getBoundingClientRect();
+        if(r.bottom < 0 || r.top > window.innerHeight) autoStart(); // saiu da tela: agora sim pode voltar a girar
+      }, {passive:true});
+    }
     window.addEventListener('resize', layout);
     layout();
     autoStart();
@@ -7424,7 +7434,7 @@ const igCarousel = primeMakeCarousel('ig', 1);
 svcCarousel.init();
 comboCarousel.init();
 tratCarousel.init();
-igCarousel.init();
+igCarousel.init({stickyPause:true});
 // ══ Posts do Instagram na landing page (link gerenciado pelo admin em Gestão) ══
 async function baFetchInstagramPosts(){
   const { data, error } = await sb.from('instagram_posts').select('*').order('created_at',{ascending:false});
