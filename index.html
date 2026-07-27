@@ -3709,7 +3709,6 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <button class="ba-btn ghost active" data-sub="visao" onclick="baDashTab('visao')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Visão geral</button>
           <button class="ba-btn ghost" data-sub="relatorios" onclick="baDashTab('relatorios')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Relatórios</button>
           <button class="ba-btn ghost" data-sub="dre" id="ba-dash-subtab-dre" onclick="baDashTab('dre')" style="display:none;width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">DRE</button>
-          <button class="ba-btn ghost" data-sub="contasapagar" id="ba-dash-subtab-contasapagar" onclick="baDashTab('contasapagar')" style="display:none;width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Contas a Pagar</button>
         </div>
 
         <div id="ba-dash-sub-visao">
@@ -3811,71 +3810,6 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           </div>
         </div>
 
-        <div id="ba-dash-sub-contasapagar" style="display:none">
-          <div class="ba-slabel" style="margin-top:0">Novo lançamento</div>
-          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-            <input type="text" id="ba-despesa-nome" class="add-input" placeholder="Nome da despesa..." style="flex:2;min-width:120px">
-            <input type="text" inputmode="decimal" id="ba-despesa-valor" class="add-input" placeholder="R$" style="flex:1;min-width:70px">
-            <select id="ba-despesa-categoria" class="add-input" style="flex:1;min-width:150px"></select>
-          </div>
-          <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
-            <select id="ba-despesa-fornecedor" class="add-input" style="flex:1;min-width:150px"><option value="">Sem fornecedor</option></select>
-            <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Lançamento
-              <input type="date" id="ba-despesa-data" class="add-input" style="margin-top:.2rem">
-            </label>
-            <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Vencimento
-              <input type="date" id="ba-despesa-vencimento" class="add-input" style="margin-top:.2rem">
-            </label>
-          </div>
-          <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
-            <select id="ba-despesa-tipopagto" class="add-input" style="flex:1;min-width:130px" onchange="baDespesaTipoPagtoChanged()">
-              <option value="normal" selected>Pagamento normal</option>
-              <option value="parcelado">Parcelado</option>
-            </select>
-            <input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-despesa-parcelas" class="add-input" placeholder="Nº de parcelas" style="flex:1;min-width:100px;display:none">
-          </div>
-          <div style="display:flex;gap:.6rem;margin-top:.6rem;flex-wrap:wrap;align-items:center">
-            <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--prata-dim);cursor:pointer">
-              <input type="checkbox" id="ba-despesa-pago" style="width:16px;height:16px;accent-color:var(--dourado)" onchange="baDespesaPagoChanged()">
-              Pago
-            </label>
-            <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim);display:none" id="ba-despesa-baixa-data-wrap">Data da baixa
-              <input type="date" id="ba-despesa-baixa-data" class="add-input" style="margin-top:.2rem">
-            </label>
-            <select id="ba-despesa-baixa-forma" class="add-input" style="flex:1;min-width:110px;display:none" onchange="baDespesaFormaChanged()">
-              <option value="dinheiro">Dinheiro</option>
-              <option value="banco">Banco</option>
-            </select>
-            <select id="ba-despesa-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
-          </div>
-          <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baAddExpense()">Adicionar</button>
-          <p class="ba-err" id="ba-despesa-err" style="display:none;margin-top:.5rem"></p>
-
-          <div class="ba-slabel">Contas a Pagar</div>
-          <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
-            <select id="ba-cap-fornecedor" class="add-input" style="flex:1;min-width:140px" onchange="baRenderContasPagar()"><option value="">Todos os fornecedores</option></select>
-            <select id="ba-cap-plano" class="add-input" style="flex:1;min-width:140px" onchange="baRenderContasPagar()"><option value="">Todos os planos de conta</option></select>
-            <select id="ba-cap-status" class="add-input" style="flex:1;min-width:120px" onchange="baRenderContasPagar()">
-              <option value="">Pago e pendente</option>
-              <option value="pendente">Só pendente</option>
-              <option value="pago">Só pago</option>
-            </select>
-          </div>
-          <div class="ba-vfiltros" id="ba-cap-filtros">
-            <button class="ba-vf" data-cf="semana" onclick="baSetCapFilter('semana')">Semana</button>
-            <button class="ba-vf active" data-cf="mes" onclick="baSetCapFilter('mes')">Mês</button>
-            <button class="ba-vf" data-cf="custom" onclick="baSetCapFilter('custom')">Período</button>
-          </div>
-          <div class="ba-vf-dates" id="ba-cap-dates" style="display:none">
-            <input type="date" id="ba-cap-from"> <span style="color:var(--prata-dim)">até</span> <input type="date" id="ba-cap-to">
-            <button class="ba-btn" style="padding:.4rem .9rem;font-size:.72rem" onclick="baRenderContasPagar()">Filtrar</button>
-          </div>
-          <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin:.8rem 0;font-size:.78rem">
-            <span style="color:var(--prata-dim)">Total devido <b style="color:var(--dourado)" id="ba-cap-total-devido">R$ 0,00</b></span>
-            <span style="color:var(--prata-dim)">Total pago <b style="color:var(--verde-neon)" id="ba-cap-total-pago">R$ 0,00</b></span>
-          </div>
-          <div id="ba-cap-list"></div>
-        </div>
       </div>
     </div>
 
@@ -3960,9 +3894,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <button class="ba-btn ghost" data-sub="produtos" onclick="baGestaoTab('produtos')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Produtos</button>
           <button class="ba-btn ghost" data-sub="cupons" onclick="baGestaoTab('cupons')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Cupons</button>
           <button class="ba-btn ghost" data-sub="instagram" onclick="baGestaoTab('instagram')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Instagram</button>
-          <button class="ba-btn ghost" data-sub="fornecedores" onclick="baGestaoTab('fornecedores')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Fornecedores</button>
-          <button class="ba-btn ghost" data-sub="planocontas" onclick="baGestaoTab('planocontas')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Plano de contas</button>
-          <button class="ba-btn ghost" data-sub="contasbancarias" onclick="baGestaoTab('contasbancarias')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Contas bancárias</button>
+          <button class="ba-btn ghost" data-sub="financeiro" onclick="baGestaoTab('financeiro')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Financeiro</button>
         </div>
 
         <div class="ba-card" id="ba-admin-panel">
@@ -4056,42 +3988,117 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <p class="ba-err" id="ba-instagram-err" style="display:none;margin-top:.5rem"></p>
         </div>
 
-        <div class="ba-card" id="ba-fornecedores-config" style="display:none">
-          <div class="ba-slabel" style="margin-top:0">Fornecedores</div>
-          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Cadastro usado nos lançamentos de Contas a Pagar.</p>
-          <div id="ba-fornecedores-list"></div>
-          <div class="ba-slabel" id="ba-fornecedor-form-title">Novo fornecedor</div>
-          <div class="ba-field"><label>Nome</label><input type="text" id="ba-fornecedor-nome" placeholder="Nome do fornecedor"></div>
-          <div class="ba-field"><label>Telefone (opcional)</label><input type="text" id="ba-fornecedor-telefone" placeholder="(44) 90000-0000"></div>
-          <div class="ba-field"><label>Site (opcional)</label><input type="text" id="ba-fornecedor-site" placeholder="www.exemplo.com"></div>
-          <div class="ba-field"><label>Plano de conta (opcional)</label>
-            <select id="ba-fornecedor-plano"><option value="">Nenhum</option></select>
+        <div class="ba-card" id="ba-financeiro-config" style="display:none">
+          <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+            <button class="ba-btn ghost active" data-fin="contasapagar" onclick="baFinanceiroTab('contasapagar')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Contas a Pagar</button>
+            <button class="ba-btn ghost" data-fin="fornecedores" onclick="baFinanceiroTab('fornecedores')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Fornecedores</button>
+            <button class="ba-btn ghost" data-fin="planocontas" onclick="baFinanceiroTab('planocontas')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Plano de contas</button>
+            <button class="ba-btn ghost" data-fin="contasbancarias" onclick="baFinanceiroTab('contasbancarias')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Contas bancárias</button>
           </div>
-          <p class="ba-err" id="ba-fornecedor-err" style="display:none"></p>
-          <div style="display:flex;gap:.5rem">
-            <button class="ba-btn" style="max-width:100%" id="ba-fornecedor-submit-btn" onclick="baSubmitFornecedor()">Adicionar fornecedor</button>
-            <button class="ba-btn ghost" style="max-width:100%;display:none" id="ba-fornecedor-cancel-btn" onclick="baCancelEditFornecedor()">Cancelar</button>
+
+          <div id="ba-fin-contasapagar">
+            <div class="ba-slabel" style="margin-top:0">Novo lançamento</div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+              <input type="text" id="ba-despesa-nome" class="add-input" placeholder="Nome da despesa..." style="flex:2;min-width:120px">
+              <input type="text" inputmode="decimal" id="ba-despesa-valor" class="add-input" placeholder="R$" style="flex:1;min-width:70px">
+              <select id="ba-despesa-categoria" class="add-input" style="flex:1;min-width:150px"></select>
+            </div>
+            <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
+              <select id="ba-despesa-fornecedor" class="add-input" style="flex:1;min-width:150px"><option value="">Sem fornecedor</option></select>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Lançamento
+                <input type="date" id="ba-despesa-data" class="add-input" style="margin-top:.2rem">
+              </label>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Vencimento
+                <input type="date" id="ba-despesa-vencimento" class="add-input" style="margin-top:.2rem">
+              </label>
+            </div>
+            <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
+              <select id="ba-despesa-tipopagto" class="add-input" style="flex:1;min-width:130px" onchange="baDespesaTipoPagtoChanged()">
+                <option value="normal" selected>Pagamento normal</option>
+                <option value="parcelado">Parcelado</option>
+              </select>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-despesa-parcelas" class="add-input" placeholder="Nº de parcelas" style="flex:1;min-width:100px;display:none">
+            </div>
+            <div style="display:flex;gap:.6rem;margin-top:.6rem;flex-wrap:wrap;align-items:center">
+              <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--prata-dim);cursor:pointer">
+                <input type="checkbox" id="ba-despesa-pago" style="width:16px;height:16px;accent-color:var(--dourado)" onchange="baDespesaPagoChanged()">
+                Pago
+              </label>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim);display:none" id="ba-despesa-baixa-data-wrap">Data da baixa
+                <input type="date" id="ba-despesa-baixa-data" class="add-input" style="margin-top:.2rem">
+              </label>
+              <select id="ba-despesa-baixa-forma" class="add-input" style="flex:1;min-width:110px;display:none" onchange="baDespesaFormaChanged()">
+                <option value="dinheiro">Dinheiro</option>
+                <option value="banco">Banco</option>
+              </select>
+              <select id="ba-despesa-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
+            </div>
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baAddExpense()">Adicionar</button>
+            <p class="ba-err" id="ba-despesa-err" style="display:none;margin-top:.5rem"></p>
+
+            <div class="ba-slabel">Contas a Pagar</div>
+            <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+              <select id="ba-cap-fornecedor" class="add-input" style="flex:1;min-width:140px" onchange="baRenderContasPagar()"><option value="">Todos os fornecedores</option></select>
+              <select id="ba-cap-plano" class="add-input" style="flex:1;min-width:140px" onchange="baRenderContasPagar()"><option value="">Todos os planos de conta</option></select>
+              <select id="ba-cap-status" class="add-input" style="flex:1;min-width:120px" onchange="baRenderContasPagar()">
+                <option value="">Pago e pendente</option>
+                <option value="pendente">Só pendente</option>
+                <option value="pago">Só pago</option>
+              </select>
+            </div>
+            <div class="ba-vfiltros" id="ba-cap-filtros">
+              <button class="ba-vf" data-cf="semana" onclick="baSetCapFilter('semana')">Semana</button>
+              <button class="ba-vf active" data-cf="mes" onclick="baSetCapFilter('mes')">Mês</button>
+              <button class="ba-vf" data-cf="custom" onclick="baSetCapFilter('custom')">Período</button>
+            </div>
+            <div class="ba-vf-dates" id="ba-cap-dates" style="display:none">
+              <input type="date" id="ba-cap-from"> <span style="color:var(--prata-dim)">até</span> <input type="date" id="ba-cap-to">
+              <button class="ba-btn" style="padding:.4rem .9rem;font-size:.72rem" onclick="baRenderContasPagar()">Filtrar</button>
+            </div>
+            <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin:.8rem 0;font-size:.78rem">
+              <span style="color:var(--prata-dim)">Total devido <b style="color:var(--dourado)" id="ba-cap-total-devido">R$ 0,00</b></span>
+              <span style="color:var(--prata-dim)">Total pago <b style="color:var(--verde-neon)" id="ba-cap-total-pago">R$ 0,00</b></span>
+            </div>
+            <div id="ba-cap-list"></div>
           </div>
-        </div>
 
-        <div class="ba-card" id="ba-planocontas-config" style="display:none">
-          <div class="ba-slabel" style="margin-top:0">Plano de contas</div>
-          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Classificação usada pra agrupar despesas e fornecedores (ex: sistema/mensalidade, contabilidade, produtos capilares).</p>
-          <div id="ba-planocontas-list"></div>
-          <div class="ba-slabel">Nova conta</div>
-          <div class="ba-field"><label>Nome</label><input type="text" id="ba-planoconta-nome" placeholder="Ex: Contabilidade"></div>
-          <p class="ba-err" id="ba-planoconta-err" style="display:none"></p>
-          <button class="ba-btn" style="max-width:100%" onclick="baAddPlanoConta()">Adicionar</button>
-        </div>
+          <div id="ba-fin-fornecedores" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Fornecedores</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Cadastro usado nos lançamentos de Contas a Pagar.</p>
+            <div id="ba-fornecedores-list"></div>
+            <div class="ba-slabel" id="ba-fornecedor-form-title">Novo fornecedor</div>
+            <div class="ba-field"><label>Nome</label><input type="text" id="ba-fornecedor-nome" placeholder="Nome do fornecedor"></div>
+            <div class="ba-field"><label>Telefone (opcional)</label><input type="text" id="ba-fornecedor-telefone" placeholder="(44) 90000-0000"></div>
+            <div class="ba-field"><label>Site (opcional)</label><input type="text" id="ba-fornecedor-site" placeholder="www.exemplo.com"></div>
+            <div class="ba-field"><label>Plano de conta (opcional)</label>
+              <select id="ba-fornecedor-plano"><option value="">Nenhum</option></select>
+            </div>
+            <p class="ba-err" id="ba-fornecedor-err" style="display:none"></p>
+            <div style="display:flex;gap:.5rem">
+              <button class="ba-btn" style="max-width:100%" id="ba-fornecedor-submit-btn" onclick="baSubmitFornecedor()">Adicionar fornecedor</button>
+              <button class="ba-btn ghost" style="max-width:100%;display:none" id="ba-fornecedor-cancel-btn" onclick="baCancelEditFornecedor()">Cancelar</button>
+            </div>
+          </div>
 
-        <div class="ba-card" id="ba-contasbancarias-config" style="display:none">
-          <div class="ba-slabel" style="margin-top:0">Contas bancárias</div>
-          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Usadas pra registrar em qual conta a baixa de uma despesa foi feita.</p>
-          <div id="ba-contasbancarias-list"></div>
-          <div class="ba-slabel">Nova conta</div>
-          <div class="ba-field"><label>Nome</label><input type="text" id="ba-contabancaria-nome" placeholder="Ex: Banco do Brasil — Conta corrente"></div>
-          <p class="ba-err" id="ba-contabancaria-err" style="display:none"></p>
-          <button class="ba-btn" style="max-width:100%" onclick="baAddContaBancaria()">Adicionar</button>
+          <div id="ba-fin-planocontas" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Plano de contas</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Classificação usada pra agrupar despesas e fornecedores (ex: sistema/mensalidade, contabilidade, produtos capilares).</p>
+            <div id="ba-planocontas-list"></div>
+            <div class="ba-slabel">Nova conta</div>
+            <div class="ba-field"><label>Nome</label><input type="text" id="ba-planoconta-nome" placeholder="Ex: Contabilidade"></div>
+            <p class="ba-err" id="ba-planoconta-err" style="display:none"></p>
+            <button class="ba-btn" style="max-width:100%" onclick="baAddPlanoConta()">Adicionar</button>
+          </div>
+
+          <div id="ba-fin-contasbancarias" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Contas bancárias</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Usadas pra registrar em qual conta a baixa de uma despesa foi feita.</p>
+            <div id="ba-contasbancarias-list"></div>
+            <div class="ba-slabel">Nova conta</div>
+            <div class="ba-field"><label>Nome</label><input type="text" id="ba-contabancaria-nome" placeholder="Ex: Banco do Brasil — Conta corrente"></div>
+            <p class="ba-err" id="ba-contabancaria-err" style="display:none"></p>
+            <button class="ba-btn" style="max-width:100%" onclick="baAddContaBancaria()">Adicionar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -4297,13 +4304,20 @@ function baGestaoTab(sub){
   document.getElementById('ba-produtos-config').style.display = sub==='produtos' ? 'block' : 'none';
   document.getElementById('ba-cupons-config').style.display = sub==='cupons' ? 'block' : 'none';
   document.getElementById('ba-instagram-config').style.display = sub==='instagram' ? 'block' : 'none';
-  document.getElementById('ba-fornecedores-config').style.display = sub==='fornecedores' ? 'block' : 'none';
-  document.getElementById('ba-planocontas-config').style.display = sub==='planocontas' ? 'block' : 'none';
-  document.getElementById('ba-contasbancarias-config').style.display = sub==='contasbancarias' ? 'block' : 'none';
+  document.getElementById('ba-financeiro-config').style.display = sub==='financeiro' ? 'block' : 'none';
+  if(sub==='financeiro') baFinanceiroTab('contasapagar');
+}
+function baFinanceiroTab(sub){
+  document.querySelectorAll('#ba-financeiro-config [data-fin]').forEach(b=>b.classList.toggle('active', b.dataset.fin===sub));
+  document.getElementById('ba-fin-contasapagar').style.display = sub==='contasapagar' ? 'block' : 'none';
+  document.getElementById('ba-fin-fornecedores').style.display = sub==='fornecedores' ? 'block' : 'none';
+  document.getElementById('ba-fin-planocontas').style.display = sub==='planocontas' ? 'block' : 'none';
+  document.getElementById('ba-fin-contasbancarias').style.display = sub==='contasbancarias' ? 'block' : 'none';
+  if(sub==='contasapagar') baRenderContasPagar();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
-  baRenderRoster(); baRenderBrindeConfig(); baRenderProdutosConfig(); baRenderCupons(); baRenderInstagramConfig(); baRenderPlanoContas().then(baRenderFornecedores); baRenderContasBancarias();
+  baRenderRoster(); baRenderBrindeConfig(); baRenderProdutosConfig(); baRenderCupons(); baRenderInstagramConfig(); baRenderPlanoContas().then(baRenderFornecedores); baRenderContasBancarias(); baRenderContasPagar();
 }
 
 function baMyCommissionPct(){
@@ -4501,7 +4515,6 @@ async function baRenderDashboard(){
     if(dEl && !dEl.value) dEl.value = primeLocalDate();
   }
   document.getElementById('ba-dash-subtab-dre').style.display = isAdmin ? '' : 'none';
-  document.getElementById('ba-dash-subtab-contasapagar').style.display = isAdmin ? '' : 'none';
   baDashTab('visao');
 }
 function baDashTab(sub){
@@ -4509,8 +4522,6 @@ function baDashTab(sub){
   document.getElementById('ba-dash-sub-visao').style.display = sub==='visao' ? 'block' : 'none';
   document.getElementById('ba-dash-sub-relatorios').style.display = sub==='relatorios' ? 'block' : 'none';
   document.getElementById('ba-dash-sub-dre').style.display = sub==='dre' ? 'block' : 'none';
-  document.getElementById('ba-dash-sub-contasapagar').style.display = sub==='contasapagar' ? 'block' : 'none';
-  if(sub==='contasapagar') baRenderContasPagar();
 }
 
 async function baRenderDashMeta(){
