@@ -3366,6 +3366,8 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .expense-row .exp-value{font-size:.82rem;color:var(--prata);font-variant-numeric:tabular-nums;flex:none}
 #barberApp .expense-row .exp-remove{font-size:.72rem;color:var(--prata-dim);cursor:pointer;padding:.2rem .5rem;border-radius:3px;transition:all .15s;background:none;border:none;flex:none}
 #barberApp .expense-row .exp-remove:hover{color:#e85d5d;background:rgba(232,93,93,.1)}
+#barberApp .expense-row .cap-action{font-size:.72rem;color:var(--dourado);cursor:pointer;padding:.2rem .5rem;border-radius:3px;transition:all .15s;white-space:nowrap}
+#barberApp .expense-row .cap-action:hover{background:rgba(212,175,55,.12)}
 
 /* ── dashboard financeiro ── */
 #barberApp .meta-card{background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:10px;padding:1rem 1.1rem}
@@ -4896,8 +4898,8 @@ async function baRenderContasPagar(){
     const statusColor = e.status==='pago' ? 'var(--verde-neon)' : 'var(--prata-dim)';
     const statusLabel = e.status==='pago' ? `Pago${e.paid_at ? ' em '+baFormatDate(e.paid_at) : ''}${e.paid_method==='banco' ? ' · banco' : e.paid_method==='dinheiro' ? ' · dinheiro' : ''}` : 'Pendente';
     const actionLink = e.status==='pago'
-      ? `<span class="gi-remove" onclick="baUndoMarkPago(${e.id})">desfazer baixa</span>`
-      : `<span class="gi-remove" onclick="baStartMarkPago(${e.id})">marcar como pago</span>`;
+      ? `<span class="cap-action" onclick="baUndoMarkPago(${e.id})">desfazer baixa</span>`
+      : `<span class="cap-action" onclick="baStartMarkPago(${e.id})">marcar como pago</span>`;
     return `<div class="expense-row">
       <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${baCategoryLabel(e.category)}${fornecedorLabel}${parcelaLabel}</span></div><div class="exp-date">Lançado ${baFormatDate(e.date)} · ${vencLabel} · <span style="color:${statusColor}">${statusLabel}</span></div></div>
       <div class="exp-value">${baFormatMoney(e.value)}</div>
