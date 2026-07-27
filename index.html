@@ -3705,9 +3705,9 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       <div class="ba-body">
         <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <button class="ba-btn ghost active" data-sub="visao" onclick="baDashTab('visao')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Visão geral</button>
-          <button class="ba-btn ghost" data-sub="despesas" id="ba-dash-subtab-despesas" onclick="baDashTab('despesas')" style="display:none;width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Despesas</button>
           <button class="ba-btn ghost" data-sub="relatorios" onclick="baDashTab('relatorios')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Relatórios</button>
           <button class="ba-btn ghost" data-sub="dre" id="ba-dash-subtab-dre" onclick="baDashTab('dre')" style="display:none;width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">DRE</button>
+          <button class="ba-btn ghost" data-sub="contasapagar" id="ba-dash-subtab-contasapagar" onclick="baDashTab('contasapagar')" style="display:none;width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Contas a Pagar</button>
         </div>
 
         <div id="ba-dash-sub-visao">
@@ -3764,53 +3764,6 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
             <div class="rank-list" id="ba-dash-ranking"></div>
           </div>
-        </div>
-
-        <div id="ba-dash-sub-despesas" style="display:none">
-          <div id="ba-dash-despesas-wrap" style="display:none">
-            <div class="ba-slabel" style="margin-top:0;display:flex;justify-content:space-between;align-items:baseline">
-              <span>Despesas · este mês</span>
-              <span id="ba-dash-despesas-total" style="font-size:.78rem;color:var(--prata-dim);text-transform:none;letter-spacing:0">R$ 0,00</span>
-            </div>
-            <div id="ba-dash-despesas-list"></div>
-            <div style="display:flex;gap:.4rem;margin-top:.6rem;flex-wrap:wrap">
-              <input type="text" id="ba-despesa-nome" class="add-input" placeholder="Nome da despesa..." style="flex:2;min-width:120px">
-              <input type="text" inputmode="decimal" id="ba-despesa-valor" class="add-input" placeholder="R$" style="flex:1;min-width:70px">
-              <select id="ba-despesa-categoria" class="add-input" style="flex:1;min-width:150px"></select>
-            </div>
-            <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
-              <select id="ba-despesa-fornecedor" class="add-input" style="flex:1;min-width:150px"><option value="">Sem fornecedor</option></select>
-              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Lançamento
-                <input type="date" id="ba-despesa-data" class="add-input" style="margin-top:.2rem">
-              </label>
-              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Vencimento
-                <input type="date" id="ba-despesa-vencimento" class="add-input" style="margin-top:.2rem">
-              </label>
-            </div>
-            <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
-              <select id="ba-despesa-tipopagto" class="add-input" style="flex:1;min-width:130px" onchange="baDespesaTipoPagtoChanged()">
-                <option value="normal" selected>Pagamento normal</option>
-                <option value="parcelado">Parcelado</option>
-              </select>
-              <input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-despesa-parcelas" class="add-input" placeholder="Nº de parcelas" style="flex:1;min-width:100px;display:none">
-            </div>
-            <div style="display:flex;gap:.6rem;margin-top:.6rem;flex-wrap:wrap;align-items:center">
-              <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--prata-dim);cursor:pointer">
-                <input type="checkbox" id="ba-despesa-pago" style="width:16px;height:16px;accent-color:var(--dourado)" onchange="baDespesaPagoChanged()">
-                Pago
-              </label>
-              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim);display:none" id="ba-despesa-baixa-data-wrap">Data da baixa
-                <input type="date" id="ba-despesa-baixa-data" class="add-input" style="margin-top:.2rem">
-              </label>
-              <select id="ba-despesa-baixa-forma" class="add-input" style="flex:1;min-width:110px;display:none" onchange="baDespesaFormaChanged()">
-                <option value="dinheiro">Dinheiro</option>
-                <option value="banco">Banco</option>
-              </select>
-              <select id="ba-despesa-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
-            </div>
-            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baAddExpense()">Adicionar</button>
-            <p class="ba-err" id="ba-despesa-err" style="display:none;margin-top:.5rem"></p>
-          </div>
 
           <div id="ba-dash-lucro-wrap" style="display:none">
             <div class="ba-slabel">Lucro líquido estimado · este mês</div>
@@ -3854,6 +3807,72 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
             <div id="ba-dre-body"></div>
           </div>
+        </div>
+
+        <div id="ba-dash-sub-contasapagar" style="display:none">
+          <div class="ba-slabel" style="margin-top:0">Novo lançamento</div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <input type="text" id="ba-despesa-nome" class="add-input" placeholder="Nome da despesa..." style="flex:2;min-width:120px">
+            <input type="text" inputmode="decimal" id="ba-despesa-valor" class="add-input" placeholder="R$" style="flex:1;min-width:70px">
+            <select id="ba-despesa-categoria" class="add-input" style="flex:1;min-width:150px"></select>
+          </div>
+          <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
+            <select id="ba-despesa-fornecedor" class="add-input" style="flex:1;min-width:150px"><option value="">Sem fornecedor</option></select>
+            <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Lançamento
+              <input type="date" id="ba-despesa-data" class="add-input" style="margin-top:.2rem">
+            </label>
+            <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Vencimento
+              <input type="date" id="ba-despesa-vencimento" class="add-input" style="margin-top:.2rem">
+            </label>
+          </div>
+          <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
+            <select id="ba-despesa-tipopagto" class="add-input" style="flex:1;min-width:130px" onchange="baDespesaTipoPagtoChanged()">
+              <option value="normal" selected>Pagamento normal</option>
+              <option value="parcelado">Parcelado</option>
+            </select>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-despesa-parcelas" class="add-input" placeholder="Nº de parcelas" style="flex:1;min-width:100px;display:none">
+          </div>
+          <div style="display:flex;gap:.6rem;margin-top:.6rem;flex-wrap:wrap;align-items:center">
+            <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--prata-dim);cursor:pointer">
+              <input type="checkbox" id="ba-despesa-pago" style="width:16px;height:16px;accent-color:var(--dourado)" onchange="baDespesaPagoChanged()">
+              Pago
+            </label>
+            <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim);display:none" id="ba-despesa-baixa-data-wrap">Data da baixa
+              <input type="date" id="ba-despesa-baixa-data" class="add-input" style="margin-top:.2rem">
+            </label>
+            <select id="ba-despesa-baixa-forma" class="add-input" style="flex:1;min-width:110px;display:none" onchange="baDespesaFormaChanged()">
+              <option value="dinheiro">Dinheiro</option>
+              <option value="banco">Banco</option>
+            </select>
+            <select id="ba-despesa-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
+          </div>
+          <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baAddExpense()">Adicionar</button>
+          <p class="ba-err" id="ba-despesa-err" style="display:none;margin-top:.5rem"></p>
+
+          <div class="ba-slabel">Contas a Pagar</div>
+          <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+            <select id="ba-cap-fornecedor" class="add-input" style="flex:1;min-width:140px" onchange="baRenderContasPagar()"><option value="">Todos os fornecedores</option></select>
+            <select id="ba-cap-plano" class="add-input" style="flex:1;min-width:140px" onchange="baRenderContasPagar()"><option value="">Todos os planos de conta</option></select>
+            <select id="ba-cap-status" class="add-input" style="flex:1;min-width:120px" onchange="baRenderContasPagar()">
+              <option value="">Pago e pendente</option>
+              <option value="pendente">Só pendente</option>
+              <option value="pago">Só pago</option>
+            </select>
+          </div>
+          <div class="ba-vfiltros" id="ba-cap-filtros">
+            <button class="ba-vf" data-cf="semana" onclick="baSetCapFilter('semana')">Semana</button>
+            <button class="ba-vf active" data-cf="mes" onclick="baSetCapFilter('mes')">Mês</button>
+            <button class="ba-vf" data-cf="custom" onclick="baSetCapFilter('custom')">Período</button>
+          </div>
+          <div class="ba-vf-dates" id="ba-cap-dates" style="display:none">
+            <input type="date" id="ba-cap-from"> <span style="color:var(--prata-dim)">até</span> <input type="date" id="ba-cap-to">
+            <button class="ba-btn" style="padding:.4rem .9rem;font-size:.72rem" onclick="baRenderContasPagar()">Filtrar</button>
+          </div>
+          <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin:.8rem 0;font-size:.78rem">
+            <span style="color:var(--prata-dim)">Total devido <b style="color:var(--dourado)" id="ba-cap-total-devido">R$ 0,00</b></span>
+            <span style="color:var(--prata-dim)">Total pago <b style="color:var(--verde-neon)" id="ba-cap-total-pago">R$ 0,00</b></span>
+          </div>
+          <div id="ba-cap-list"></div>
         </div>
       </div>
     </div>
@@ -4470,8 +4489,6 @@ async function baRenderDashboard(){
   baRenderDashLine(baDashLineMonths);
   document.getElementById('ba-dash-ranking-wrap').style.display = isAdmin ? 'block' : 'none';
   if(isAdmin) baRenderRanking(baDashRankSort);
-  document.getElementById('ba-dash-despesas-wrap').style.display = isAdmin ? 'block' : 'none';
-  if(isAdmin) baRenderDespesas();
   document.getElementById('ba-dash-lucro-wrap').style.display = isAdmin ? 'block' : 'none';
   if(isAdmin) baRenderLucro();
   document.getElementById('ba-dre-wrap').style.display = isAdmin ? 'block' : 'none';
@@ -4481,16 +4498,17 @@ async function baRenderDashboard(){
     const dEl = document.getElementById('ba-daily-data');
     if(dEl && !dEl.value) dEl.value = primeLocalDate();
   }
-  document.getElementById('ba-dash-subtab-despesas').style.display = isAdmin ? '' : 'none';
   document.getElementById('ba-dash-subtab-dre').style.display = isAdmin ? '' : 'none';
+  document.getElementById('ba-dash-subtab-contasapagar').style.display = isAdmin ? '' : 'none';
   baDashTab('visao');
 }
 function baDashTab(sub){
   document.querySelectorAll('#ba-screen-dashboard [data-sub]').forEach(b=>b.classList.toggle('active', b.dataset.sub===sub));
   document.getElementById('ba-dash-sub-visao').style.display = sub==='visao' ? 'block' : 'none';
-  document.getElementById('ba-dash-sub-despesas').style.display = sub==='despesas' ? 'block' : 'none';
   document.getElementById('ba-dash-sub-relatorios').style.display = sub==='relatorios' ? 'block' : 'none';
   document.getElementById('ba-dash-sub-dre').style.display = sub==='dre' ? 'block' : 'none';
+  document.getElementById('ba-dash-sub-contasapagar').style.display = sub==='contasapagar' ? 'block' : 'none';
+  if(sub==='contasapagar') baRenderContasPagar();
 }
 
 async function baRenderDashMeta(){
@@ -4724,34 +4742,14 @@ function baDespesaFormaChanged(){
   const forma = document.getElementById('ba-despesa-baixa-forma').value;
   document.getElementById('ba-despesa-banco').style.display = (pago && forma==='banco') ? 'block' : 'none';
 }
-async function baRenderDespesas(){
-  const listEl = document.getElementById('ba-dash-despesas-list');
-  const totalEl = document.getElementById('ba-dash-despesas-total');
-  if(!listEl) return;
+async function baPopulateDespesaFormSelects(){
+  if(!document.getElementById('ba-despesa-nome')) return;
   if(!baChartOfAccountsCache.length) await baFetchChartOfAccounts().then(r=>baChartOfAccountsCache=r);
   baPopulateDespesaCategoriaSelect();
   if(!baBankAccountsCache.length) await baFetchContasBancarias().then(r=>baBankAccountsCache=r);
   baPopulateContaBancariaSelect();
   const fornecedores = await baFetchFornecedores();
   baPopulateDespesaFornecedorSelect(fornecedores);
-  const today = new Date();
-  const from = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
-  const lastDay = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
-  const to = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  const month = await baFetchExpenses(from, to);
-  const total = month.reduce((s,e)=>s+e.value,0);
-  totalEl.textContent = baFormatMoney(total);
-  listEl.innerHTML = month.length ? month.map(e=>{
-    const parcelaLabel = e.payment_type==='parcelado' ? ` · parcela ${e.installment_number}/${e.installment_total}` : '';
-    const fornecedorLabel = e.suppliers?.name ? ` · ${e.suppliers.name}` : '';
-    const statusColor = e.status==='pago' ? 'var(--verde-neon)' : 'var(--prata-dim)';
-    const statusLabel = e.status==='pago' ? 'Pago' : 'Pendente';
-    return `<div class="expense-row">
-      <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${baCategoryLabel(e.category)}${fornecedorLabel}${parcelaLabel}</span></div><div class="exp-date">${baFormatDate(e.date)} · <span style="color:${statusColor}">${statusLabel}</span></div></div>
-      <div class="exp-value">${baFormatMoney(e.value)}</div>
-      <button class="exp-remove" onclick="baRemoveExpense(${e.id})">remover</button>
-    </div>`;
-  }).join('') : '<p style="color:var(--prata-dim);font-size:.82rem;padding:.4rem 0">Nenhuma despesa registrada este mês.</p>';
 }
 async function baAddExpense(){
   const nameEl = document.getElementById('ba-despesa-nome');
@@ -4806,12 +4804,139 @@ async function baAddExpense(){
   nameEl.value=''; valorEl.value=''; dataEl.value=''; vencimentoEl.value=''; fornecedorEl.value=''; parcelasEl.value='';
   tipoPagtoEl.value='normal'; baDespesaTipoPagtoChanged();
   pagoEl.checked=false; baixaDataEl.value=''; baixaFormaEl.value='dinheiro'; baDespesaPagoChanged();
-  baRenderDespesas();
+  baRenderContasPagar();
   baRenderLucro();
 }
 async function baRemoveExpense(id){
   await baRemoveExpenseRow(id);
-  baRenderDespesas();
+  baRenderContasPagar();
+  baRenderLucro();
+}
+
+// ══ Contas a Pagar (listagem, filtros e baixa) ══
+let baCapFilter = 'mes';
+let baMarkingPagoId = null;
+function baSetCapFilter(f){
+  baCapFilter = f;
+  document.querySelectorAll('#ba-cap-filtros .ba-vf').forEach(b=>b.classList.toggle('active', b.dataset.cf===f));
+  document.getElementById('ba-cap-dates').style.display = f==='custom' ? 'flex' : 'none';
+  baRenderContasPagar();
+}
+function baCapRange(){
+  const today = new Date();
+  if(baCapFilter==='semana'){
+    const d = new Date(today); d.setDate(d.getDate()-d.getDay());
+    return { from: primeLocalDate(d), to: primeLocalDate(new Date(today.setDate(today.getDate()+6))) };
+  }
+  if(baCapFilter==='custom'){
+    const from = document.getElementById('ba-cap-from').value;
+    const to = document.getElementById('ba-cap-to').value;
+    if(from && to) return { from, to };
+  }
+  const from = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
+  const lastDay = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+  const to = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  return { from, to };
+}
+async function baFetchContasPagar(){
+  const { from, to } = baCapRange();
+  let q = sb.from('expenses').select('*, suppliers(name)').gte('due_date', from).lte('due_date', to).order('due_date',{ascending:true});
+  const fornecedorId = document.getElementById('ba-cap-fornecedor').value;
+  const planoSlug = document.getElementById('ba-cap-plano').value;
+  const status = document.getElementById('ba-cap-status').value;
+  if(fornecedorId) q = q.eq('supplier_id', Number(fornecedorId));
+  if(planoSlug) q = q.eq('category', planoSlug);
+  if(status) q = q.eq('status', status);
+  const { data, error } = await q;
+  if(error){ console.error('baFetchContasPagar', error); return []; }
+  return data||[];
+}
+function baPopulateCapFiltroSelects(fornecedores){
+  const fSel = document.getElementById('ba-cap-fornecedor');
+  const pSel = document.getElementById('ba-cap-plano');
+  if(fSel && fSel.options.length<=1){
+    fSel.innerHTML = '<option value="">Todos os fornecedores</option>' + fornecedores.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+  }
+  if(pSel && pSel.options.length<=1){
+    pSel.innerHTML = '<option value="">Todos os planos de conta</option>' + baChartOfAccountsCache.map(c=>`<option value="${c.slug}">${c.name}</option>`).join('');
+  }
+}
+async function baRenderContasPagar(){
+  const listEl = document.getElementById('ba-cap-list');
+  if(!listEl) return;
+  await baPopulateDespesaFormSelects();
+  const fornecedores = await baFetchFornecedores();
+  baPopulateCapFiltroSelects(fornecedores);
+  const rows = await baFetchContasPagar();
+  const totalDevido = rows.filter(r=>r.status==='pendente').reduce((s,r)=>s+r.value,0);
+  const totalPago = rows.filter(r=>r.status==='pago').reduce((s,r)=>s+r.value,0);
+  document.getElementById('ba-cap-total-devido').textContent = baFormatMoney(totalDevido);
+  document.getElementById('ba-cap-total-pago').textContent = baFormatMoney(totalPago);
+  listEl.innerHTML = rows.length ? rows.map(e=>{
+    const parcelaLabel = e.payment_type==='parcelado' ? ` · parcela ${e.installment_number}/${e.installment_total}` : '';
+    const fornecedorLabel = e.suppliers?.name ? ` · ${e.suppliers.name}` : '';
+    const vencLabel = e.due_date ? `Vencimento ${baFormatDate(e.due_date)}` : '';
+    if(e.id===baMarkingPagoId){
+      return `<div class="expense-row" style="flex-direction:column;align-items:stretch;gap:.5rem">
+        <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${baCategoryLabel(e.category)}${fornecedorLabel}${parcelaLabel}</span></div></div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+          <label style="font-size:.72rem;color:var(--prata-dim)">Data da baixa<input type="date" id="ba-cap-baixa-data-${e.id}" class="add-input" style="margin-top:.2rem" value="${primeLocalDate()}"></label>
+          <select id="ba-cap-baixa-forma-${e.id}" class="add-input" onchange="baCapBaixaFormaChanged(${e.id})">
+            <option value="dinheiro">Dinheiro</option>
+            <option value="banco">Banco</option>
+          </select>
+          <select id="ba-cap-baixa-banco-${e.id}" class="add-input" style="display:none">${baBankAccountsCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <button class="ba-btn" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem" onclick="baConfirmMarkPago(${e.id})">Confirmar baixa</button>
+          <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem" onclick="baCancelMarkPago()">Cancelar</button>
+        </div>
+      </div>`;
+    }
+    const statusColor = e.status==='pago' ? 'var(--verde-neon)' : 'var(--prata-dim)';
+    const statusLabel = e.status==='pago' ? `Pago${e.paid_at ? ' em '+baFormatDate(e.paid_at) : ''}${e.paid_method==='banco' ? ' · banco' : e.paid_method==='dinheiro' ? ' · dinheiro' : ''}` : 'Pendente';
+    const actionLink = e.status==='pago'
+      ? `<span class="gi-remove" onclick="baUndoMarkPago(${e.id})">desfazer baixa</span>`
+      : `<span class="gi-remove" onclick="baStartMarkPago(${e.id})">marcar como pago</span>`;
+    return `<div class="expense-row">
+      <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${baCategoryLabel(e.category)}${fornecedorLabel}${parcelaLabel}</span></div><div class="exp-date">Lançado ${baFormatDate(e.date)} · ${vencLabel} · <span style="color:${statusColor}">${statusLabel}</span></div></div>
+      <div class="exp-value">${baFormatMoney(e.value)}</div>
+      <span style="display:flex;gap:.6rem;flex:none;flex-direction:column;align-items:flex-end">
+        ${actionLink}
+        <button class="exp-remove" onclick="baRemoveExpense(${e.id})">remover</button>
+      </span>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.82rem;padding:.4rem 0">Nenhuma conta no período/filtro selecionado.</p>';
+}
+function baCapBaixaFormaChanged(id){
+  const forma = document.getElementById(`ba-cap-baixa-forma-${id}`).value;
+  document.getElementById(`ba-cap-baixa-banco-${id}`).style.display = forma==='banco' ? 'block' : 'none';
+}
+function baStartMarkPago(id){
+  baMarkingPagoId = id;
+  baRenderContasPagar();
+}
+function baCancelMarkPago(){
+  baMarkingPagoId = null;
+  baRenderContasPagar();
+}
+async function baConfirmMarkPago(id){
+  const dataEl = document.getElementById(`ba-cap-baixa-data-${id}`);
+  const formaEl = document.getElementById(`ba-cap-baixa-forma-${id}`);
+  const bancoEl = document.getElementById(`ba-cap-baixa-banco-${id}`);
+  const paid_at = dataEl.value || primeLocalDate();
+  const paid_method = formaEl.value;
+  const bank_account_id = (paid_method==='banco' && bancoEl.value) ? Number(bancoEl.value) : null;
+  const { error } = await sb.from('expenses').update({ status:'pago', paid_at, paid_method, bank_account_id }).eq('id', id);
+  if(error) console.error('baConfirmMarkPago', error);
+  baMarkingPagoId = null;
+  baRenderContasPagar();
+  baRenderLucro();
+}
+async function baUndoMarkPago(id){
+  const { error } = await sb.from('expenses').update({ status:'pendente', paid_at:null, paid_method:null, bank_account_id:null }).eq('id', id);
+  if(error) console.error('baUndoMarkPago', error);
+  baRenderContasPagar();
   baRenderLucro();
 }
 
