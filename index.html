@@ -3309,6 +3309,19 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .gift-item .gi-name{font-size:.82rem;color:var(--prata)}
 #barberApp .gift-item .gi-remove{font-size:.72rem;color:var(--prata-dim);cursor:pointer;padding:.2rem .5rem;border-radius:3px;transition:all .15s}
 #barberApp .gift-item .gi-remove:hover{color:#e85d5d;background:rgba(232,93,93,.1)}
+
+#barberApp .cad-table-wrap{overflow-x:auto;margin-bottom:1rem;border:1px solid var(--hair);border-radius:6px}
+#barberApp .cad-table{width:100%;border-collapse:collapse;font-size:.8rem;white-space:nowrap}
+#barberApp .cad-table th{text-align:left;font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:var(--prata-dim);padding:.5rem .7rem;border-bottom:1px solid var(--hair);background:rgba(255,255,255,.03)}
+#barberApp .cad-table td{padding:.55rem .7rem;border-bottom:1px solid var(--hair);color:var(--prata);vertical-align:middle}
+#barberApp .cad-table tr:last-child td{border-bottom:none}
+#barberApp .cad-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+#barberApp .cad-table td:last-child,#barberApp .cad-table th:last-child{text-align:right}
+#barberApp .cad-table .cad-edit,#barberApp .cad-table .cad-remove{font-size:.72rem;cursor:pointer;padding:.2rem .5rem;border-radius:3px;transition:all .15s}
+#barberApp .cad-table .cad-edit{color:var(--dourado)}
+#barberApp .cad-table .cad-edit:hover{background:rgba(212,175,55,.12)}
+#barberApp .cad-table .cad-remove{color:var(--prata-dim)}
+#barberApp .cad-table .cad-remove:hover{color:#e85d5d;background:rgba(232,93,93,.1)}
 #barberApp .prod-row{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-bottom:1px solid var(--hair)}
 #barberApp .prod-row:last-child{border-bottom:none}
 #barberApp .prod-info{flex:1;min-width:0}
@@ -5790,12 +5803,12 @@ async function baRenderPlanoContas(){
   const listEl = document.getElementById('ba-planocontas-list');
   baChartOfAccountsCache = await baFetchChartOfAccounts();
   if(!listEl) return;
-  listEl.innerHTML = baChartOfAccountsCache.map(c=>
-    `<div class="gift-item">
-      <span class="gi-name">${c.name}</span>
-      <span class="gi-remove" onclick="baRemovePlanoConta(${c.id})">remover</span>
-    </div>`
-  ).join('') || '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma conta cadastrada.</p>';
+  listEl.innerHTML = baChartOfAccountsCache.length ? `<div class="cad-table-wrap"><table class="cad-table">
+    <thead><tr><th>Nome</th><th></th></tr></thead>
+    <tbody>${baChartOfAccountsCache.map(c=>
+      `<tr><td>${c.name}</td><td><span class="cad-remove" onclick="baRemovePlanoConta(${c.id})">remover</span></td></tr>`
+    ).join('')}</tbody>
+  </table></div>` : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma conta cadastrada.</p>';
 }
 async function baAddPlanoConta(){
   const errEl = document.getElementById('ba-planoconta-err');
@@ -5844,12 +5857,12 @@ async function baRenderContasBancarias(){
   const listEl = document.getElementById('ba-contasbancarias-list');
   baBankAccountsCache = await baFetchContasBancarias();
   if(listEl){
-    listEl.innerHTML = baBankAccountsCache.map(c=>
-      `<div class="gift-item">
-        <span class="gi-name">${baBankAccountLabel(c)}</span>
-        <span class="gi-remove" onclick="baRemoveContaBancaria(${c.id})">remover</span>
-      </div>`
-    ).join('') || '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma conta cadastrada.</p>';
+    listEl.innerHTML = baBankAccountsCache.length ? `<div class="cad-table-wrap"><table class="cad-table">
+      <thead><tr><th>Banco</th><th>Agência</th><th>Conta</th><th></th></tr></thead>
+      <tbody>${baBankAccountsCache.map(c=>
+        `<tr><td>${c.name}</td><td>${c.agencia||'—'}</td><td>${c.conta||'—'}</td><td><span class="cad-remove" onclick="baRemoveContaBancaria(${c.id})">remover</span></td></tr>`
+      ).join('')}</tbody>
+    </table></div>` : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma conta cadastrada.</p>';
   }
   baPopulateContaBancariaSelect();
 }
@@ -5891,16 +5904,17 @@ async function baRenderFornecedores(){
   if(!listEl) return;
   baPopulatePlanoContaSelect();
   const fornecedores = await baFetchFornecedores();
-  listEl.innerHTML = fornecedores.map(f=>{
-    const detalhes = [f.phone, f.website, f.chart_of_accounts?.name].filter(Boolean).join(' · ');
-    return `<div class="gift-item">
-      <span class="gi-name"><b>${f.name}</b>${detalhes ? ' — '+detalhes : ''}</span>
-      <span style="display:flex;gap:.6rem;flex:none">
-        <span class="gi-remove" onclick="baStartEditFornecedor(${f.id})">editar</span>
-        <span class="gi-remove" onclick="baRemoveFornecedor(${f.id})">remover</span>
-      </span>
-    </div>`;
-  }).join('') || '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum fornecedor cadastrado.</p>';
+  listEl.innerHTML = fornecedores.length ? `<div class="cad-table-wrap"><table class="cad-table">
+    <thead><tr><th>Nome</th><th>Contato</th><th>Plano de conta</th><th></th></tr></thead>
+    <tbody>${fornecedores.map(f=>{
+      const contato = [f.phone, f.website].filter(Boolean).join(' · ') || '—';
+      const plano = f.chart_of_accounts?.name || '—';
+      return `<tr><td>${f.name}</td><td>${contato}</td><td>${plano}</td><td>
+        <span class="cad-edit" onclick="baStartEditFornecedor(${f.id})">editar</span>
+        <span class="cad-remove" onclick="baRemoveFornecedor(${f.id})">remover</span>
+      </td></tr>`;
+    }).join('')}</tbody>
+  </table></div>` : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum fornecedor cadastrado.</p>';
 }
 function baStartEditFornecedor(id){
   baFetchFornecedores().then(fornecedores=>{
