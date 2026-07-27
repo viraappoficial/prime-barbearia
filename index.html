@@ -3369,6 +3369,21 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .expense-row .cap-action{font-size:.72rem;color:var(--dourado);cursor:pointer;padding:.2rem .5rem;border-radius:3px;transition:all .15s;white-space:nowrap}
 #barberApp .expense-row .cap-action:hover{background:rgba(212,175,55,.12)}
 
+#barberApp .cap-row{padding:.85rem 0;border-bottom:1px solid var(--hair);display:flex;flex-direction:column;gap:.3rem}
+#barberApp .cap-row:last-child{border-bottom:none}
+#barberApp .cap-row-head{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+#barberApp .cap-row-name{font-size:.85rem;color:var(--prata);font-weight:600}
+#barberApp .cap-badge{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;padding:.22rem .55rem;border-radius:999px;white-space:nowrap;flex:none}
+#barberApp .cap-badge--pago{color:var(--verde-neon);background:rgba(80,200,120,.12)}
+#barberApp .cap-badge--pendente{color:var(--dourado);background:rgba(212,175,55,.12)}
+#barberApp .cap-row-tags{font-size:.7rem;color:var(--prata-dim)}
+#barberApp .cap-row-dates{font-size:.68rem;color:var(--prata-dim)}
+#barberApp .cap-row-baixa{font-size:.68rem;color:var(--verde-neon)}
+#barberApp .cap-row-foot{display:flex;justify-content:space-between;align-items:center;margin-top:.25rem}
+#barberApp .cap-row-value{font-size:.92rem;color:var(--prata);font-variant-numeric:tabular-nums;font-weight:600}
+#barberApp .cap-row-actions{display:flex;gap:.3rem;align-items:center}
+#barberApp .cap-row-editing{background:rgba(212,175,55,.05);border-left:2px solid var(--dourado);padding:.85rem 0 .85rem .7rem;margin-left:-.7rem}
+
 /* ── dashboard financeiro ── */
 #barberApp .meta-card{background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:10px;padding:1rem 1.1rem}
 #barberApp .meta-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem}
@@ -4886,13 +4901,14 @@ async function baRenderContasPagar(){
   document.getElementById('ba-cap-total-devido').textContent = baFormatMoney(totalDevido);
   document.getElementById('ba-cap-total-pago').textContent = baFormatMoney(totalPago);
   listEl.innerHTML = rows.length ? rows.map(e=>{
-    const parcelaLabel = e.payment_type==='parcelado' ? ` · parcela ${e.installment_number}/${e.installment_total}` : '';
-    const fornecedorLabel = e.suppliers?.name ? ` · ${e.suppliers.name}` : '';
-    const vencLabel = e.due_date ? `Vencimento ${baFormatDate(e.due_date)}` : '';
+    const parcelaTag = e.payment_type==='parcelado' ? ` · parcela ${e.installment_number}/${e.installment_total}` : '';
+    const fornecedorTag = e.suppliers?.name ? ` · ${e.suppliers.name}` : '';
+    const tags = `${baCategoryLabel(e.category)}${fornecedorTag}${parcelaTag}`;
     if(e.id===baMarkingPagoId){
-      return `<div class="expense-row" style="flex-direction:column;align-items:stretch;gap:.5rem">
-        <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${baCategoryLabel(e.category)}${fornecedorLabel}${parcelaLabel}</span></div></div>
-        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+      return `<div class="cap-row cap-row-editing">
+        <div class="cap-row-head"><span class="cap-row-name">${e.name}</span></div>
+        <div class="cap-row-tags">${tags}</div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.3rem">
           <label style="font-size:.72rem;color:var(--prata-dim)">Data da baixa<input type="date" id="ba-cap-baixa-data-${e.id}" class="add-input" style="margin-top:.2rem" value="${primeLocalDate()}"></label>
           <select id="ba-cap-baixa-forma-${e.id}" class="add-input" onchange="baCapBaixaFormaChanged(${e.id})">
             <option value="dinheiro">Dinheiro</option>
@@ -4900,24 +4916,31 @@ async function baRenderContasPagar(){
           </select>
           <select id="ba-cap-baixa-banco-${e.id}" class="add-input" style="display:none">${baBankAccountsCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
         </div>
-        <div style="display:flex;gap:.5rem">
+        <div style="display:flex;gap:.5rem;margin-top:.4rem">
           <button class="ba-btn" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem" onclick="baConfirmMarkPago(${e.id})">Confirmar baixa</button>
           <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem" onclick="baCancelMarkPago()">Cancelar</button>
         </div>
       </div>`;
     }
-    const statusColor = e.status==='pago' ? 'var(--verde-neon)' : 'var(--prata-dim)';
-    const statusLabel = e.status==='pago' ? `Pago${e.paid_at ? ' em '+baFormatDate(e.paid_at) : ''}${e.paid_method==='banco' ? ' · banco' : e.paid_method==='dinheiro' ? ' · dinheiro' : ''}` : 'Pendente';
+    const badge = e.status==='pago' ? '<span class="cap-badge cap-badge--pago">Pago</span>' : '<span class="cap-badge cap-badge--pendente">Pendente</span>';
+    const datesLine = e.due_date && e.due_date!==e.date
+      ? `Lançado ${baFormatDate(e.date)} · vence ${baFormatDate(e.due_date)}`
+      : `Lançado ${baFormatDate(e.date)}`;
+    const baixaLine = e.status==='pago' && e.paid_at
+      ? `<div class="cap-row-baixa">Baixa em ${baFormatDate(e.paid_at)}${e.paid_method==='banco' ? ' · banco' : e.paid_method==='dinheiro' ? ' · dinheiro' : ''}</div>`
+      : '';
     const actionLink = e.status==='pago'
       ? `<span class="cap-action" onclick="baUndoMarkPago(${e.id})">desfazer baixa</span>`
       : `<span class="cap-action" onclick="baStartMarkPago(${e.id})">marcar como pago</span>`;
-    return `<div class="expense-row">
-      <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${baCategoryLabel(e.category)}${fornecedorLabel}${parcelaLabel}</span></div><div class="exp-date">Lançado ${baFormatDate(e.date)} · ${vencLabel} · <span style="color:${statusColor}">${statusLabel}</span></div></div>
-      <div class="exp-value">${baFormatMoney(e.value)}</div>
-      <span style="display:flex;gap:.6rem;flex:none;flex-direction:column;align-items:flex-end">
-        ${actionLink}
-        <button class="exp-remove" onclick="baRemoveExpense(${e.id})">remover</button>
-      </span>
+    return `<div class="cap-row">
+      <div class="cap-row-head"><span class="cap-row-name">${e.name}</span>${badge}</div>
+      <div class="cap-row-tags">${tags}</div>
+      <div class="cap-row-dates">${datesLine}</div>
+      ${baixaLine}
+      <div class="cap-row-foot">
+        <span class="cap-row-value">${baFormatMoney(e.value)}</span>
+        <span class="cap-row-actions">${actionLink}<button class="exp-remove" onclick="baRemoveExpense(${e.id})">remover</button></span>
+      </div>
     </div>`;
   }).join('') : '<p style="color:var(--prata-dim);font-size:.82rem;padding:.4rem 0">Nenhuma conta no período/filtro selecionado.</p>';
 }
