@@ -3776,20 +3776,39 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div style="display:flex;gap:.4rem;margin-top:.6rem;flex-wrap:wrap">
               <input type="text" id="ba-despesa-nome" class="add-input" placeholder="Nome da despesa..." style="flex:2;min-width:120px">
               <input type="text" inputmode="decimal" id="ba-despesa-valor" class="add-input" placeholder="R$" style="flex:1;min-width:70px">
-              <input type="date" id="ba-despesa-data" class="add-input" style="flex:1;min-width:130px">
-              <select id="ba-despesa-categoria" class="add-input" style="flex:1;min-width:150px">
-                <option value="aluguel">Aluguel</option>
-                <option value="energia">Energia</option>
-                <option value="agua_internet">Água / Internet</option>
-                <option value="salarios">Salários administrativos</option>
-                <option value="produtos">Produtos e materiais</option>
-                <option value="marketing">Marketing</option>
-                <option value="software">Software / sistema</option>
-                <option value="taxa_maquininha">Taxa de maquininha</option>
-                <option value="outros" selected>Outros</option>
-              </select>
-              <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baAddExpense()">Adicionar</button>
+              <select id="ba-despesa-categoria" class="add-input" style="flex:1;min-width:150px"></select>
             </div>
+            <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
+              <select id="ba-despesa-fornecedor" class="add-input" style="flex:1;min-width:150px"><option value="">Sem fornecedor</option></select>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Lançamento
+                <input type="date" id="ba-despesa-data" class="add-input" style="margin-top:.2rem">
+              </label>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Vencimento
+                <input type="date" id="ba-despesa-vencimento" class="add-input" style="margin-top:.2rem">
+              </label>
+            </div>
+            <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
+              <select id="ba-despesa-tipopagto" class="add-input" style="flex:1;min-width:130px" onchange="baDespesaTipoPagtoChanged()">
+                <option value="normal" selected>Pagamento normal</option>
+                <option value="parcelado">Parcelado</option>
+              </select>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-despesa-parcelas" class="add-input" placeholder="Nº de parcelas" style="flex:1;min-width:100px;display:none">
+            </div>
+            <div style="display:flex;gap:.6rem;margin-top:.6rem;flex-wrap:wrap;align-items:center">
+              <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--prata-dim);cursor:pointer">
+                <input type="checkbox" id="ba-despesa-pago" style="width:16px;height:16px;accent-color:var(--dourado)" onchange="baDespesaPagoChanged()">
+                Pago
+              </label>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim);display:none" id="ba-despesa-baixa-data-wrap">Data da baixa
+                <input type="date" id="ba-despesa-baixa-data" class="add-input" style="margin-top:.2rem">
+              </label>
+              <select id="ba-despesa-baixa-forma" class="add-input" style="flex:1;min-width:110px;display:none" onchange="baDespesaFormaChanged()">
+                <option value="dinheiro">Dinheiro</option>
+                <option value="banco">Banco</option>
+              </select>
+              <select id="ba-despesa-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
+            </div>
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baAddExpense()">Adicionar</button>
             <p class="ba-err" id="ba-despesa-err" style="display:none;margin-top:.5rem"></p>
           </div>
 
@@ -3920,6 +3939,9 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <button class="ba-btn ghost" data-sub="produtos" onclick="baGestaoTab('produtos')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Produtos</button>
           <button class="ba-btn ghost" data-sub="cupons" onclick="baGestaoTab('cupons')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Cupons</button>
           <button class="ba-btn ghost" data-sub="instagram" onclick="baGestaoTab('instagram')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Instagram</button>
+          <button class="ba-btn ghost" data-sub="fornecedores" onclick="baGestaoTab('fornecedores')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Fornecedores</button>
+          <button class="ba-btn ghost" data-sub="planocontas" onclick="baGestaoTab('planocontas')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Plano de contas</button>
+          <button class="ba-btn ghost" data-sub="contasbancarias" onclick="baGestaoTab('contasbancarias')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Contas bancárias</button>
         </div>
 
         <div class="ba-card" id="ba-admin-panel">
@@ -4011,6 +4033,44 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baAddInstagramPost()">Adicionar</button>
           </div>
           <p class="ba-err" id="ba-instagram-err" style="display:none;margin-top:.5rem"></p>
+        </div>
+
+        <div class="ba-card" id="ba-fornecedores-config" style="display:none">
+          <div class="ba-slabel" style="margin-top:0">Fornecedores</div>
+          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Cadastro usado nos lançamentos de Contas a Pagar.</p>
+          <div id="ba-fornecedores-list"></div>
+          <div class="ba-slabel" id="ba-fornecedor-form-title">Novo fornecedor</div>
+          <div class="ba-field"><label>Nome</label><input type="text" id="ba-fornecedor-nome" placeholder="Nome do fornecedor"></div>
+          <div class="ba-field"><label>Telefone (opcional)</label><input type="text" id="ba-fornecedor-telefone" placeholder="(44) 90000-0000"></div>
+          <div class="ba-field"><label>Site (opcional)</label><input type="text" id="ba-fornecedor-site" placeholder="www.exemplo.com"></div>
+          <div class="ba-field"><label>Plano de conta (opcional)</label>
+            <select id="ba-fornecedor-plano"><option value="">Nenhum</option></select>
+          </div>
+          <p class="ba-err" id="ba-fornecedor-err" style="display:none"></p>
+          <div style="display:flex;gap:.5rem">
+            <button class="ba-btn" style="max-width:100%" id="ba-fornecedor-submit-btn" onclick="baSubmitFornecedor()">Adicionar fornecedor</button>
+            <button class="ba-btn ghost" style="max-width:100%;display:none" id="ba-fornecedor-cancel-btn" onclick="baCancelEditFornecedor()">Cancelar</button>
+          </div>
+        </div>
+
+        <div class="ba-card" id="ba-planocontas-config" style="display:none">
+          <div class="ba-slabel" style="margin-top:0">Plano de contas</div>
+          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Classificação usada pra agrupar despesas e fornecedores (ex: sistema/mensalidade, contabilidade, produtos capilares).</p>
+          <div id="ba-planocontas-list"></div>
+          <div class="ba-slabel">Nova conta</div>
+          <div class="ba-field"><label>Nome</label><input type="text" id="ba-planoconta-nome" placeholder="Ex: Contabilidade"></div>
+          <p class="ba-err" id="ba-planoconta-err" style="display:none"></p>
+          <button class="ba-btn" style="max-width:100%" onclick="baAddPlanoConta()">Adicionar</button>
+        </div>
+
+        <div class="ba-card" id="ba-contasbancarias-config" style="display:none">
+          <div class="ba-slabel" style="margin-top:0">Contas bancárias</div>
+          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Usadas pra registrar em qual conta a baixa de uma despesa foi feita.</p>
+          <div id="ba-contasbancarias-list"></div>
+          <div class="ba-slabel">Nova conta</div>
+          <div class="ba-field"><label>Nome</label><input type="text" id="ba-contabancaria-nome" placeholder="Ex: Banco do Brasil — Conta corrente"></div>
+          <p class="ba-err" id="ba-contabancaria-err" style="display:none"></p>
+          <button class="ba-btn" style="max-width:100%" onclick="baAddContaBancaria()">Adicionar</button>
         </div>
       </div>
     </div>
@@ -4216,10 +4276,13 @@ function baGestaoTab(sub){
   document.getElementById('ba-produtos-config').style.display = sub==='produtos' ? 'block' : 'none';
   document.getElementById('ba-cupons-config').style.display = sub==='cupons' ? 'block' : 'none';
   document.getElementById('ba-instagram-config').style.display = sub==='instagram' ? 'block' : 'none';
+  document.getElementById('ba-fornecedores-config').style.display = sub==='fornecedores' ? 'block' : 'none';
+  document.getElementById('ba-planocontas-config').style.display = sub==='planocontas' ? 'block' : 'none';
+  document.getElementById('ba-contasbancarias-config').style.display = sub==='contasbancarias' ? 'block' : 'none';
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
-  baRenderRoster(); baRenderBrindeConfig(); baRenderProdutosConfig(); baRenderCupons(); baRenderInstagramConfig();
+  baRenderRoster(); baRenderBrindeConfig(); baRenderProdutosConfig(); baRenderCupons(); baRenderInstagramConfig(); baRenderPlanoContas().then(baRenderFornecedores); baRenderContasBancarias();
 }
 
 function baMyCommissionPct(){
@@ -4609,27 +4672,68 @@ async function baRenderRanking(sortKey){
 
 // ══ Despesas (Supabase, admin-only) ══
 async function baFetchExpenses(from, to){
-  const { data, error } = await sb.from('expenses').select('*').gte('date', from).lte('date', to).order('date',{ascending:false});
+  const { data, error } = await sb.from('expenses').select('*, suppliers(name)').gte('date', from).lte('date', to).order('date',{ascending:false});
   if(error){ console.error('baFetchExpenses', error); return []; }
   return data||[];
-}
-async function baAddExpenseRow(name, value, date, category){
-  const { data, error } = await sb.from('expenses').insert({name, value, date, category: category||'outros'}).select().single();
-  if(error){ console.error('baAddExpenseRow', error); return { error }; }
-  return { data };
 }
 const BA_EXPENSE_CATEGORY_LABEL = {
   aluguel:'Aluguel', energia:'Energia', agua_internet:'Água/Internet', salarios:'Salários',
   produtos:'Produtos e materiais', marketing:'Marketing', software:'Software', taxa_maquininha:'Taxa de maquininha', outros:'Outros'
 };
+function baCategoryLabel(slug){
+  const acc = baChartOfAccountsCache.find(c=>c.slug===slug);
+  return (acc && acc.name) || BA_EXPENSE_CATEGORY_LABEL[slug] || slug;
+}
 async function baRemoveExpenseRow(id){
   const { error } = await sb.from('expenses').delete().eq('id', id);
   if(error) console.error('baRemoveExpenseRow', error);
+}
+function baAddMonthsToDateStr(dateStr, n){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1+n, d);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+function baPopulateDespesaCategoriaSelect(){
+  const sel = document.getElementById('ba-despesa-categoria');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = baChartOfAccountsCache.map(c=>`<option value="${c.slug}">${c.name}</option>`).join('');
+  sel.value = current || 'outros';
+}
+function baPopulateDespesaFornecedorSelect(fornecedores){
+  const sel = document.getElementById('ba-despesa-fornecedor');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Sem fornecedor</option>' + fornecedores.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+  sel.value = current;
+}
+function baDespesaTipoPagtoChanged(){
+  const tipo = document.getElementById('ba-despesa-tipopagto').value;
+  document.getElementById('ba-despesa-parcelas').style.display = tipo==='parcelado' ? 'block' : 'none';
+}
+function baDespesaPagoChanged(){
+  const pago = document.getElementById('ba-despesa-pago').checked;
+  document.getElementById('ba-despesa-baixa-data-wrap').style.display = pago ? 'block' : 'none';
+  document.getElementById('ba-despesa-baixa-forma').style.display = pago ? 'block' : 'none';
+  const dataEl = document.getElementById('ba-despesa-baixa-data');
+  if(pago && !dataEl.value) dataEl.value = primeLocalDate();
+  baDespesaFormaChanged();
+}
+function baDespesaFormaChanged(){
+  const pago = document.getElementById('ba-despesa-pago').checked;
+  const forma = document.getElementById('ba-despesa-baixa-forma').value;
+  document.getElementById('ba-despesa-banco').style.display = (pago && forma==='banco') ? 'block' : 'none';
 }
 async function baRenderDespesas(){
   const listEl = document.getElementById('ba-dash-despesas-list');
   const totalEl = document.getElementById('ba-dash-despesas-total');
   if(!listEl) return;
+  if(!baChartOfAccountsCache.length) await baFetchChartOfAccounts().then(r=>baChartOfAccountsCache=r);
+  baPopulateDespesaCategoriaSelect();
+  if(!baBankAccountsCache.length) await baFetchContasBancarias().then(r=>baBankAccountsCache=r);
+  baPopulateContaBancariaSelect();
+  const fornecedores = await baFetchFornecedores();
+  baPopulateDespesaFornecedorSelect(fornecedores);
   const today = new Date();
   const from = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
   const lastDay = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
@@ -4637,29 +4741,71 @@ async function baRenderDespesas(){
   const month = await baFetchExpenses(from, to);
   const total = month.reduce((s,e)=>s+e.value,0);
   totalEl.textContent = baFormatMoney(total);
-  listEl.innerHTML = month.length ? month.map(e=>
-    `<div class="expense-row">
-      <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${BA_EXPENSE_CATEGORY_LABEL[e.category]||'Outros'}</span></div><div class="exp-date">${baFormatDate(e.date)}</div></div>
+  listEl.innerHTML = month.length ? month.map(e=>{
+    const parcelaLabel = e.payment_type==='parcelado' ? ` · parcela ${e.installment_number}/${e.installment_total}` : '';
+    const fornecedorLabel = e.suppliers?.name ? ` · ${e.suppliers.name}` : '';
+    const statusColor = e.status==='pago' ? 'var(--verde-neon)' : 'var(--prata-dim)';
+    const statusLabel = e.status==='pago' ? 'Pago' : 'Pendente';
+    return `<div class="expense-row">
+      <div class="exp-info"><div class="exp-name">${e.name} <span style="color:var(--prata-dim);font-size:.68rem">· ${baCategoryLabel(e.category)}${fornecedorLabel}${parcelaLabel}</span></div><div class="exp-date">${baFormatDate(e.date)} · <span style="color:${statusColor}">${statusLabel}</span></div></div>
       <div class="exp-value">${baFormatMoney(e.value)}</div>
       <button class="exp-remove" onclick="baRemoveExpense(${e.id})">remover</button>
-    </div>`
-  ).join('') : '<p style="color:var(--prata-dim);font-size:.82rem;padding:.4rem 0">Nenhuma despesa registrada este mês.</p>';
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.82rem;padding:.4rem 0">Nenhuma despesa registrada este mês.</p>';
 }
 async function baAddExpense(){
   const nameEl = document.getElementById('ba-despesa-nome');
   const valorEl = document.getElementById('ba-despesa-valor');
   const dataEl = document.getElementById('ba-despesa-data');
   const catEl = document.getElementById('ba-despesa-categoria');
+  const fornecedorEl = document.getElementById('ba-despesa-fornecedor');
+  const vencimentoEl = document.getElementById('ba-despesa-vencimento');
+  const tipoPagtoEl = document.getElementById('ba-despesa-tipopagto');
+  const parcelasEl = document.getElementById('ba-despesa-parcelas');
+  const pagoEl = document.getElementById('ba-despesa-pago');
+  const baixaDataEl = document.getElementById('ba-despesa-baixa-data');
+  const baixaFormaEl = document.getElementById('ba-despesa-baixa-forma');
+  const bancoEl = document.getElementById('ba-despesa-banco');
   const errEl = document.getElementById('ba-despesa-err');
   errEl.style.display = 'none';
+  function fail(msg){ errEl.textContent = msg; errEl.style.display = 'block'; }
   const name = nameEl.value.trim();
   const value = parseFloat((valorEl.value||'').replace(',','.'));
   const date = dataEl.value || primeLocalDate();
-  if(!name){ errEl.textContent = 'Digite o nome da despesa.'; errEl.style.display = 'block'; return; }
-  if(!(value>0)){ errEl.textContent = 'Digite um valor válido.'; errEl.style.display = 'block'; return; }
-  const { error } = await baAddExpenseRow(name, value, date, catEl ? catEl.value : 'outros');
-  if(error){ errEl.textContent = 'Não foi possível lançar: ' + (error.message || 'erro desconhecido'); errEl.style.display = 'block'; return; }
-  nameEl.value=''; valorEl.value=''; dataEl.value='';
+  const dueDate = vencimentoEl.value || date;
+  const tipoPagto = tipoPagtoEl.value;
+  const parcelas = parseInt(parcelasEl.value||'0',10);
+  const pago = pagoEl.checked;
+  if(!name) return fail('Digite o nome da despesa.');
+  if(!(value>0)) return fail('Digite um valor válido.');
+  if(tipoPagto==='parcelado' && !(parcelas>=2)) return fail('Digite o número de parcelas (mínimo 2).');
+  const base = {
+    name, category: catEl.value||'outros', date,
+    supplier_id: fornecedorEl.value ? Number(fornecedorEl.value) : null,
+    payment_type: tipoPagto,
+    status: pago ? 'pago' : 'pendente',
+    paid_at: pago ? (baixaDataEl.value || date) : null,
+    paid_method: pago ? baixaFormaEl.value : null,
+    bank_account_id: (pago && baixaFormaEl.value==='banco' && bancoEl.value) ? Number(bancoEl.value) : null,
+  };
+  let rows;
+  if(tipoPagto==='parcelado'){
+    const groupId = crypto.randomUUID();
+    const cents = Math.round(value*100);
+    const baseCents = Math.floor(cents/parcelas);
+    rows = Array.from({length:parcelas}, (_,i)=>{
+      const isLast = i===parcelas-1;
+      const rowCents = isLast ? (cents - baseCents*(parcelas-1)) : baseCents;
+      return { ...base, value: rowCents/100, due_date: baAddMonthsToDateStr(dueDate, i), installment_number: i+1, installment_total: parcelas, installment_group_id: groupId };
+    });
+  } else {
+    rows = [{ ...base, value, due_date: dueDate, installment_number: null, installment_total: null, installment_group_id: null }];
+  }
+  const { error } = await sb.from('expenses').insert(rows);
+  if(error){ fail('Não foi possível lançar: ' + (error.message || 'erro desconhecido')); return; }
+  nameEl.value=''; valorEl.value=''; dataEl.value=''; vencimentoEl.value=''; fornecedorEl.value=''; parcelasEl.value='';
+  tipoPagtoEl.value='normal'; baDespesaTipoPagtoChanged();
+  pagoEl.checked=false; baixaDataEl.value=''; baixaFormaEl.value='dinheiro'; baDespesaPagoChanged();
   baRenderDespesas();
   baRenderLucro();
 }
@@ -5462,6 +5608,173 @@ async function baAddCupom(){
   document.getElementById('ba-cupom-valor').value = '';
   document.querySelectorAll('.ba-cupom-svc-check:checked').forEach(cb=>{ cb.checked=false; cb.closest('.chip').classList.remove('active'); });
   baRenderCupons();
+}
+
+// ══ Plano de contas (Supabase, admin-only, usado em fornecedores e Contas a Pagar) ══
+let baChartOfAccountsCache = [];
+function baSlugify(str){
+  return str.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+async function baFetchChartOfAccounts(){
+  const { data, error } = await sb.from('chart_of_accounts').select('*').order('name',{ascending:true});
+  if(error){ console.error('baFetchChartOfAccounts', error); return []; }
+  return data||[];
+}
+async function baRenderPlanoContas(){
+  const listEl = document.getElementById('ba-planocontas-list');
+  baChartOfAccountsCache = await baFetchChartOfAccounts();
+  if(!listEl) return;
+  listEl.innerHTML = baChartOfAccountsCache.map(c=>
+    `<div class="gift-item">
+      <span class="gi-name">${c.name}</span>
+      <span class="gi-remove" onclick="baRemovePlanoConta(${c.id})">remover</span>
+    </div>`
+  ).join('') || '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma conta cadastrada.</p>';
+}
+async function baAddPlanoConta(){
+  const errEl = document.getElementById('ba-planoconta-err');
+  errEl.style.display = 'none';
+  const nomeEl = document.getElementById('ba-planoconta-nome');
+  const name = nomeEl.value.trim();
+  if(!name){ errEl.textContent = 'Digite o nome da conta.'; errEl.style.display = 'block'; return; }
+  const { error } = await sb.from('chart_of_accounts').insert({ name, slug: baSlugify(name) });
+  if(error){
+    errEl.textContent = error.code==='23505' ? 'Já existe uma conta com esse nome.' : 'Não foi possível salvar. Tente de novo.';
+    errEl.style.display = 'block';
+    return;
+  }
+  nomeEl.value = '';
+  await baRenderPlanoContas();
+  baRenderFornecedores();
+}
+async function baRemovePlanoConta(id){
+  const { error } = await sb.from('chart_of_accounts').delete().eq('id', id);
+  if(error) console.error('baRemovePlanoConta', error);
+  await baRenderPlanoContas();
+  baRenderFornecedores();
+}
+function baPopulatePlanoContaSelect(){
+  const sel = document.getElementById('ba-fornecedor-plano');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Nenhum</option>' + baChartOfAccountsCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  sel.value = current;
+}
+
+// ══ Contas bancárias (Supabase, admin-only, usadas na baixa de despesas) ══
+let baBankAccountsCache = [];
+async function baFetchContasBancarias(){
+  const { data, error } = await sb.from('bank_accounts').select('*').order('name',{ascending:true});
+  if(error){ console.error('baFetchContasBancarias', error); return []; }
+  return data||[];
+}
+async function baRenderContasBancarias(){
+  const listEl = document.getElementById('ba-contasbancarias-list');
+  baBankAccountsCache = await baFetchContasBancarias();
+  if(listEl){
+    listEl.innerHTML = baBankAccountsCache.map(c=>
+      `<div class="gift-item">
+        <span class="gi-name">${c.name}</span>
+        <span class="gi-remove" onclick="baRemoveContaBancaria(${c.id})">remover</span>
+      </div>`
+    ).join('') || '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma conta cadastrada.</p>';
+  }
+  baPopulateContaBancariaSelect();
+}
+async function baAddContaBancaria(){
+  const errEl = document.getElementById('ba-contabancaria-err');
+  errEl.style.display = 'none';
+  const nomeEl = document.getElementById('ba-contabancaria-nome');
+  const name = nomeEl.value.trim();
+  if(!name){ errEl.textContent = 'Digite o nome da conta.'; errEl.style.display = 'block'; return; }
+  const { error } = await sb.from('bank_accounts').insert({ name });
+  if(error){ errEl.textContent = 'Não foi possível salvar. Tente de novo.'; errEl.style.display = 'block'; return; }
+  nomeEl.value = '';
+  baRenderContasBancarias();
+}
+async function baRemoveContaBancaria(id){
+  const { error } = await sb.from('bank_accounts').delete().eq('id', id);
+  if(error) console.error('baRemoveContaBancaria', error);
+  baRenderContasBancarias();
+}
+function baPopulateContaBancariaSelect(){
+  const sel = document.getElementById('ba-despesa-banco');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = baBankAccountsCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('') || '<option value="">Nenhuma conta cadastrada</option>';
+  if(current && [...sel.options].some(o=>o.value===current)) sel.value = current;
+}
+
+// ══ Fornecedores (Supabase, admin-only, usado em Contas a Pagar) ══
+let baEditingFornecedorId = null;
+async function baFetchFornecedores(){
+  const { data, error } = await sb.from('suppliers').select('*, chart_of_accounts(name)').order('name',{ascending:true});
+  if(error){ console.error('baFetchFornecedores', error); return []; }
+  return data||[];
+}
+async function baRenderFornecedores(){
+  const listEl = document.getElementById('ba-fornecedores-list');
+  if(!listEl) return;
+  baPopulatePlanoContaSelect();
+  const fornecedores = await baFetchFornecedores();
+  listEl.innerHTML = fornecedores.map(f=>{
+    const detalhes = [f.phone, f.website, f.chart_of_accounts?.name].filter(Boolean).join(' · ');
+    return `<div class="gift-item">
+      <span class="gi-name"><b>${f.name}</b>${detalhes ? ' — '+detalhes : ''}</span>
+      <span style="display:flex;gap:.6rem;flex:none">
+        <span class="gi-remove" onclick="baStartEditFornecedor(${f.id})">editar</span>
+        <span class="gi-remove" onclick="baRemoveFornecedor(${f.id})">remover</span>
+      </span>
+    </div>`;
+  }).join('') || '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum fornecedor cadastrado.</p>';
+}
+function baStartEditFornecedor(id){
+  baFetchFornecedores().then(fornecedores=>{
+    const f = fornecedores.find(x=>x.id===id);
+    if(!f) return;
+    baEditingFornecedorId = id;
+    document.getElementById('ba-fornecedor-nome').value = f.name||'';
+    document.getElementById('ba-fornecedor-telefone').value = f.phone||'';
+    document.getElementById('ba-fornecedor-site').value = f.website||'';
+    document.getElementById('ba-fornecedor-plano').value = f.chart_of_account_id||'';
+    document.getElementById('ba-fornecedor-form-title').textContent = 'Editando fornecedor';
+    document.getElementById('ba-fornecedor-submit-btn').textContent = 'Salvar alterações';
+    document.getElementById('ba-fornecedor-cancel-btn').style.display = 'inline-block';
+  });
+}
+function baCancelEditFornecedor(){
+  baEditingFornecedorId = null;
+  document.getElementById('ba-fornecedor-nome').value = '';
+  document.getElementById('ba-fornecedor-telefone').value = '';
+  document.getElementById('ba-fornecedor-site').value = '';
+  document.getElementById('ba-fornecedor-plano').value = '';
+  document.getElementById('ba-fornecedor-form-title').textContent = 'Novo fornecedor';
+  document.getElementById('ba-fornecedor-submit-btn').textContent = 'Adicionar fornecedor';
+  document.getElementById('ba-fornecedor-cancel-btn').style.display = 'none';
+  document.getElementById('ba-fornecedor-err').style.display = 'none';
+}
+async function baSubmitFornecedor(){
+  const errEl = document.getElementById('ba-fornecedor-err');
+  errEl.style.display = 'none';
+  const nomeEl = document.getElementById('ba-fornecedor-nome');
+  const name = nomeEl.value.trim();
+  const phone = document.getElementById('ba-fornecedor-telefone').value.trim();
+  const website = document.getElementById('ba-fornecedor-site').value.trim();
+  const planoRaw = document.getElementById('ba-fornecedor-plano').value;
+  if(!name){ errEl.textContent = 'Digite o nome do fornecedor.'; errEl.style.display = 'block'; return; }
+  const payload = { name, phone: phone||null, website: website||null, chart_of_account_id: planoRaw ? Number(planoRaw) : null };
+  const { error } = baEditingFornecedorId
+    ? await sb.from('suppliers').update(payload).eq('id', baEditingFornecedorId)
+    : await sb.from('suppliers').insert(payload);
+  if(error){ errEl.textContent = 'Não foi possível salvar. Tente de novo.'; errEl.style.display = 'block'; return; }
+  baCancelEditFornecedor();
+  baRenderFornecedores();
+}
+async function baRemoveFornecedor(id){
+  const { error } = await sb.from('suppliers').delete().eq('id', id);
+  if(error) console.error('baRemoveFornecedor', error);
+  if(baEditingFornecedorId===id) baCancelEditFornecedor();
+  baRenderFornecedores();
 }
 
 // ══ Posts do Instagram (Supabase, admin gerencia, landing page mostra pra todo mundo) ══
