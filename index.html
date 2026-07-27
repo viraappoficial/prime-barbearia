@@ -3218,8 +3218,9 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-tslot .ts-detail{font-size:.75rem;color:var(--prata-dim);margin-top:.1rem}
 #barberApp .ba-tslot .ts-empty{flex:1;padding:.5rem .8rem;margin-left:.8rem;color:rgba(198,167,94,.3);font-size:.75rem;font-style:italic}
 #barberApp .svc-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:.4rem;flex:none;vertical-align:middle}
-#barberApp .svc-legend{display:flex;flex-wrap:wrap;gap:.5rem .8rem;margin:0 0 .8rem;padding:.5rem .1rem}
-#barberApp .svc-legend-item{display:flex;align-items:center;font-size:.65rem;color:var(--prata-dim);white-space:nowrap}
+#barberApp .svc-legend-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--prata-dim);margin-bottom:.4rem}
+#barberApp .svc-legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .8rem;padding:.6rem;background:var(--grafite-card);border:1px solid var(--hair);border-radius:6px}
+#barberApp .svc-legend-item{display:flex;align-items:center;font-size:.65rem;color:var(--prata-dim);white-space:nowrap;padding:.22rem .55rem;border-radius:999px;background:rgba(255,255,255,.04)}
 #barberApp .ba-encaixe{background:var(--grafite-card);border:1px solid var(--dourado);padding:1rem 1.2rem;margin:.6rem 0}
 #barberApp .ba-encaixe .ba-slabel:first-child{margin-top:0}
 #barberApp .ba-svc-grid{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.6rem}
@@ -4110,7 +4111,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Usadas pra registrar em qual conta a baixa de uma despesa foi feita.</p>
             <div id="ba-contasbancarias-list"></div>
             <div class="ba-slabel">Nova conta</div>
-            <div class="ba-field"><label>Nome</label><input type="text" id="ba-contabancaria-nome" placeholder="Ex: Banco do Brasil — Conta corrente"></div>
+            <div class="ba-field"><label>Nome do banco</label><input type="text" id="ba-contabancaria-nome" placeholder="Ex: Banco do Brasil"></div>
+            <div style="display:flex;gap:.5rem">
+              <div class="ba-field" style="flex:1"><label>Agência (opcional)</label><input type="text" id="ba-contabancaria-agencia" placeholder="Ex: 1234"></div>
+              <div class="ba-field" style="flex:1"><label>Conta (opcional)</label><input type="text" id="ba-contabancaria-conta" placeholder="Ex: 12345-6"></div>
+            </div>
             <p class="ba-err" id="ba-contabancaria-err" style="display:none"></p>
             <button class="ba-btn" style="max-width:100%" onclick="baAddContaBancaria()">Adicionar</button>
           </div>
@@ -4914,7 +4919,7 @@ async function baRenderContasPagar(){
             <option value="dinheiro">Dinheiro</option>
             <option value="banco">Banco</option>
           </select>
-          <select id="ba-cap-baixa-banco-${e.id}" class="add-input" style="display:none">${baBankAccountsCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
+          <select id="ba-cap-baixa-banco-${e.id}" class="add-input" style="display:none">${baBankAccountsCache.map(c=>`<option value="${c.id}">${baBankAccountLabel(c)}</option>`).join('')}</select>
         </div>
         <div style="display:flex;gap:.5rem;margin-top:.4rem">
           <button class="ba-btn" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem" onclick="baConfirmMarkPago(${e.id})">Confirmar baixa</button>
@@ -5829,13 +5834,19 @@ async function baFetchContasBancarias(){
   if(error){ console.error('baFetchContasBancarias', error); return []; }
   return data||[];
 }
+function baBankAccountLabel(c){
+  const parts = [];
+  if(c.agencia) parts.push(`Ag ${c.agencia}`);
+  if(c.conta) parts.push(`Conta ${c.conta}`);
+  return parts.length ? `${c.name} — ${parts.join(' · ')}` : c.name;
+}
 async function baRenderContasBancarias(){
   const listEl = document.getElementById('ba-contasbancarias-list');
   baBankAccountsCache = await baFetchContasBancarias();
   if(listEl){
     listEl.innerHTML = baBankAccountsCache.map(c=>
       `<div class="gift-item">
-        <span class="gi-name">${c.name}</span>
+        <span class="gi-name">${baBankAccountLabel(c)}</span>
         <span class="gi-remove" onclick="baRemoveContaBancaria(${c.id})">remover</span>
       </div>`
     ).join('') || '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma conta cadastrada.</p>';
@@ -5846,11 +5857,13 @@ async function baAddContaBancaria(){
   const errEl = document.getElementById('ba-contabancaria-err');
   errEl.style.display = 'none';
   const nomeEl = document.getElementById('ba-contabancaria-nome');
+  const agenciaEl = document.getElementById('ba-contabancaria-agencia');
+  const contaEl = document.getElementById('ba-contabancaria-conta');
   const name = nomeEl.value.trim();
-  if(!name){ errEl.textContent = 'Digite o nome da conta.'; errEl.style.display = 'block'; return; }
-  const { error } = await sb.from('bank_accounts').insert({ name });
+  if(!name){ errEl.textContent = 'Digite o nome do banco.'; errEl.style.display = 'block'; return; }
+  const { error } = await sb.from('bank_accounts').insert({ name, agencia: agenciaEl.value.trim()||null, conta: contaEl.value.trim()||null });
   if(error){ errEl.textContent = 'Não foi possível salvar. Tente de novo.'; errEl.style.display = 'block'; return; }
-  nomeEl.value = '';
+  nomeEl.value = ''; agenciaEl.value = ''; contaEl.value = '';
   baRenderContasBancarias();
 }
 async function baRemoveContaBancaria(id){
@@ -5862,7 +5875,7 @@ function baPopulateContaBancariaSelect(){
   const sel = document.getElementById('ba-despesa-banco');
   if(!sel) return;
   const current = sel.value;
-  sel.innerHTML = baBankAccountsCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('') || '<option value="">Nenhuma conta cadastrada</option>';
+  sel.innerHTML = baBankAccountsCache.map(c=>`<option value="${c.id}">${baBankAccountLabel(c)}</option>`).join('') || '<option value="">Nenhuma conta cadastrada</option>';
   if(current && [...sel.options].some(o=>o.value===current)) sel.value = current;
 }
 
@@ -6816,7 +6829,7 @@ async function baBuildAgendaTimes(){
     <span><strong style="color:var(--prata)">${totalDay}</strong> agendamento${totalDay!==1?'s':''}</span>
     <span>≈ <strong style="color:var(--dourado)">${baFormatMoney(totalVal)}</strong></span>
   </div>`;
-  const legend = `<div class="svc-legend">${Object.keys(SVC_COLORS).map(name=>
+  const legend = `<div class="svc-legend-label">Cores dos serviços</div><div class="svc-legend">${Object.keys(SVC_COLORS).map(name=>
     `<span class="svc-legend-item"><span class="svc-dot" style="background:${SVC_COLORS[name]}"></span>${name}</span>`
   ).join('')}</div>`;
   tlBox.innerHTML = summary + legend + html;
