@@ -7,3 +7,5 @@
 - [Contas a pagar plan](project_contas-a-pagar-plan.md) — DONE (as of 2026-08-01): fornecedor, plano de contas, contas bancárias, pago/pendente, tudo agrupado na aba Financeiro dentro de Gestão.
 - [Sync memory to git](feedback_sync-memory-to-git.md) — mirror memory/*.md into repo's memoria-claude/ folder + push, so other machines can read context.
 - [Supabase GitHub integration](project_supabase-github-integration.md) — connected, master=production, migrations folder empty (no Docker on Gabriel's PCs), check schema via MCP before writing migrations.
+- [Never touch Vira's Supabase](feedback_never-touch-vira-supabase.md) — CRITICAL: MCP Supabase connector here is bound to Vira's account/project; use Gabriel's PAT via direct API for Prime Barbearia (yojvzwkvtedxqlohpuug) only — never touch Vira's project or SEHORBAS unless explicitly asked.
+- [GitHub repo ownership](project_github-ownership-note.md) — prime-barbearia transferred from gabrielparcel-byte to viraappoficial (2026-08-01) to fix a persistent write-permission bug; repo is now viraappoficial/prime-barbearia.
