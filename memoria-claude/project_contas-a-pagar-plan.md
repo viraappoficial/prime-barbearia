@@ -1,12 +1,16 @@
 ---
 name: project-contas-a-pagar-plan
-description: "Plano futuro pra evoluir \"despesas\" do Prime Barbearia num módulo de Contas a Pagar de verdade (fornecedor, vencimento, parcelamento, pago/pendente, banco) — ainda não iniciado, só levantamento."
+description: "Módulo de Contas a Pagar do Prime Barbearia (fornecedor, vencimento, plano de contas, contas bancárias, pago/pendente) — IMPLEMENTADO (2026-07-29 a 2026-08-01)."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 276cc831-811b-45dd-a594-f885a50f232f
-  modified: 2026-07-24T19:47:33.016Z
+  modified: 2026-08-01T00:00:00.000Z
 ---
+
+**STATUS (atualizado 2026-08-01): IMPLEMENTADO.** O que estava listado abaixo como "levantamento, nada implementado" foi construído entre os commits `4a2d3b7`..`82f201a`: schema completo (fornecedores, plano de contas, contas bancárias com agência/conta), tela dedicada de Contas a Pagar (unificada com o antigo formulário de Despesas), botão de marcar como pago, correção de policy de UPDATE em `expenses` (faltava e bloqueava marcar como pago), e tudo agrupado numa aba **Financeiro** dentro de Gestão. Polimentos visuais recentes: Plano de Contas / Fornecedores / Contas Bancárias viraram tabelas, Contas a Pagar virou cartão com hierarquia clara, cores/estilo dos links de ação ajustados. Não repetir o levantamento abaixo — está tudo entregue; só perguntar o que falta ou o que Gabriel quer evoluir a partir daqui.
+
+**Levantamento original (2026-07-24, mantido como histórico):**
 
 Gabriel quer evoluir a aba de despesas do Prime (hoje: nome, valor, data, categoria — simples) pra um módulo de **Contas a Pagar** nos moldes de um ERP de verdade. Ele mandou prints do sistema Hiper (Financeiro → Contas a Pagar) como referência visual/funcional: tela de listagem com Operação Nº, Data Lanç., Vencimento, Fornecedor, Histórico, Plano de Conta, Valor Bruto, Desconto, Encargo, Valor Baixa, Saldo, D/C — e um modal "Incluir Lançamento" com esses campos + Tipo de Pagto (Normal/Parcelado) + checkbox "Pago".
 
