@@ -1113,9 +1113,17 @@ function buildDays(){
     box.appendChild(btn);
   }
 }
+async function primeEnsureBarberRoster(){
+  // visitante público nunca loga no painel do barbeiro, então baRosterCache (só populado no login)
+  // fica vazio pra ele — sem isso, todo horário parece "sem barbeiro escalado". Carrega sob demanda.
+  if(typeof baRosterCache!=='undefined' && !baRosterCache.length && typeof baLoadRoster==='function'){
+    await baLoadRoster();
+  }
+}
 async function buildTimes(){
   const box=document.getElementById('wTime'); box.innerHTML='';
   if(!state.day) return;
+  await primeEnsureBarberRoster();
   const d=new Date(state.day+'T12:00:00');
   const h=HORARIOS[d.getDay()]; if(!h) return;
   const [oH,oM]=h[0].split(':').map(Number), [cH,cM]=h[1].split(':').map(Number);
@@ -1141,6 +1149,7 @@ async function buildTimes(){
 async function renderBarberStep(){
   const area = document.getElementById('wBarberArea');
   if(!area) return;
+  await primeEnsureBarberRoster();
   const acc = typeof primeGetAccount==='function' ? primeGetAccount() : null;
   const favorite = acc && acc.favoriteBarber;
   const allBarbers = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
