@@ -7258,20 +7258,25 @@ function baPgtoRenderLinhas(){
     const removeBtn = baPgtoState.linhas.length>1
       ? `<button type="button" onclick="baPgtoRemoveLinha(${i})" style="background:none;border:none;color:var(--prata-dim);cursor:pointer;font-size:1rem;padding:0 .3rem" aria-label="Remover forma">✕</button>`
       : '';
-    return `<div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap;align-items:center">
-      <select onchange="baPgtoSetField(${i},'method',this.value)" style="${baPgtoInputStyle('flex:1;min-width:130px')}">
-        ${BA_PGTO_METODOS.map(m=>`<option value="${m.v}" ${l.method===m.v?'selected':''}>${m.l}</option>`).join('')}
-      </select>
-      <input type="text" inputmode="decimal" value="${l.value?l.value.toFixed(2).replace('.',','):''}" placeholder="R$" oninput="baPgtoSetField(${i},'value',this.value)" style="${baPgtoInputStyle('flex:1;min-width:80px')}">
-      ${showParcelas ? `<select onchange="baPgtoSetField(${i},'parcelas',this.value)" style="${baPgtoInputStyle('flex:1;min-width:70px')}">
-        ${[1,2,3].map(n=>`<option value="${n}" ${Number(l.parcelas)===n?'selected':''}>${n}x</option>`).join('')}
-      </select>` : ''}
-      ${showBandeira ? `<select onchange="baPgtoSetField(${i},'bandeira',this.value)" style="${baPgtoInputStyle('flex:1;min-width:100px')}">
-        ${BA_PGTO_BANDEIRAS.map(b=>`<option value="${b}" ${l.bandeira===b?'selected':''}>${b||'Bandeira'}</option>`).join('')}
-      </select>` : ''}
-      ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
-      ${showVencimento ? `<input type="date" title="Vencimento" value="${l.dueDate||''}" onchange="baPgtoSetField(${i},'dueDate',this.value)" style="${baPgtoInputStyle('flex:1;min-width:130px')}">` : ''}
-      ${removeBtn}
+    return `<div style="margin-bottom:.5rem">
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+        <select onchange="baPgtoSetField(${i},'method',this.value)" style="${baPgtoInputStyle('flex:1;min-width:130px')}">
+          ${BA_PGTO_METODOS.map(m=>`<option value="${m.v}" ${l.method===m.v?'selected':''}>${m.l}</option>`).join('')}
+        </select>
+        <input type="text" inputmode="decimal" value="${l.value?l.value.toFixed(2).replace('.',','):''}" placeholder="R$" oninput="baPgtoSetField(${i},'value',this.value)" style="${baPgtoInputStyle('flex:1;min-width:80px')}">
+        ${showParcelas ? `<select onchange="baPgtoSetField(${i},'parcelas',this.value)" style="${baPgtoInputStyle('flex:1;min-width:70px')}">
+          ${[1,2,3].map(n=>`<option value="${n}" ${Number(l.parcelas)===n?'selected':''}>${n}x</option>`).join('')}
+        </select>` : ''}
+        ${showBandeira ? `<select onchange="baPgtoSetField(${i},'bandeira',this.value)" style="${baPgtoInputStyle('flex:1;min-width:100px')}">
+          ${BA_PGTO_BANDEIRAS.map(b=>`<option value="${b}" ${l.bandeira===b?'selected':''}>${b||'Bandeira'}</option>`).join('')}
+        </select>` : ''}
+        ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
+        ${removeBtn}
+      </div>
+      ${showVencimento ? `<div style="margin-top:.35rem">
+        <label style="font-size:.68rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Vencimento</label>
+        <input type="date" value="${l.dueDate||''}" onchange="baPgtoSetField(${i},'dueDate',this.value)" style="${baPgtoInputStyle('width:100%;max-width:220px')}">
+      </div>` : ''}
     </div>`;
   }).join('');
   baPgtoRecalc();
