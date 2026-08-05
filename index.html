@@ -895,10 +895,20 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
         <button type="button" class="btn btn-ghost" id="wCouponApply" style="padding:0 1.3rem">Aplicar</button>
       </div>
       <p id="wCouponMsg" style="font-size:.82rem;margin-bottom:.6rem;min-height:1.2em"></p>
-      <p style="font-size:.78rem;color:var(--prata-dim)">Ao confirmar, você será direcionado pro nosso WhatsApp com a solicitação pronta. A confirmação do horário é feita pela nossa equipe.</p>
+      <p style="font-size:.78rem;color:var(--prata-dim)">Ao confirmar, seu agendamento já é enviado pro barbeiro. A confirmação do horário é feita pela nossa equipe.</p>
+      <p id="wBookErr" style="color:var(--erro);font-size:.82rem;margin-top:.6rem;display:none">Não foi possível confirmar o agendamento agora. Tente de novo.</p>
     </div>
 
-    <div class="wizard-nav">
+    <div class="wstep" data-step="6">
+      <div style="text-align:center;padding:1.2rem 0">
+        <div style="font-size:1.1rem;color:var(--verde-neon);font-weight:600;margin-bottom:.7rem">Agendamento enviado! ✓</div>
+        <p style="color:var(--prata-dim);font-size:.85rem;margin-bottom:1.6rem">A confirmação do horário é feita pela nossa equipe. Se quiser, também dá pra avisar a gente direto pelo WhatsApp.</p>
+        <button class="btn btn-primary" id="wSendWhats" style="margin-bottom:.8rem">Encaminhar pelo WhatsApp</button>
+        <button class="btn btn-ghost" id="wFinish">Concluir</button>
+      </div>
+    </div>
+
+    <div class="wizard-nav" id="wWizardNav">
       <button class="btn btn-ghost" id="wBack" disabled>← Voltar</button>
       <button class="btn btn-primary" id="wNext" disabled>Próximo →</button>
     </div>
@@ -1029,13 +1039,14 @@ addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal(); dismissAuthP
 
 function render(){
   steps.forEach(s=>s.classList.toggle('active', +s.dataset.step===state.step));
-  document.getElementById('stepLabel').textContent = `Passo ${state.step} de 5 — ${labels[state.step-1]}`;
+  document.getElementById('stepLabel').textContent = state.step===6 ? 'Tudo certo!' : `Passo ${state.step} de 5 — ${labels[state.step-1]}`;
   for(let i=1;i<=5;i++) document.getElementById('p'+i).classList.toggle('done', i<=state.step);
+  document.getElementById('wWizardNav').style.display = state.step===6 ? 'none' : 'flex';
   document.getElementById('wBack').disabled = state.step===1;
   const next = document.getElementById('wNext');
   const ready = (state.step===1&&state.services.length>0)||(state.step===2&&state.day)||(state.step===3&&state.time)||(state.step===4&&state.barber)||state.step===5;
   next.disabled = !ready;
-  next.textContent = state.step===5 ? 'Solicitar pelo WhatsApp' : 'Próximo →';
+  next.textContent = state.step===5 ? 'Agendar' : 'Próximo →';
   if(state.step===5){
     const total = state.services.reduce((s,n)=>s+(SVC_PRICES[n]||0),0);
     const hasCoupon = typeof state.discountPrice==='number';
@@ -1189,6 +1200,7 @@ async function renderBarberStep(){
   }));
 }
 
+let lastBookingWaMsg = null;
 document.getElementById('wBack').addEventListener('click',()=>{ state.step=Math.max(1,state.step-1); render(); });
 document.getElementById('wNext').addEventListener('click', async ()=>{
   if(state.step<5){
@@ -1204,6 +1216,8 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
     render();
     return;
   }
+  const errEl = document.getElementById('wBookErr');
+  errEl.style.display = 'none';
   const name=document.getElementById('wName').value.trim()||'Cliente';
   const notes=document.getElementById('wNotes').value.trim()||null;
   const rawTotal = state.services.reduce((s,n)=>s+(SVC_PRICES[n]||0),0);
@@ -1211,14 +1225,35 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
   const waTotal = hasCoupon ? state.discountPrice : rawTotal;
   const cupomLine = hasCoupon ? `\n🎟️ Cupom: *${state.couponCode}*` : '';
   const msg=`Olá! Sou ${name} e gostaria de agendar na Prime Barbearia:\n\n✂️ Serviço: *${state.services.join(' + ')}*\n📅 Dia: *${state.dayLabel}*\n⏰ Horário: *${state.time}*\n💈 Barbeiro: *${state.barber}*\n💰 Valor total: *R$ ${waTotal.toFixed(2).replace('.',',')}*${cupomLine}${notes?`\n📝 Observação: *${notes}*`:''}\n\nPode confirmar pra mim?`;
-  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
   const acc = primeGetAccount();
-  const savedAppt = await primeCreateAppointment({services:[...state.services], day:state.day, dayLabel:state.dayLabel, time:state.time, name, notes, barberId:state.barberId, clientId: acc && acc.id, clientEmail: acc && acc.email, couponCode: state.couponCode, discountPrice: state.discountPrice});
+  const next = document.getElementById('wNext');
+  next.disabled = true; next.classList.add('btn-loading');
+  let savedAppt;
+  try{
+    // salva o agendamento ANTES de qualquer coisa — abrir o WhatsApp tira o foco da página (troca de app
+    // no celular) e pode suspender/cancelar o JS que viria depois, deixando o agendamento sem ser criado
+    savedAppt = await primeCreateAppointment({services:[...state.services], day:state.day, dayLabel:state.dayLabel, time:state.time, name, notes, barberId:state.barberId, clientId: acc && acc.id, clientEmail: acc && acc.email, couponCode: state.couponCode, discountPrice: state.discountPrice});
+  } finally {
+    next.disabled = false; next.classList.remove('btn-loading');
+  }
+  if(!savedAppt){
+    errEl.style.display = 'block';
+    return;
+  }
   // notifica o barbeiro sobre o novo pedido de agendamento
   await primeAddNotif({forRole:'barber', recipientBarberId:state.barberId, type:'novo', apptId:savedAppt.id,
     text:`Novo agendamento de ${name} — ${state.dayLabel} às ${state.time} (${state.services.join(' + ')})`});
   if(acc && !acc.favoriteBarber){ acc.favoriteBarber = state.barber; primeSaveAccount(acc); }
   if(acc && acc.email) await primeCheckAchievements({bookedTime: state.time, bookedDay: state.day});
+  lastBookingWaMsg = msg;
+  state.step = 6;
+  render();
+});
+document.getElementById('wSendWhats').addEventListener('click', ()=>{
+  if(lastBookingWaMsg) window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(lastBookingWaMsg)}`,'_blank');
+});
+document.getElementById('wFinish').addEventListener('click', ()=>{
+  lastBookingWaMsg = null;
   closeModal();
   state.step=1; state.services=[]; state.day=null; state.dayLabel=null; state.time=null; state.barber=null; state.barberId=null; state.barberIntroAnswered=null;
   state.couponCode=null; state.discountPrice=null;
@@ -4038,6 +4073,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="planocontas" onclick="baFinanceiroTab('planocontas')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Plano de contas</button>
             <button class="ba-btn ghost" data-fin="contasbancarias" onclick="baFinanceiroTab('contasbancarias')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Contas bancárias</button>
             <button class="ba-btn ghost" data-fin="caixa" onclick="baFinanceiroTab('caixa')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Caixa</button>
+            <button class="ba-btn ghost" data-fin="aprazo" onclick="baFinanceiroTab('aprazo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">A Prazo</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -6887,8 +6923,12 @@ const BA_PGTO_METODOS = [
 ];
 const BA_PGTO_BANDEIRAS = ['', 'Visa', 'Mastercard', 'Elo', 'Amex', 'Outra'
 ];
-function baOpenPagamentoModal(notaId, total, onConfirm){
-  baPgtoState = { notaId, total, onConfirm, linhas: [{method:'dinheiro', value: total, parcelas:1, nsu:'', bandeira:''}] };
+function baPgtoDefaultVencimento(){
+  return primeLocalDate(new Date(Date.now() + 30*86400000));
+}
+function baOpenPagamentoModal(notaId, total, onConfirm, opts){
+  const o = opts || {};
+  baPgtoState = { notaId, total, onConfirm, clientName: o.clientName || 'Cliente', linhas: [{method:'dinheiro', value: total, parcelas:1, nsu:'', bandeira:'', dueDate:''}] };
   document.getElementById('ba-pgto-total').textContent = baFormatMoney(total);
   document.getElementById('ba-pgto-err').style.display = 'none';
   baPgtoRenderLinhas();
@@ -6907,6 +6947,7 @@ function baPgtoRenderLinhas(){
     const showNsu = ['debito','credito','pix_qrs'].includes(l.method);
     const showBandeira = ['debito','credito'].includes(l.method);
     const showParcelas = l.method==='credito';
+    const showVencimento = l.method==='a_prazo';
     const removeBtn = baPgtoState.linhas.length>1
       ? `<button type="button" onclick="baPgtoRemoveLinha(${i})" style="background:none;border:none;color:var(--prata-dim);cursor:pointer;font-size:1rem;padding:0 .3rem" aria-label="Remover forma">✕</button>`
       : '';
@@ -6922,6 +6963,9 @@ function baPgtoRenderLinhas(){
         ${BA_PGTO_BANDEIRAS.map(b=>`<option value="${b}" ${l.bandeira===b?'selected':''}>${b||'Bandeira'}</option>`).join('')}
       </select>` : ''}
       ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
+      ${showVencimento ? `<label style="font-size:.68rem;color:var(--prata-dim);flex:1;min-width:130px">Vencimento
+        <input type="date" value="${l.dueDate||''}" onchange="baPgtoSetField(${i},'dueDate',this.value)" style="${baPgtoInputStyle('width:100%;margin-top:.15rem')}">
+      </label>` : ''}
       ${removeBtn}
     </div>`;
   }).join('');
@@ -6934,6 +6978,8 @@ function baPgtoSetField(i, field, val){
     l.parcelas = val==='credito' ? (l.parcelas||1) : null;
     if(!['debito','credito','pix_qrs'].includes(val)) l.nsu = '';
     if(!['debito','credito'].includes(val)) l.bandeira = '';
+    if(val==='a_prazo' && !l.dueDate) l.dueDate = baPgtoDefaultVencimento();
+    if(val!=='a_prazo') l.dueDate = '';
     baPgtoRenderLinhas();
     return;
   }
@@ -6945,7 +6991,7 @@ function baPgtoSetField(i, field, val){
 function baPgtoAddLinha(){
   const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
   const restante = Math.max(0, baPgtoState.total - distribuido);
-  baPgtoState.linhas.push({method:'dinheiro', value: restante, parcelas:1, nsu:'', bandeira:''});
+  baPgtoState.linhas.push({method:'dinheiro', value: restante, parcelas:1, nsu:'', bandeira:'', dueDate:''});
   baPgtoRenderLinhas();
 }
 function baPgtoRemoveLinha(i){
@@ -6983,17 +7029,34 @@ async function baPgtoConfirmar(){
     errEl.style.display = 'block';
     return;
   }
+  if(baPgtoState.linhas.some(l=>l.method==='a_prazo' && !l.dueDate)){
+    errEl.textContent = 'Informe o vencimento da forma "A Prazo".';
+    errEl.style.display = 'block';
+    return;
+  }
   const btn = document.getElementById('ba-pgto-confirm');
   btn.disabled = true; btn.classList.add('btn-loading');
   try{
-    const { notaId, onConfirm, linhas } = baPgtoState;
+    const { notaId, onConfirm, linhas, clientName } = baPgtoState;
     document.getElementById('baPagamentoModal').classList.remove('open');
     await onConfirm();
     await baInsertSalePayments(notaId, baActingBarberId, linhas);
+    await baInsertFiadoCharges(notaId, baActingBarberId, clientName, linhas);
   } finally {
     btn.disabled = false; btn.classList.remove('btn-loading');
     baPgtoState = null;
   }
+}
+async function baInsertFiadoCharges(notaId, barberId, clientName, linhas){
+  const aPrazo = linhas.filter(l=>l.method==='a_prazo');
+  if(!aPrazo.length) return;
+  const hoje = primeLocalDate();
+  const rows = aPrazo.map(l=>({
+    nota_id: notaId, client_name: clientName, barber_id: barberId, value: l.value,
+    sale_date: hoje, due_date: l.dueDate, status: 'aberto'
+  }));
+  const { error } = await sb.from('fiado_charges').insert(rows);
+  if(error) console.error('baInsertFiadoCharges', error);
 }
 
 async function baFinalizarCarrinho(){
@@ -7033,7 +7096,7 @@ async function baFinalizarCarrinho(){
     baCarrinhoApptId = null;
     baTab('agenda');
     openFeedback(finishedId, 'barbeiro');
-  });
+  }, {clientName: appt.name||'Cliente'});
 }
 
 // ── Sino de notificações do barbeiro ──
@@ -7746,7 +7809,7 @@ async function baAtRegistrar(){
     const successEl = document.getElementById('at-success');
     successEl.style.display = 'block';
     setTimeout(()=>{ successEl.style.display='none'; }, 3000);
-  });
+  }, {clientName});
 }
 
 function baEnter(barber){
