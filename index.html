@@ -3778,6 +3778,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
         <div class="total-summary">
           <div class="ts-row"><span>Serviço</span><span id="cart-sum-servico">R$ 0,00</span></div>
+          <div class="ts-row"><span>Desconto no serviço (%)</span><input type="text" inputmode="decimal" id="cart-sum-desconto" placeholder="0" onchange="baCartSumDescontoChanged()" style="width:60px;text-align:right;background:transparent;border:none;border-bottom:1px solid rgba(237,237,232,.25);color:var(--dourado-claro);font-family:var(--font-body);font-size:.76rem"></div>
           <div class="ts-row"><span>Produtos</span><span id="cart-sum-produtos">R$ 0,00</span></div>
           <div class="ts-row final"><span>Total da nota</span><span class="val" id="cart-sum-total">R$ 0,00</span></div>
         </div>
@@ -7213,6 +7214,23 @@ async function baRenderCartItems(){
   document.getElementById('cart-sum-servico').textContent = baFormatMoney(svcValue);
   document.getElementById('cart-sum-produtos').textContent = baFormatMoney(produtosTotal);
   document.getElementById('cart-sum-total').textContent = baFormatMoney(svcValue+produtosTotal);
+  const descontoEl = document.getElementById('cart-sum-desconto');
+  // não pisa no campo enquanto o barbeiro tá digitando nele
+  if(descontoEl && document.activeElement !== descontoEl){
+    const pct = baDescontoPctFromValor(baPrecoTabela(svcs), svcValue);
+    descontoEl.value = pct.toFixed(1).replace('.',',');
+  }
+}
+async function baCartSumDescontoChanged(){
+  const appt = await primeFetchAppointmentById(baCarrinhoApptId);
+  if(!appt) return;
+  const svcs = appt.services || (appt.service ? [appt.service] : []);
+  const precoTabela = baPrecoTabela(svcs);
+  const pct = baParseSignedPct(document.getElementById('cart-sum-desconto').value);
+  const valor = baValorFromDescontoPct(precoTabela, pct);
+  await primeUpdateAppointment(baCarrinhoApptId, { discountPrice: valor });
+  document.getElementById('cart-svc-value').textContent = baFormatMoney(valor);
+  await baRenderCartItems();
 }
 
 // ── Forma de pagamento (split) ao finalizar uma venda ──
