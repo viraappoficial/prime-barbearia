@@ -1681,12 +1681,12 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
   <div class="modal" style="max-width:400px;text-align:center">
     <button class="close" aria-label="Fechar" onclick="baCloseAdminGate()">✕</button>
     <h3>Confirmação do admin</h3>
-    <p style="color:var(--prata-dim);font-size:.85rem;margin:.8rem 0 1.2rem">Pra cancelar esse horário, peça pra um admin confirmar com o login dele.</p>
+    <p id="baAdminGateSub" style="color:var(--prata-dim);font-size:.85rem;margin:.8rem 0 1.2rem">Peça pra um admin confirmar com o login dele.</p>
     <input type="email" id="baAdminGateEmail" placeholder="E-mail do admin" autocomplete="off" style="width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.85rem 1rem;font-family:var(--font-body);font-size:.9rem;margin-bottom:.8rem">
     <input type="password" id="baAdminGatePass" placeholder="Senha" autocomplete="off" style="width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.85rem 1rem;font-family:var(--font-body);font-size:.9rem;margin-bottom:1rem">
     <p id="baAdminGateErr" style="color:var(--erro);font-size:.82rem;margin-bottom:1rem;display:none"></p>
     <div style="display:flex;flex-direction:column;gap:.8rem">
-      <button class="btn btn-primary" id="baAdminGateConfirm" style="background:#8a3a2a;box-shadow:none">Confirmar cancelamento</button>
+      <button class="btn btn-primary" id="baAdminGateConfirm">Confirmar</button>
       <button class="btn btn-ghost" onclick="baCloseAdminGate()">Voltar</button>
     </div>
   </div>
@@ -4037,6 +4037,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="fornecedores" onclick="baFinanceiroTab('fornecedores')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Fornecedores</button>
             <button class="ba-btn ghost" data-fin="planocontas" onclick="baFinanceiroTab('planocontas')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Plano de contas</button>
             <button class="ba-btn ghost" data-fin="contasbancarias" onclick="baFinanceiroTab('contasbancarias')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Contas bancárias</button>
+            <button class="ba-btn ghost" data-fin="caixa" onclick="baFinanceiroTab('caixa')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Caixa</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -4145,6 +4146,49 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
             <p class="ba-err" id="ba-contabancaria-err" style="display:none"></p>
             <button class="ba-btn" style="max-width:100%" onclick="baAddContaBancaria()">Adicionar</button>
+          </div>
+
+          <div id="ba-fin-caixa" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Cofre da empresa</div>
+            <p style="font-size:1.3rem;color:var(--dourado);font-weight:600;margin-bottom:.3rem" id="ba-cofre-saldo">R$ 0,00</p>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Soma de todas as sangrias com destino "Cofre".</p>
+
+            <div class="ba-slabel">Sangria</div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+              <input type="text" inputmode="decimal" id="ba-sangria-valor" class="add-input" placeholder="Valor (R$)" style="flex:1;min-width:110px">
+              <select id="ba-sangria-destino" class="add-input" onchange="baSangriaDestinoChanged()" style="flex:1;min-width:110px">
+                <option value="cofre">Cofre</option>
+                <option value="banco">Banco</option>
+              </select>
+              <select id="ba-sangria-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
+            </div>
+            <div class="ba-field"><label>Observação (opcional)</label><input type="text" id="ba-sangria-nota" placeholder="Ex: depósito do dia"></div>
+            <p class="ba-err" id="ba-sangria-err" style="display:none"></p>
+            <button class="ba-btn" style="max-width:100%" onclick="baStartSangria()">Registrar sangria</button>
+            <div class="ba-slabel">Últimas sangrias</div>
+            <div id="ba-sangrias-list"></div>
+
+            <div class="ba-slabel">Fechamento de caixa</div>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Não precisa ser diário — feche quando fizer sentido pro fluxo de dinheiro da loja.</p>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem;align-items:center">
+              <label style="font-size:.72rem;color:var(--prata-dim)">De<input type="date" id="ba-fech-from" class="add-input" style="margin-top:.2rem"></label>
+              <label style="font-size:.72rem;color:var(--prata-dim)">Até<input type="date" id="ba-fech-to" class="add-input" style="margin-top:.2rem"></label>
+              <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.9rem;font-size:.7rem" onclick="baCalcularFechamento()">Calcular</button>
+            </div>
+            <div id="ba-fech-resumo" style="display:none;font-size:.82rem;color:var(--prata-dim);margin-bottom:.6rem">
+              <div>Recebido em dinheiro: <b style="color:var(--prata)" id="ba-fech-recebido"></b></div>
+              <div>Despesas pagas em dinheiro: <b style="color:var(--prata)" id="ba-fech-despesas"></b></div>
+              <div>Sangrias no período: <b style="color:var(--prata)" id="ba-fech-sangrias"></b></div>
+              <div>Esperado no caixa: <b style="color:var(--dourado)" id="ba-fech-esperado"></b></div>
+              <div style="margin-top:.5rem"><label style="font-size:.72rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Valor contado</label>
+                <input type="text" inputmode="decimal" id="ba-fech-contado" class="add-input" placeholder="R$" oninput="baFechRecalcDiferenca()" style="width:100%;max-width:220px">
+              </div>
+              <div style="margin-top:.4rem">Diferença: <b id="ba-fech-diferenca">—</b></div>
+            </div>
+            <p class="ba-err" id="ba-fech-err" style="display:none"></p>
+            <button class="ba-btn" id="ba-fech-btn" style="max-width:100%;display:none" onclick="baFecharCaixa()">Fechar caixa</button>
+            <div class="ba-slabel">Fechamentos anteriores</div>
+            <div id="ba-fechamentos-list"></div>
           </div>
         </div>
       </div>
@@ -4360,7 +4404,9 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-fornecedores').style.display = sub==='fornecedores' ? 'block' : 'none';
   document.getElementById('ba-fin-planocontas').style.display = sub==='planocontas' ? 'block' : 'none';
   document.getElementById('ba-fin-contasbancarias').style.display = sub==='contasbancarias' ? 'block' : 'none';
+  document.getElementById('ba-fin-caixa').style.display = sub==='caixa' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
+  if(sub==='caixa') baRenderCaixa();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
@@ -4868,9 +4914,15 @@ async function baAddExpense(){
   baRenderLucro();
 }
 async function baRemoveExpense(id){
-  await baRemoveExpenseRow(id);
-  baRenderContasPagar();
-  baRenderLucro();
+  const { data: exp } = await sb.from('expenses').select('due_date,date,paid_at').eq('id', id).maybeSingle();
+  const doRemove = async ()=>{
+    await baRemoveExpenseRow(id);
+    baRenderContasPagar();
+    baRenderLucro();
+  };
+  const checkDate = exp && (exp.paid_at || exp.due_date || exp.date);
+  if(checkDate && await baIsDataEmPeriodoFechado(checkDate)) baOpenAdminGate(doRemove, {subtitle:'Essa despesa está num período de caixa já fechado. Peça pra um admin confirmar pra poder remover.', confirmLabel:'Confirmar remoção', danger:true});
+  else await doRemove();
 }
 
 // ══ Contas a Pagar (listagem, filtros e baixa) ══
@@ -4995,17 +5047,26 @@ async function baConfirmMarkPago(id){
   const paid_at = dataEl.value || primeLocalDate();
   const paid_method = formaEl.value;
   const bank_account_id = (paid_method==='banco' && bancoEl.value) ? Number(bancoEl.value) : null;
-  const { error } = await sb.from('expenses').update({ status:'pago', paid_at, paid_method, bank_account_id }).eq('id', id);
-  if(error) console.error('baConfirmMarkPago', error);
-  baMarkingPagoId = null;
-  baRenderContasPagar();
-  baRenderLucro();
+  const doConfirm = async ()=>{
+    const { error } = await sb.from('expenses').update({ status:'pago', paid_at, paid_method, bank_account_id }).eq('id', id);
+    if(error) console.error('baConfirmMarkPago', error);
+    baMarkingPagoId = null;
+    baRenderContasPagar();
+    baRenderLucro();
+  };
+  if(await baIsDataEmPeriodoFechado(paid_at)) baOpenAdminGate(doConfirm, {subtitle:'Essa data cai num período de caixa já fechado. Peça pra um admin confirmar pra dar baixa.', confirmLabel:'Confirmar baixa'});
+  else await doConfirm();
 }
 async function baUndoMarkPago(id){
-  const { error } = await sb.from('expenses').update({ status:'pendente', paid_at:null, paid_method:null, bank_account_id:null }).eq('id', id);
-  if(error) console.error('baUndoMarkPago', error);
-  baRenderContasPagar();
-  baRenderLucro();
+  const { data: exp } = await sb.from('expenses').select('paid_at').eq('id', id).maybeSingle();
+  const doUndo = async ()=>{
+    const { error } = await sb.from('expenses').update({ status:'pendente', paid_at:null, paid_method:null, bank_account_id:null }).eq('id', id);
+    if(error) console.error('baUndoMarkPago', error);
+    baRenderContasPagar();
+    baRenderLucro();
+  };
+  if(exp && exp.paid_at && await baIsDataEmPeriodoFechado(exp.paid_at)) baOpenAdminGate(doUndo, {subtitle:'Essa baixa está num período de caixa já fechado. Peça pra um admin confirmar pra desfazer.', confirmLabel:'Confirmar', danger:true});
+  else await doUndo();
 }
 
 // ══ Lucro líquido estimado (admin) — faturamento da barbearia toda - comissões - despesas ══
@@ -5904,6 +5965,144 @@ function baPopulateContaBancariaSelect(){
   const current = sel.value;
   sel.innerHTML = baBankAccountsCache.map(c=>`<option value="${c.id}">${baBankAccountLabel(c)}</option>`).join('') || '<option value="">Nenhuma conta cadastrada</option>';
   if(current && [...sel.options].some(o=>o.value===current)) sel.value = current;
+}
+
+// ══ Caixa: cofre, sangria e fechamento (Supabase, admin-only) ══
+// cofre é um valor computado (soma das sangrias com destino 'cofre'), não um saldo guardado à parte
+let baFechState = null; // {from, to, recebido, despesas, sangrias, esperado}
+async function baCashVaultBalance(){
+  const { data, error } = await sb.from('cash_sangrias').select('value').eq('destino','cofre');
+  if(error){ console.error('baCashVaultBalance', error); return 0; }
+  return (data||[]).reduce((s,r)=>s+r.value,0);
+}
+async function baFetchSangrias(){
+  const { data, error } = await sb.from('cash_sangrias').select('*, bank_accounts(name)').order('created_at',{ascending:false}).limit(20);
+  if(error){ console.error('baFetchSangrias', error); return []; }
+  return data||[];
+}
+function baPopulateSangriaBancoSelect(){
+  const sel = document.getElementById('ba-sangria-banco');
+  if(!sel) return;
+  sel.innerHTML = baBankAccountsCache.map(c=>`<option value="${c.id}">${baBankAccountLabel(c)}</option>`).join('') || '<option value="">Nenhuma conta cadastrada</option>';
+}
+function baSangriaDestinoChanged(){
+  const destino = document.getElementById('ba-sangria-destino').value;
+  document.getElementById('ba-sangria-banco').style.display = destino==='banco' ? 'block' : 'none';
+}
+async function baRenderCaixa(){
+  document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
+  baPopulateSangriaBancoSelect();
+  await baRenderSangrias();
+  await baRenderFechamentos();
+  document.getElementById('ba-fech-resumo').style.display = 'none';
+  document.getElementById('ba-fech-btn').style.display = 'none';
+  const hoje = primeLocalDate();
+  document.getElementById('ba-fech-from').value = hoje;
+  document.getElementById('ba-fech-to').value = hoje;
+  baFechState = null;
+}
+async function baRenderSangrias(){
+  const listEl = document.getElementById('ba-sangrias-list');
+  if(!listEl) return;
+  const rows = await baFetchSangrias();
+  listEl.innerHTML = rows.length ? rows.map(r=>{
+    const destinoLabel = r.destino==='cofre' ? 'Cofre' : (r.bank_accounts?.name ? `Banco — ${r.bank_accounts.name}` : 'Banco');
+    return `<div class="cap-row"><div class="cap-row-head"><span class="cap-row-name">${destinoLabel}</span></div>
+      <div class="cap-row-tags">${baFormatDate(r.created_at.slice(0,10))}${r.note ? ' · '+r.note : ''}</div>
+      <div class="cap-row-foot"><span class="cap-row-value">${baFormatMoney(r.value)}</span></div>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma sangria registrada ainda.</p>';
+}
+function baStartSangria(){
+  const errEl = document.getElementById('ba-sangria-err');
+  errEl.style.display = 'none';
+  const value = baAtParseMoney(document.getElementById('ba-sangria-valor').value);
+  const destino = document.getElementById('ba-sangria-destino').value;
+  const bankAccountId = destino==='banco' ? Number(document.getElementById('ba-sangria-banco').value)||null : null;
+  const note = document.getElementById('ba-sangria-nota').value.trim() || null;
+  if(!value || value<=0){ errEl.textContent = 'Informe um valor válido.'; errEl.style.display = 'block'; return; }
+  if(destino==='banco' && !bankAccountId){ errEl.textContent = 'Selecione a conta bancária de destino.'; errEl.style.display = 'block'; return; }
+  baOpenAdminGate(async (adminId)=>{
+    const { error } = await sb.from('cash_sangrias').insert({
+      value, destino, bank_account_id: bankAccountId, note,
+      admin_id: adminId, barber_id: baActingBarberId || baCurrentBarberId
+    });
+    if(error){ console.error('baInsertSangria', error); return; }
+    document.getElementById('ba-sangria-valor').value = '';
+    document.getElementById('ba-sangria-nota').value = '';
+    document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
+    await baRenderSangrias();
+  }, {subtitle:'Toda sangria precisa de confirmação de um admin.', confirmLabel:'Confirmar sangria'});
+}
+async function baCalcularFechamento(){
+  const errEl = document.getElementById('ba-fech-err');
+  errEl.style.display = 'none';
+  const from = document.getElementById('ba-fech-from').value;
+  const to = document.getElementById('ba-fech-to').value;
+  if(!from || !to || from>to){ errEl.textContent = 'Escolha um período válido.'; errEl.style.display = 'block'; return; }
+  const [{ data: pagamentos, error: e1 }, { data: despesas, error: e2 }, { data: sangrias, error: e3 }] = await Promise.all([
+    sb.from('sale_payments').select('value, created_at').eq('method','dinheiro'),
+    sb.from('expenses').select('value, paid_at').eq('status','pago').eq('paid_method','dinheiro').gte('paid_at', from).lte('paid_at', to),
+    sb.from('cash_sangrias').select('value, created_at')
+  ]);
+  if(e1||e2||e3){ console.error('baCalcularFechamento', e1||e2||e3); errEl.textContent = 'Erro ao calcular. Tente de novo.'; errEl.style.display = 'block'; return; }
+  const recebido = (pagamentos||[]).filter(p=>{ const d=p.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,p)=>s+p.value,0);
+  const despesasDinheiro = (despesas||[]).reduce((s,e)=>s+e.value,0);
+  const sangriasPeriodo = (sangrias||[]).filter(s=>{ const d=s.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,r)=>s+r.value,0);
+  const esperado = recebido - despesasDinheiro - sangriasPeriodo;
+  baFechState = { from, to, recebido, despesas: despesasDinheiro, sangrias: sangriasPeriodo, esperado };
+  document.getElementById('ba-fech-recebido').textContent = baFormatMoney(recebido);
+  document.getElementById('ba-fech-despesas').textContent = baFormatMoney(despesasDinheiro);
+  document.getElementById('ba-fech-sangrias').textContent = baFormatMoney(sangriasPeriodo);
+  document.getElementById('ba-fech-esperado').textContent = baFormatMoney(esperado);
+  document.getElementById('ba-fech-contado').value = '';
+  document.getElementById('ba-fech-diferenca').textContent = '—';
+  document.getElementById('ba-fech-diferenca').style.color = 'var(--prata)';
+  document.getElementById('ba-fech-resumo').style.display = 'block';
+  document.getElementById('ba-fech-btn').style.display = 'block';
+}
+function baFechRecalcDiferenca(){
+  if(!baFechState) return;
+  const contado = baAtParseMoney(document.getElementById('ba-fech-contado').value);
+  const diferenca = contado - baFechState.esperado;
+  const el = document.getElementById('ba-fech-diferenca');
+  el.textContent = (diferenca>=0?'+':'') + baFormatMoney(diferenca);
+  el.style.color = diferenca>=0 ? 'var(--verde-neon)' : 'var(--erro)';
+}
+function baFecharCaixa(){
+  const errEl = document.getElementById('ba-fech-err');
+  errEl.style.display = 'none';
+  if(!baFechState){ errEl.textContent = 'Calcule o esperado antes de fechar.'; errEl.style.display = 'block'; return; }
+  const contado = baAtParseMoney(document.getElementById('ba-fech-contado').value);
+  if(!document.getElementById('ba-fech-contado').value.trim()){ errEl.textContent = 'Informe o valor contado.'; errEl.style.display = 'block'; return; }
+  baOpenAdminGate(async (adminId)=>{
+    const { from, to, esperado } = baFechState;
+    const { error } = await sb.from('cash_closures').insert({
+      period_from: from, period_to: to, expected_value: esperado, counted_value: contado,
+      difference: contado - esperado, admin_id: adminId
+    });
+    if(error){ console.error('baFecharCaixa', error); return; }
+    await baRenderCaixa();
+  }, {subtitle:'Fechar o caixa trava edição de despesas em dinheiro desse período. Peça pra um admin confirmar.', confirmLabel:'Fechar caixa'});
+}
+async function baRenderFechamentos(){
+  const listEl = document.getElementById('ba-fechamentos-list');
+  if(!listEl) return;
+  const { data, error } = await sb.from('cash_closures').select('*').order('created_at',{ascending:false}).limit(20);
+  if(error){ console.error('baRenderFechamentos', error); return; }
+  listEl.innerHTML = (data&&data.length) ? data.map(c=>{
+    const diffColor = c.difference>=0 ? 'var(--verde-neon)' : 'var(--erro)';
+    return `<div class="cap-row"><div class="cap-row-head"><span class="cap-row-name">${baFormatDate(c.period_from)} — ${baFormatDate(c.period_to)}</span></div>
+      <div class="cap-row-tags">Esperado ${baFormatMoney(c.expected_value)} · Contado ${baFormatMoney(c.counted_value)}</div>
+      <div class="cap-row-foot"><span class="cap-row-value" style="color:${diffColor}">${c.difference>=0?'+':''}${baFormatMoney(c.difference)}</span></div>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum fechamento registrado ainda.</p>';
+}
+async function baIsDataEmPeriodoFechado(date){
+  if(!date) return false;
+  const { data, error } = await sb.from('cash_closures').select('id').lte('period_from', date).gte('period_to', date).limit(1);
+  if(error){ console.error('baIsDataEmPeriodoFechado', error); return false; }
+  return !!(data && data.length);
 }
 
 // ══ Fornecedores (Supabase, admin-only, usado em Contas a Pagar) ══
@@ -6992,18 +7191,33 @@ async function baBuildAgendaTimes(){
   tlBox.innerHTML = summary + legend + html;
 }
 
-// ── Cancelamento de horário pelo barbeiro (exige confirmação de um admin) ──
-let baAdminGateApptId = null;
-function baOpenAdminGateCancel(id){
-  baAdminGateApptId = id;
+// ── Gate de admin: confirmação de login+senha real antes de ações sensíveis ──
+// usado hoje pelo cancelamento de horário (baOpenAdminGateCancel) e pelo módulo de Caixa
+// (sangria, fechamento, editar lançamento de período fechado)
+let baAdminGateCallback = null;
+function baOpenAdminGate(onConfirmed, opts){
+  const o = opts || {};
+  baAdminGateCallback = onConfirmed;
+  document.getElementById('baAdminGateSub').textContent = o.subtitle || 'Peça pra um admin confirmar com o login dele.';
+  const confirmBtn = document.getElementById('baAdminGateConfirm');
+  confirmBtn.textContent = o.confirmLabel || 'Confirmar';
+  confirmBtn.style.background = o.danger ? '#8a3a2a' : '';
+  confirmBtn.style.boxShadow = o.danger ? 'none' : '';
   document.getElementById('baAdminGateEmail').value = '';
   document.getElementById('baAdminGatePass').value = '';
   document.getElementById('baAdminGateErr').style.display = 'none';
   document.getElementById('baAdminGateModal').classList.add('open');
 }
+function baOpenAdminGateCancel(id){
+  baOpenAdminGate(()=>baExecuteCancel(id), {
+    subtitle: 'Pra cancelar esse horário, peça pra um admin confirmar com o login dele.',
+    confirmLabel: 'Confirmar cancelamento',
+    danger: true
+  });
+}
 function baCloseAdminGate(){
   document.getElementById('baAdminGateModal').classList.remove('open');
-  baAdminGateApptId = null;
+  baAdminGateCallback = null;
 }
 document.getElementById('baAdminGateConfirm').addEventListener('click', async ()=>{
   const email = document.getElementById('baAdminGateEmail').value.trim();
@@ -7025,9 +7239,10 @@ document.getElementById('baAdminGateConfirm').addEventListener('click', async ()
     const { data: barberRow } = await sb.from('barbers').select('role').eq('id', data.user.id).maybeSingle();
     await sbCheck.auth.signOut();
     if(!barberRow || barberRow.role!=='admin'){ errEl.textContent = 'Essa conta não é de um admin.'; errEl.style.display = 'block'; return; }
-    const id = baAdminGateApptId;
+    const cb = baAdminGateCallback;
+    const adminId = data.user.id;
     baCloseAdminGate();
-    await baExecuteCancel(id);
+    if(cb) await cb(adminId);
   } catch(e){
     console.error('baAdminGateConfirm', e);
     errEl.textContent = 'Erro ao verificar. Tente de novo.'; errEl.style.display = 'block';
