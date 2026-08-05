@@ -2002,7 +2002,7 @@ async function primeFetchApptSaleValues(apptIds){
   return map;
 }
 async function primeFetchDayAppointments(day){
-  const { data, error } = await sb.from('appointments').select('*').eq('day', day).neq('status','cancelado');
+  const { data, error } = await sb.from('appointments').select('*').eq('day', day).not('status','in','(cancelado,nao_compareceu)');
   if(error){ console.error('primeFetchDayAppointments', error); return []; }
   return (data||[]).map(primeApptFromRow);
 }
@@ -2437,7 +2437,7 @@ function caRenderPlanCard(){
 }
 
 // ══ Próximo horário (Home) ══
-const STATUS_LABEL = {pendente:'Aguardando barbeiro', confirmado:'Confirmado', concluido:'Concluído'};
+const STATUS_LABEL = {pendente:'Aguardando barbeiro', confirmado:'Confirmado', concluido:'Concluído', nao_compareceu:'Não compareceu'};
 async function caRenderNextAppointment(){
   caRenderPendingRating();
   const area = document.getElementById('ca-next-area');
@@ -2446,7 +2446,7 @@ async function caRenderNextAppointment(){
   const todayIso = primeLocalDate(now);
   const nowHM = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const upcoming = (await primeMyAppointments())
-    .filter(a=> a.status!=='concluido' && a.status!=='cancelado' && (a.day > todayIso || (a.day===todayIso && a.time >= nowHM)))
+    .filter(a=> a.status!=='concluido' && a.status!=='cancelado' && a.status!=='nao_compareceu' && (a.day > todayIso || (a.day===todayIso && a.time >= nowHM)))
     .sort((a,b)=> (a.day+a.time).localeCompare(b.day+b.time));
   const next = upcoming[0];
   if(!next){
@@ -7785,8 +7785,8 @@ async function baBuildAgendaTimes(){
   }
   const byTime = {}; appts.forEach(a=>{ byTime[a.time]=a; });
   const [oH,oM]=h[0].split(':').map(Number), [cH,cM]=h[1].split(':').map(Number);
-  const statusLabel = {pendente:'Pendente', confirmado:'Confirmado', concluido:'Concluído'};
-  const statusColor = {pendente:'#E5574B', confirmado:'var(--verde-neon)', concluido:'var(--prata-dim)'};
+  const statusLabel = {pendente:'Pendente', confirmado:'Confirmado', concluido:'Concluído', nao_compareceu:'Não compareceu'};
+  const statusColor = {pendente:'#E5574B', confirmado:'var(--verde-neon)', concluido:'var(--prata-dim)', nao_compareceu:'#E5574B'};
   const allTimes = new Set();
   for(let t=oH*60+oM; t+SLOT_MIN<=cH*60+cM; t+=SLOT_MIN){
     allTimes.add(String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'));
@@ -7814,7 +7814,7 @@ async function baBuildAgendaTimes(){
         : st==='confirmado' ? `<button class="ba-mini-btn primary" onclick="baIniciarAtendimento(${a.id})">Iniciar</button>`
         : '';
       const canManage = (st==='pendente' || st==='confirmado') && !emAndamento;
-      const manageBtns = canManage ? `<button class="ba-mini-btn ghost" onclick="baOpenReagendar(${a.id})">Remarcar</button><button class="ba-mini-btn danger" onclick="baOpenAdminGateCancel(${a.id})">Cancelar</button>` : '';
+      const manageBtns = canManage ? `<button class="ba-mini-btn ghost" onclick="baOpenReagendar(${a.id})">Remarcar</button><button class="ba-mini-btn ghost" onclick="baMarcarNaoCompareceu(${a.id})">Não veio</button><button class="ba-mini-btn danger" onclick="baOpenAdminGateCancel(${a.id})">Cancelar</button>` : '';
       const action = (statusBtn || manageBtns) ? `<div style="display:flex;flex-direction:column;gap:.3rem;align-items:stretch">${statusBtn}${manageBtns}</div>` : '';
       const notesLine = a.notes ? `<div class="ts-detail" style="color:var(--dourado-dim)">📝 ${primeEsc(a.notes)}</div>` : '';
       html += `<div class="ba-tslot ${cls}">
@@ -7836,8 +7836,9 @@ async function baBuildAgendaTimes(){
     }
   }
   html += '</div>';
-  const totalDay = appts.length;
-  const totalVal = appts.reduce((s,a)=>{
+  const apptsAtivos = appts.filter(a=>a.status!=='nao_compareceu');
+  const totalDay = apptsAtivos.length;
+  const totalVal = apptsAtivos.reduce((s,a)=>{
     const svcs = a.services || (a.service ? [a.service] : []);
     return s + svcs.reduce((t,name)=> t + (SVC_PRICES[name]||0), 0);
   },0);
@@ -7926,6 +7927,12 @@ async function baExecuteCancel(id){
   window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
   baBuildAgendaTimes();
 }
+// marcar que o cliente não veio — mesmo nível de confiança de "Aceitar"/"Iniciar" (sem gate de admin),
+// não notifica o cliente (não faz sentido avisar quem já não compareceu)
+async function baMarcarNaoCompareceu(id){
+  await primeUpdateAppointment(id, {status:'nao_compareceu'});
+  baBuildAgendaTimes();
+}
 
 // ── Remarcar horário (barbeiro escolhe nova data/hora, sem gate de admin) ──
 let baRemarcarApptId = null;
@@ -7957,7 +7964,7 @@ async function baRemarcarBuildTimes(){
   const h = resolveBarberHours(me, d.getDay());
   if(!h){ sel.innerHTML = '<option value="">Barbeiro de folga nesse dia</option>'; return; }
   const [oH,oM]=h[0].split(':').map(Number), [cH,cM]=h[1].split(':').map(Number);
-  const { data: dayRows } = await sb.from('appointments').select('id,time').eq('barber_id', baRemarcarAppt.barberId).eq('day', day).neq('status','cancelado');
+  const { data: dayRows } = await sb.from('appointments').select('id,time').eq('barber_id', baRemarcarAppt.barberId).eq('day', day).not('status','in','(cancelado,nao_compareceu)');
   const appts = dayRows || [];
   const now = new Date(); const isToday = day===primeLocalDate(now);
   const taken = new Set(appts.filter(a=>a.id!==baRemarcarApptId).map(a=>a.time));
