@@ -1,12 +1,14 @@
 ---
 name: project-conciliacao-financeira-plan
-description: "Plano futuro de conciliação financeira (taxas reais de maquininha/Pix por NSU/E2E ID) e base de DRE pro Prime Barbearia — ainda não iniciado, aguardando dados de taxas."
+description: "Plano futuro de conciliação financeira (taxas reais de maquininha/Pix por NSU/E2E ID) e base de DRE pro Prime Barbearia — cadastro de taxas já implementado (2026-08-05), matching de extrato ainda não iniciado."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 276cc831-811b-45dd-a594-f885a50f232f
-  modified: 2026-07-24T20:05:48.758Z
+  modified: 2026-08-05T00:00:00.000Z
 ---
+
+**ATUALIZAÇÃO 2026-08-05 — correção de decisão anterior + peça implementada:** a decisão de 2026-07-24 abaixo ("tabela de taxas é por administradora, não bandeira") foi **substituída**: Gabriel pediu depois uma tela de taxa de maquininha por **bandeira** (Visa/Mastercard/Elo/Amex/Outra) × forma (débito/crédito/pix maquininha) × parcelas (1-3x, mesma faixa do modal de pagamento), consistente com o campo `bandeira` que a Fase 1 do Caixa/Fiado já grava em `sale_payments`. Implementado: tabela `taxas_maquininha` (forma, bandeira, parcelas, taxa_pct) com RLS admin-only, e sub-aba **"Taxas de maquininha"** em Gestão → Financeiro (cadastro simples: adicionar/listar/remover, mesmo padrão visual de Plano de contas). **Isso NÃO é a conciliação completa** — só o cadastro de taxas; falta ainda todo o resto do plano abaixo (identificador NSU/E2E ID na venda, upload de extrato, matching, aba Lançamentos, trilha de auditoria, DRE). Quando retomar, não repetir o levantamento de requisitos — já está tudo mapeado abaixo, só ignorar a menção a "administradora" onde conflitar com bandeira.
 
 Gabriel quer evoluir o financeiro do Prime pra rastrear com precisão o lucro líquido real, descontando taxa real de pagamento (não estimada), com base num documento que ele escreveu: `prime-conciliacao-financeira.md` (na Área de Trabalho dele, OneDrive SM FARMA).
 
