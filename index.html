@@ -3381,9 +3381,8 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .cad-table .cad-edit:hover{background:rgba(212,175,55,.12)}
 #barberApp .cad-table .cad-remove{color:var(--prata-dim)}
 #barberApp .cad-table .cad-remove:hover{color:#e85d5d;background:rgba(232,93,93,.1)}
-#barberApp .prod-row{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-bottom:1px solid var(--hair)}
-#barberApp .prod-row:last-child{border-bottom:none}
-#barberApp .prod-info{flex:1;min-width:0}
+#barberApp .prod-row{display:contents}
+#barberApp .prod-info{min-width:0}
 #barberApp .prod-name{font-size:.82rem;color:var(--prata)}
 #barberApp .prod-code{font-size:.64rem;color:var(--prata-dim);letter-spacing:.06em;margin-top:.1rem;font-family:var(--font-body)}
 #barberApp .prod-meta{font-size:.68rem;color:var(--prata-dim);margin-top:.1rem}
@@ -3396,12 +3395,36 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .prod-group-count{color:var(--prata-dim);font-weight:400;letter-spacing:0;text-transform:none}
 #barberApp .prod-group-margin{margin-left:auto;background:none;border:1px solid var(--dourado-dim);color:var(--dourado);font-size:.6rem;letter-spacing:.08em;text-transform:none;font-weight:400;padding:.25rem .55rem;border-radius:3px;cursor:pointer}
 #barberApp .prod-group-margin:hover{border-color:var(--dourado);background:rgba(198,167,94,.08)}
-#barberApp .prod-actions{display:flex;flex-wrap:wrap;gap:.2rem .35rem;flex:none;margin-top:auto;padding-top:.5rem}
-#barberApp .prod-actions button{font-size:.66rem;color:var(--prata-dim);cursor:pointer;padding:.2rem .4rem;border-radius:3px;transition:all .15s;background:none;border:none;white-space:nowrap}
-#barberApp .prod-actions .prod-restock:hover{color:var(--verde-neon);background:rgba(53,197,88,.1)}
-#barberApp .prod-actions .prod-edit:hover{color:var(--dourado);background:rgba(198,167,94,.1)}
-#barberApp .prod-actions .prod-remove:hover{color:#e85d5d;background:rgba(232,93,93,.1)}
-#barberApp .prod-actions .prod-remove-foto:hover{color:var(--alerta);background:rgba(217,164,65,.1)}
+#barberApp .prod-actions{display:flex;flex-wrap:wrap;gap:.3rem;flex:none;margin-top:auto;padding-top:.5rem;justify-content:flex-end}
+#barberApp .prod-actions button{font-size:.64rem;color:var(--prata-dim);cursor:pointer;padding:.28rem .55rem;border-radius:4px;transition:all .15s;background:rgba(237,237,232,.05);border:1px solid rgba(237,237,232,.14);white-space:nowrap}
+#barberApp .prod-actions .prod-restock:hover{color:var(--verde-neon);border-color:rgba(53,197,88,.4);background:rgba(53,197,88,.1)}
+#barberApp .prod-actions .prod-edit:hover{color:var(--dourado);border-color:var(--dourado-dim);background:rgba(198,167,94,.1)}
+#barberApp .prod-actions .prod-remove:hover{color:#e85d5d;border-color:rgba(232,93,93,.4);background:rgba(232,93,93,.1)}
+#barberApp .prod-actions .prod-remove-foto:hover{color:var(--alerta);border-color:rgba(217,164,65,.4);background:rgba(217,164,65,.1)}
+/* lista: usa o truque de grid compartilhado (prod-row vira "display:contents") pra alinhar as colunas
+   entre linhas mesmo quando uma tem foto/botão "remover foto" e outra não */
+#barberApp .prod-group-list{display:grid;grid-template-columns:40px 1fr auto auto;column-gap:.7rem;align-items:center}
+#barberApp .prod-group-list .prod-group-label{grid-column:1/-1}
+#barberApp .prod-group-list .prod-thumb,
+#barberApp .prod-group-list .prod-thumb-placeholder{margin-block:.55rem}
+#barberApp .prod-group-list .prod-info,
+#barberApp .prod-group-list .prod-price,
+#barberApp .prod-group-list .prod-actions{padding-block:.55rem;border-bottom:1px solid var(--hair)}
+#barberApp .prod-group-list .prod-row:last-child .prod-info,
+#barberApp .prod-group-list .prod-row:last-child .prod-price,
+#barberApp .prod-group-list .prod-row:last-child .prod-actions{border-bottom:none}
+/* tela estreita: a grade de 4 colunas fica apertada demais (nome espremido quebrando letra por
+   letra) — volta pro empilhamento em duas linhas por produto (thumb+nome+preço, depois os botões) */
+@media(max-width:600px){
+  #barberApp .prod-group-list{display:block}
+  #barberApp .prod-group-list .prod-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .7rem;padding:.55rem 0;border-bottom:1px solid var(--hair)}
+  #barberApp .prod-group-list .prod-row:last-child{border-bottom:none}
+  #barberApp .prod-group-list .prod-thumb,
+  #barberApp .prod-group-list .prod-thumb-placeholder{margin-block:0}
+  #barberApp .prod-group-list .prod-info{flex:1;min-width:140px;padding-block:0;border-bottom:none}
+  #barberApp .prod-group-list .prod-price{padding-block:0;border-bottom:none}
+  #barberApp .prod-group-list .prod-actions{padding-block:0;border-bottom:none;flex-basis:100%;justify-content:flex-end}
+}
 #barberApp .prod-thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;flex:none;background:var(--grafite-card)}
 #barberApp .prod-thumb-placeholder{display:flex;align-items:center;justify-content:center;color:var(--prata-dim)}
 #barberApp .prod-thumb-placeholder svg{width:18px;height:18px}
@@ -6940,7 +6963,8 @@ function baRenderProdutosConfig(){
   const groups = baGroupProductsByCategory(products);
   document.getElementById('ba-produtos-list').innerHTML = groups.map(g=>{
     const items = baProdView==='grid' ? `<div class="prod-grid">${g.items.map(gridCard).join('')}</div>` : g.items.map(listRow).join('');
-    return `<div class="prod-group"><div class="prod-group-label">${g.category} <span class="prod-group-count">${g.items.length}</span><button class="prod-group-margin" onclick="baOpenMargemModal('${g.category.replace(/'/g,"\\'")}')">definir margem</button></div>${items}</div>`;
+    const groupCls = baProdView==='list' ? 'prod-group prod-group-list' : 'prod-group';
+    return `<div class="${groupCls}"><div class="prod-group-label">${g.category} <span class="prod-group-count">${g.items.length}</span><button class="prod-group-margin" onclick="baOpenMargemModal('${g.category.replace(/'/g,"\\'")}')">definir margem</button></div>${items}</div>`;
   }).join('');
 }
 function baProdMargemLabel(p){
