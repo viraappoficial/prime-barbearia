@@ -4219,11 +4219,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div id="ba-fin-caixa" style="display:none">
             <div class="ba-slabel" style="margin-top:0">Saldo em caixa (dinheiro físico agora)</div>
             <p style="font-size:1.3rem;color:var(--verde-neon);font-weight:600;margin-bottom:.3rem" id="ba-caixa-saldo">R$ 0,00</p>
-            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Suprimento + vendas em dinheiro − despesas em dinheiro − sangrias, desde o último fechamento.</p>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Suprimento + vendas em dinheiro − sangrias saídas do caixa, desde o último fechamento. Despesas pagas em dinheiro saem do cofre, não do caixa.</p>
 
             <div class="ba-slabel">Cofre da empresa</div>
             <p style="font-size:1.3rem;color:var(--dourado);font-weight:600;margin-bottom:.3rem" id="ba-cofre-saldo">R$ 0,00</p>
-            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Sangrias com destino "Cofre" − suprimentos com origem "Cofre".</p>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Sangrias vindas do caixa com destino "Cofre" − sangrias/suprimentos saídos do cofre − despesas pagas em dinheiro.</p>
 
             <div class="ba-slabel">Suprimento de caixa</div>
             <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Coloca dinheiro no caixa pra ter fundo de troco/giro — ex: início de um novo ciclo, reforço de troco.</p>
@@ -4245,9 +4245,13 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div class="ba-slabel">Sangria</div>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
               <input type="text" inputmode="decimal" id="ba-sangria-valor" class="add-input" placeholder="Valor (R$)" style="flex:1;min-width:110px">
+              <select id="ba-sangria-origem" class="add-input" onchange="baSangriaOrigemChanged()" style="flex:1;min-width:110px">
+                <option value="caixa">Do caixa</option>
+                <option value="cofre">Do cofre</option>
+              </select>
               <select id="ba-sangria-destino" class="add-input" onchange="baSangriaDestinoChanged()" style="flex:1;min-width:110px">
-                <option value="cofre">Cofre</option>
-                <option value="banco">Banco</option>
+                <option value="cofre">Pro cofre</option>
+                <option value="banco">Pro banco</option>
               </select>
               <select id="ba-sangria-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
             </div>
@@ -4267,8 +4271,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div id="ba-fech-resumo" style="display:none;font-size:.82rem;color:var(--prata-dim);margin-bottom:.6rem">
               <div>Recebido em dinheiro: <b style="color:var(--prata)" id="ba-fech-recebido"></b></div>
               <div>Suprido no período: <b style="color:var(--prata)" id="ba-fech-suprido"></b></div>
-              <div>Despesas pagas em dinheiro: <b style="color:var(--prata)" id="ba-fech-despesas"></b></div>
-              <div>Sangrias no período: <b style="color:var(--prata)" id="ba-fech-sangrias"></b></div>
+              <div>Sangrias saídas do caixa no período: <b style="color:var(--prata)" id="ba-fech-sangrias"></b></div>
               <div>Esperado no caixa: <b style="color:var(--dourado)" id="ba-fech-esperado"></b></div>
               <div style="margin-top:.5rem"><label style="font-size:.72rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Valor contado</label>
                 <input type="text" inputmode="decimal" id="ba-fech-contado" class="add-input" placeholder="R$" oninput="baFechRecalcDiferenca()" style="width:100%;max-width:220px">
@@ -6204,36 +6207,38 @@ function baPopulateContaBancariaSelect(){
 }
 
 // ══ Caixa: cofre, sangria e fechamento (Supabase, admin-only) ══
-// cofre é um valor computado (soma das sangrias com destino 'cofre'), não um saldo guardado à parte
-let baFechState = null; // {from, to, recebido, despesas, sangrias, esperado}
+// cofre é um valor computado, não um saldo guardado à parte. Despesas pagas em "dinheiro" saem do cofre,
+// não do caixa — o caixa é só o troco/giro do dia a dia (suprimento + vendas − sangrias saídas dele)
+let baFechState = null; // {from, to, recebido, suprido, sangrias, esperado}
 async function baCashVaultBalance(){
-  const [{ data: sangrias, error: e1 }, { data: supplies, error: e2 }] = await Promise.all([
-    sb.from('cash_sangrias').select('value').eq('destino','cofre'),
-    sb.from('cash_supplies').select('value').eq('origem','cofre')
+  const [{ data: entradasRows, error: e1 }, { data: saidasSangria, error: e2 }, { data: supplies, error: e3 }, { data: despesas, error: e4 }] = await Promise.all([
+    sb.from('cash_sangrias').select('value').eq('destino','cofre').eq('origem','caixa'),
+    sb.from('cash_sangrias').select('value').eq('origem','cofre'),
+    sb.from('cash_supplies').select('value').eq('origem','cofre'),
+    sb.from('expenses').select('value').eq('status','pago').eq('paid_method','dinheiro')
   ]);
-  if(e1||e2){ console.error('baCashVaultBalance', e1||e2); return 0; }
-  const entradas = (sangrias||[]).reduce((s,r)=>s+r.value,0);
-  const saidas = (supplies||[]).reduce((s,r)=>s+r.value,0);
+  if(e1||e2||e3||e4){ console.error('baCashVaultBalance', e1||e2||e3||e4); return 0; }
+  const entradas = (entradasRows||[]).reduce((s,r)=>s+r.value,0);
+  const saidas = (saidasSangria||[]).reduce((s,r)=>s+r.value,0) + (supplies||[]).reduce((s,r)=>s+r.value,0) + (despesas||[]).reduce((s,e)=>s+e.value,0);
   return entradas - saidas;
 }
 // saldo de dinheiro físico no caixa desde o último fechamento (ou desde sempre, se nunca fechou) —
-// suprimento + vendas em dinheiro (inclui fiado quitado em dinheiro, que já vira sale_payments) − despesas em dinheiro − sangrias
+// suprimento + vendas em dinheiro (inclui fiado quitado em dinheiro, que já vira sale_payments) − sangrias saídas do caixa
+// (despesas pagas em "dinheiro" saem do cofre, não afetam o caixa)
 async function baCashRegisterBalance(){
   const { data: lastClosure, error: e0 } = await sb.from('cash_closures').select('period_to').order('period_to',{ascending:false}).limit(1).maybeSingle();
   if(e0) console.error('baCashRegisterBalance', e0);
   const since = lastClosure ? lastClosure.period_to : '1900-01-01'; // período do fechamento é inclusivo, caixa reinicia no dia seguinte
-  const [{ data: pagamentos, error: e1 }, { data: despesas, error: e2 }, { data: sangrias, error: e3 }, { data: supplies, error: e4 }] = await Promise.all([
+  const [{ data: pagamentos, error: e1 }, { data: sangrias, error: e2 }, { data: supplies, error: e3 }] = await Promise.all([
     sb.from('sale_payments').select('value, created_at').eq('method','dinheiro'),
-    sb.from('expenses').select('value, paid_at').eq('status','pago').eq('paid_method','dinheiro').gt('paid_at', since),
-    sb.from('cash_sangrias').select('value, created_at'),
+    sb.from('cash_sangrias').select('value, created_at').eq('origem','caixa'),
     sb.from('cash_supplies').select('value, created_at')
   ]);
-  if(e1||e2||e3||e4){ console.error('baCashRegisterBalance', e1||e2||e3||e4); return 0; }
+  if(e1||e2||e3){ console.error('baCashRegisterBalance', e1||e2||e3); return 0; }
   const recebido = (pagamentos||[]).filter(p=>p.created_at.slice(0,10) > since).reduce((s,p)=>s+p.value,0);
-  const despesasDinheiro = (despesas||[]).reduce((s,e)=>s+e.value,0);
   const sangriasVal = (sangrias||[]).filter(s=>s.created_at.slice(0,10) > since).reduce((s,r)=>s+r.value,0);
   const supridoVal = (supplies||[]).filter(s=>s.created_at.slice(0,10) > since).reduce((s,r)=>s+r.value,0);
-  return recebido + supridoVal - despesasDinheiro - sangriasVal;
+  return recebido + supridoVal - sangriasVal;
 }
 async function baFetchSangrias(){
   const { data, error } = await sb.from('cash_sangrias').select('*, bank_accounts(name)').order('created_at',{ascending:false}).limit(20);
@@ -6248,6 +6253,17 @@ function baPopulateSangriaBancoSelect(){
 function baSangriaDestinoChanged(){
   const destino = document.getElementById('ba-sangria-destino').value;
   document.getElementById('ba-sangria-banco').style.display = destino==='banco' ? 'block' : 'none';
+}
+// sangria saindo do cofre só pode ir pro banco (cofre→cofre não faz sentido; cofre→caixa já é suprimento)
+function baSangriaOrigemChanged(){
+  const origem = document.getElementById('ba-sangria-origem').value;
+  const destinoSel = document.getElementById('ba-sangria-destino');
+  if(origem==='cofre'){
+    destinoSel.innerHTML = '<option value="banco">Pro banco</option>';
+  } else {
+    destinoSel.innerHTML = '<option value="cofre">Pro cofre</option><option value="banco">Pro banco</option>';
+  }
+  baSangriaDestinoChanged();
 }
 async function baFetchSuprimentos(){
   const { data, error } = await sb.from('cash_supplies').select('*, bank_accounts(name)').order('created_at',{ascending:false}).limit(20);
@@ -6317,8 +6333,9 @@ async function baRenderSangrias(){
   if(!listEl) return;
   const rows = await baFetchSangrias();
   listEl.innerHTML = rows.length ? rows.map(r=>{
+    const origemLabel = r.origem==='cofre' ? 'Cofre' : 'Caixa';
     const destinoLabel = r.destino==='cofre' ? 'Cofre' : (r.bank_accounts?.name ? `Banco — ${r.bank_accounts.name}` : 'Banco');
-    return `<div class="cap-row"><div class="cap-row-head"><span class="cap-row-name">${destinoLabel}</span></div>
+    return `<div class="cap-row"><div class="cap-row-head"><span class="cap-row-name">${origemLabel} → ${destinoLabel}</span></div>
       <div class="cap-row-tags">${baFormatDate(r.created_at.slice(0,10))}${r.note ? ' · '+r.note : ''}</div>
       <div class="cap-row-foot"><span class="cap-row-value">${baFormatMoney(r.value)}</span></div>
     </div>`;
@@ -6328,6 +6345,7 @@ function baStartSangria(){
   const errEl = document.getElementById('ba-sangria-err');
   errEl.style.display = 'none';
   const value = baAtParseMoney(document.getElementById('ba-sangria-valor').value);
+  const origem = document.getElementById('ba-sangria-origem').value;
   const destino = document.getElementById('ba-sangria-destino').value;
   const bankAccountId = destino==='banco' ? Number(document.getElementById('ba-sangria-banco').value)||null : null;
   const note = document.getElementById('ba-sangria-nota').value.trim() || null;
@@ -6335,14 +6353,14 @@ function baStartSangria(){
   if(destino==='banco' && !bankAccountId){ errEl.textContent = 'Selecione a conta bancária de destino.'; errEl.style.display = 'block'; return; }
   baOpenAdminGate(async (adminId)=>{
     const { error } = await sb.from('cash_sangrias').insert({
-      value, destino, bank_account_id: bankAccountId, note,
+      value, origem, destino, bank_account_id: bankAccountId, note,
       admin_id: adminId, barber_id: baActingBarberId || baCurrentBarberId
     });
     if(error){ console.error('baInsertSangria', error); return; }
     document.getElementById('ba-sangria-valor').value = '';
     document.getElementById('ba-sangria-nota').value = '';
-    document.getElementById('ba-caixa-saldo').textContent = baFormatMoney(await baCashRegisterBalance());
-    if(destino==='cofre') document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
+    if(origem==='caixa') document.getElementById('ba-caixa-saldo').textContent = baFormatMoney(await baCashRegisterBalance());
+    document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
     await baRenderSangrias();
   }, {subtitle:'Toda sangria precisa de confirmação de um admin.', confirmLabel:'Confirmar sangria'});
 }
@@ -6352,22 +6370,19 @@ async function baCalcularFechamento(){
   const from = document.getElementById('ba-fech-from').value;
   const to = document.getElementById('ba-fech-to').value;
   if(!from || !to || from>to){ errEl.textContent = 'Escolha um período válido.'; errEl.style.display = 'block'; return; }
-  const [{ data: pagamentos, error: e1 }, { data: despesas, error: e2 }, { data: sangrias, error: e3 }, { data: supplies, error: e4 }] = await Promise.all([
+  const [{ data: pagamentos, error: e1 }, { data: sangrias, error: e3 }, { data: supplies, error: e4 }] = await Promise.all([
     sb.from('sale_payments').select('value, created_at').eq('method','dinheiro'),
-    sb.from('expenses').select('value, paid_at').eq('status','pago').eq('paid_method','dinheiro').gte('paid_at', from).lte('paid_at', to),
-    sb.from('cash_sangrias').select('value, created_at'),
+    sb.from('cash_sangrias').select('value, created_at').eq('origem','caixa'),
     sb.from('cash_supplies').select('value, created_at')
   ]);
-  if(e1||e2||e3||e4){ console.error('baCalcularFechamento', e1||e2||e3||e4); errEl.textContent = 'Erro ao calcular. Tente de novo.'; errEl.style.display = 'block'; return; }
+  if(e1||e3||e4){ console.error('baCalcularFechamento', e1||e3||e4); errEl.textContent = 'Erro ao calcular. Tente de novo.'; errEl.style.display = 'block'; return; }
   const recebido = (pagamentos||[]).filter(p=>{ const d=p.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,p)=>s+p.value,0);
-  const despesasDinheiro = (despesas||[]).reduce((s,e)=>s+e.value,0);
   const sangriasPeriodo = (sangrias||[]).filter(s=>{ const d=s.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,r)=>s+r.value,0);
   const supridoPeriodo = (supplies||[]).filter(s=>{ const d=s.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,r)=>s+r.value,0);
-  const esperado = recebido + supridoPeriodo - despesasDinheiro - sangriasPeriodo;
-  baFechState = { from, to, recebido, suprido: supridoPeriodo, despesas: despesasDinheiro, sangrias: sangriasPeriodo, esperado };
+  const esperado = recebido + supridoPeriodo - sangriasPeriodo;
+  baFechState = { from, to, recebido, suprido: supridoPeriodo, sangrias: sangriasPeriodo, esperado };
   document.getElementById('ba-fech-recebido').textContent = baFormatMoney(recebido);
   document.getElementById('ba-fech-suprido').textContent = baFormatMoney(supridoPeriodo);
-  document.getElementById('ba-fech-despesas').textContent = baFormatMoney(despesasDinheiro);
   document.getElementById('ba-fech-sangrias').textContent = baFormatMoney(sangriasPeriodo);
   document.getElementById('ba-fech-esperado').textContent = baFormatMoney(esperado);
   document.getElementById('ba-fech-contado').value = '';
