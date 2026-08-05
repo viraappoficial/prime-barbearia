@@ -4226,6 +4226,26 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div class="ba-slabel">Fechamentos anteriores</div>
             <div id="ba-fechamentos-list"></div>
           </div>
+
+          <div id="ba-fin-aprazo" style="display:none">
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:.9rem">
+              <div class="ba-slabel" style="margin:0">Comissão sobre venda fiado</div>
+              <select id="ba-aprazo-comissao" class="add-input" onchange="baToggleComissaoFiado()" style="min-width:220px">
+                <option value="hora">Paga na hora da venda</option>
+                <option value="quitar">Só paga quando o cliente quitar</option>
+              </select>
+            </div>
+
+            <div class="ba-slabel" style="margin-top:0">Clientes a Prazo</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Clientes com saldo em aberto ou faturado. Atrasados aparecem em destaque.</p>
+            <div id="ba-aprazo-clientes-list"></div>
+
+            <div class="ba-slabel">Fatura</div>
+            <div id="ba-aprazo-fatura-area"><p style="color:var(--prata-dim);font-size:.78rem">Gere uma fatura pelo botão "Gerar fatura" de um cliente acima.</p></div>
+
+            <div class="ba-slabel">Faturas anteriores</div>
+            <div id="ba-aprazo-invoices-list"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -4260,8 +4280,9 @@ function baSaleCommissionPct(sale, barber){
 function baSaleCommissionValue(sale, barber){
   return sale.value * baSaleCommissionPct(sale, barber);
 }
-function baCommissionSum(sales, barber){
-  return sales.reduce((s,x)=> s + baSaleCommissionValue(x, barber), 0);
+function baCommissionSum(sales, barber, excludeNotaIds){
+  const list = (excludeNotaIds && excludeNotaIds.size) ? sales.filter(x=>!excludeNotaIds.has(x.notaId)) : sales;
+  return list.reduce((s,x)=> s + baSaleCommissionValue(x, barber), 0);
 }
 let baCurrentBarber = null; // nome do barbeiro logado agora — todo acesso a cliente/venda é filtrado por ele
 let baCurrentRole = null; // 'admin' ou 'barbeiro' — só admin vê a aba Gestão
@@ -4441,8 +4462,10 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-planocontas').style.display = sub==='planocontas' ? 'block' : 'none';
   document.getElementById('ba-fin-contasbancarias').style.display = sub==='contasbancarias' ? 'block' : 'none';
   document.getElementById('ba-fin-caixa').style.display = sub==='caixa' ? 'block' : 'none';
+  document.getElementById('ba-fin-aprazo').style.display = sub==='aprazo' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
   if(sub==='caixa') baRenderCaixa();
+  if(sub==='aprazo') baRenderAPrazo();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
@@ -4492,7 +4515,9 @@ async function baRenderVendasHoje(){
   const me = baGetRoster().find(b=>b.id===baCurrentBarberId);
   const pct = baMyCommissionPct();
   const totalDia = realizado + previstoVal;
-  const comissaoDia = baCommissionSum(sales, me) + previstoVal*pct;
+  const settings = await baFetchShopSettings();
+  const excludeIds = settings.comissao_fiado_na_hora ? null : await baFiadoUnsettledNotaIds(baCurrentBarberId);
+  const comissaoDia = baCommissionSum(sales, me, excludeIds) + previstoVal*pct;
   box.innerHTML =
     `<div class="vh-title"><svg class="pi-icon" viewBox="0 0 24 24" style="width:15px;height:15px;flex:none"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg> Resumo de hoje</div>
      <div class="vh-row"><span class="vh-lbl">Realizados</span><span class="vh-val">${realizadoCount} corte${realizadoCount!==1?'s':''} · ${baFormatMoney(realizado)}</span></div>
@@ -4507,7 +4532,9 @@ async function baRenderVendas(){
   const total = sales.reduce((s,x)=>s+x.value,0);
   const me = baGetRoster().find(b=>b.id===baCurrentBarberId);
   const pct = baMyCommissionPct();
-  const minha = baCommissionSum(sales, me);
+  const settings2 = await baFetchShopSettings();
+  const excludeIds2 = settings2.comissao_fiado_na_hora ? null : await baFiadoUnsettledNotaIds(baCurrentBarberId);
+  const minha = baCommissionSum(sales, me, excludeIds2);
   const salao = total-minha;
   const pctLabel = Math.round(pct*100);
   const filterLabel = baVendasFilter==='hoje'?'Hoje':baVendasFilter==='semana'?'Esta semana':baVendasFilter==='mes'?'Este mês':'Período';
@@ -5374,7 +5401,9 @@ async function baBuildReportData(){
   const total = sales.reduce((s,x)=>s+x.value,0);
   const me = baGetRoster().find(b=>b.id===baCurrentBarberId);
   const clientesAtendidos = new Set(sales.map(s=>s.client)).size;
-  return { isAdmin:false, label, sales, total, comissao: baCommissionSum(sales, me), clientesAtendidos, name: baCurrentBarber };
+  const settings3 = await baFetchShopSettings();
+  const excludeIds3 = settings3.comissao_fiado_na_hora ? null : await baFiadoUnsettledNotaIds(baCurrentBarberId);
+  return { isAdmin:false, label, sales, total, comissao: baCommissionSum(sales, me, excludeIds3), clientesAtendidos, name: baCurrentBarber };
 }
 function baReportLogoSrc(){
   // logo é um SVG desenhado inline (não uma <img>), então embutimos o SVG de verdade em vez de
@@ -6139,6 +6168,180 @@ async function baIsDataEmPeriodoFechado(date){
   const { data, error } = await sb.from('cash_closures').select('id').lte('period_from', date).gte('period_to', date).limit(1);
   if(error){ console.error('baIsDataEmPeriodoFechado', error); return false; }
   return !!(data && data.length);
+}
+
+// ══ A Prazo / Fiado (Supabase, admin-only) ══
+let baShopSettingsCache = { comissao_fiado_na_hora: true };
+async function baFetchShopSettings(){
+  const { data, error } = await sb.from('shop_settings').select('*').eq('id',1).maybeSingle();
+  if(error){ console.error('baFetchShopSettings', error); return baShopSettingsCache; }
+  baShopSettingsCache = data || baShopSettingsCache;
+  return baShopSettingsCache;
+}
+async function baToggleComissaoFiado(){
+  const val = document.getElementById('ba-aprazo-comissao').value === 'hora';
+  const { error } = await sb.from('shop_settings').update({comissao_fiado_na_hora: val, updated_at: new Date().toISOString()}).eq('id',1);
+  if(error) console.error('baToggleComissaoFiado', error);
+  baShopSettingsCache.comissao_fiado_na_hora = val;
+}
+// notaIds com fiado ainda não pago (aberto/faturado) — usado pra excluir da comissão quando o toggle
+// "só paga quando o cliente quitar" estiver ligado
+async function baFiadoUnsettledNotaIds(barberId){
+  const { data, error } = await sb.from('fiado_charges').select('nota_id').eq('barber_id', barberId).neq('status','pago');
+  if(error){ console.error('baFiadoUnsettledNotaIds', error); return new Set(); }
+  return new Set((data||[]).map(r=>r.nota_id));
+}
+async function baFetchFiadoOpenCharges(){
+  const { data, error } = await sb.from('fiado_charges').select('*').neq('status','pago').order('due_date',{ascending:true});
+  if(error){ console.error('baFetchFiadoOpenCharges', error); return []; }
+  return data||[];
+}
+async function baRenderAPrazo(){
+  const settings = await baFetchShopSettings();
+  document.getElementById('ba-aprazo-comissao').value = settings.comissao_fiado_na_hora ? 'hora' : 'quitar';
+  await baRenderAPrazoClientes();
+  await baRenderAPrazoInvoices();
+  document.getElementById('ba-aprazo-fatura-area').innerHTML = '<p style="color:var(--prata-dim);font-size:.78rem">Gere uma fatura pelo botão "gerar fatura" de um cliente acima.</p>';
+}
+async function baRenderAPrazoClientes(){
+  const listEl = document.getElementById('ba-aprazo-clientes-list');
+  if(!listEl) return;
+  const charges = await baFetchFiadoOpenCharges();
+  const hoje = primeLocalDate();
+  const byClient = {};
+  charges.forEach(c=>{
+    if(!byClient[c.client_name]) byClient[c.client_name] = { total:0, atrasado:false };
+    byClient[c.client_name].total += c.value;
+    if(c.due_date < hoje) byClient[c.client_name].atrasado = true;
+  });
+  const names = Object.keys(byClient);
+  listEl.innerHTML = names.length ? names.map(name=>{
+    const info = byClient[name];
+    const badge = info.atrasado ? '<span class="cap-badge" style="background:rgba(232,93,93,.15);color:#e85d5d">Atrasado</span>' : '';
+    return `<div class="cap-row"><div class="cap-row-head"><span class="cap-row-name">${name}</span>${badge}</div>
+      <div class="cap-row-foot"><span class="cap-row-value">${baFormatMoney(info.total)}</span>
+      <span class="cap-row-actions"><span class="cap-action" onclick="baGerarFatura('${name.replace(/'/g,"\\'")}')">gerar fatura</span></span></div>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum cliente com saldo a prazo em aberto.</p>';
+}
+async function baGerarFatura(clientName){
+  const { data: charges, error } = await sb.from('fiado_charges').select('*').eq('client_name', clientName).eq('status','aberto');
+  if(error || !charges || !charges.length){ console.error('baGerarFatura', error); return; }
+  const total = charges.reduce((s,c)=>s+c.value,0);
+  const { data: invoice, error: e2 } = await sb.from('fiado_invoices').insert({
+    client_name: clientName, total, admin_id: baCurrentBarberId
+  }).select().single();
+  if(e2){ console.error('baGerarFatura insert', e2); return; }
+  const ids = charges.map(c=>c.id);
+  const { error: e3 } = await sb.from('fiado_charges').update({status:'faturado', invoice_id: invoice.id}).in('id', ids);
+  if(e3) console.error('baGerarFatura update charges', e3);
+  await baRenderAPrazoClientes();
+  await baShowFaturaArea(invoice.id);
+}
+async function baShowFaturaArea(invoiceId){
+  const { data: invoice, error } = await sb.from('fiado_invoices').select('*').eq('id', invoiceId).maybeSingle();
+  if(error || !invoice) return;
+  const { data: charges } = await sb.from('fiado_charges').select('*').eq('invoice_id', invoiceId);
+  const area = document.getElementById('ba-aprazo-fatura-area');
+  const rows = (charges||[]).map(c=>`<div class="row"><span class="lbl">${baFormatDate(c.sale_date)} <span style="color:var(--prata-dim);font-size:.72rem">· venc. ${baFormatDate(c.due_date)}</span></span><span class="val small">${baFormatMoney(c.value)}</span></div>`).join('');
+  const statusLabel = invoice.status==='pago' ? '<span class="cap-badge cap-badge--pago">Paga</span>' : '<span class="cap-badge cap-badge--pendente">Faturado</span>';
+  const pagarForm = invoice.status==='faturado' ? `
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.8rem;align-items:center">
+      <select id="ba-fatura-forma" class="add-input" style="flex:1;min-width:150px">
+        <option value="dinheiro">Dinheiro</option>
+        <option value="debito">Débito</option>
+        <option value="credito">Crédito</option>
+        <option value="pix_qrs">Pix (maquininha)</option>
+        <option value="pix_direto">Pix (chave)</option>
+      </select>
+      <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.7rem" onclick="baMarcarFaturaPaga(${invoiceId})">Marcar fatura como paga</button>
+    </div>` : '';
+  area.innerHTML = `
+    <div class="cap-row">
+      <div class="cap-row-head"><span class="cap-row-name">${invoice.client_name}</span>${statusLabel}</div>
+      <div class="ba-comm" style="margin:.5rem 0">${rows}</div>
+      <div class="cap-row-foot"><span class="cap-row-value">${baFormatMoney(invoice.total)}</span></div>
+      <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap">
+        <span class="cap-action" onclick="baVerFatura(${invoiceId})">ver fatura</span>
+        <span class="cap-action" onclick="baEnviarFaturaWhatsApp(${invoiceId})">enviar por whatsapp</span>
+      </div>
+      ${pagarForm}
+      <p class="ba-err" id="ba-fatura-err" style="display:none;margin-top:.5rem"></p>
+    </div>`;
+}
+async function baVerFatura(invoiceId){
+  const { data: invoice } = await sb.from('fiado_invoices').select('*').eq('id', invoiceId).maybeSingle();
+  const { data: charges } = await sb.from('fiado_charges').select('*').eq('invoice_id', invoiceId);
+  if(!invoice) return;
+  const logo = baReportLogoSrc();
+  const geradoEm = baFormatDate(primeLocalDate());
+  const rows = (charges||[]).map(c=>`<tr><td>${baFormatDate(c.sale_date)}</td><td class="muted">venc. ${baFormatDate(c.due_date)}</td><td class="num">${baFormatMoney(c.value)}</td></tr>`).join('');
+  document.getElementById('ba-report-print').innerHTML = `
+    <div class="rp-head">
+      <div class="rp-logo-badge">${logo}</div>
+      <div><div class="rp-brand">PRIME BARBEARIA</div><div class="sub">fatura — a prazo</div></div>
+      <div class="rp-meta"><b>${invoice.client_name}</b>Fatura #${invoice.id}<br>Gerado em ${geradoEm}</div>
+    </div>
+    <div class="rp-section">
+      <div class="rp-slabel">Lançamentos</div>
+      <table class="rp-table"><thead><tr><th>Data</th><th>Vencimento</th><th class="num">Valor</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="2">Total da fatura</td><td class="num">${baFormatMoney(invoice.total)}</td></tr></tfoot>
+      </table>
+    </div>
+    <div class="rp-foot">PRIME BARBEARIA · Av. Pedro Taques, 2824 — Maringá · PR<br>Fatura referente a atendimentos "a prazo" — pagamento combinado diretamente com a barbearia.</div>`;
+  window.print();
+}
+async function baEnviarFaturaWhatsApp(invoiceId){
+  const { data: invoice } = await sb.from('fiado_invoices').select('*').eq('id', invoiceId).maybeSingle();
+  if(!invoice) return;
+  const { data: client } = await sb.from('clients').select('phone').ilike('name', invoice.client_name).limit(1).maybeSingle();
+  const msg = `Olá, ${invoice.client_name}! Aqui é da Prime Barbearia. Você tem uma fatura em aberto de *${baFormatMoney(invoice.total)}* referente a atendimentos a prazo. Pode combinar o pagamento com a gente quando puder. Obrigado! 🙏`;
+  if(client && client.phone){
+    window.open(`https://wa.me/${client.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  } else if(navigator.clipboard){
+    await navigator.clipboard.writeText(msg);
+    alert('Não achei o telefone desse cliente cadastrado. Copiei a mensagem — é só colar no WhatsApp.');
+  } else {
+    alert('Não achei o telefone desse cliente cadastrado, e não consegui copiar a mensagem automaticamente:\n\n'+msg);
+  }
+}
+async function baMarcarFaturaPaga(invoiceId){
+  const errEl = document.getElementById('ba-fatura-err');
+  if(errEl) errEl.style.display = 'none';
+  const method = document.getElementById('ba-fatura-forma').value;
+  const hoje = primeLocalDate();
+  const doPay = async ()=>{
+    const { data: charges, error } = await sb.from('fiado_charges').select('*').eq('invoice_id', invoiceId);
+    if(error || !charges){ console.error('baMarcarFaturaPaga fetch', error); return; }
+    const paymentRows = charges.map(c=>({ nota_id: c.nota_id, barber_id: c.barber_id, method, value: c.value }));
+    const { error: e1 } = await sb.from('sale_payments').insert(paymentRows);
+    if(e1) console.error('baMarcarFaturaPaga sale_payments', e1);
+    const ids = charges.map(c=>c.id);
+    const { error: e2 } = await sb.from('fiado_charges').update({status:'pago', paid_at:hoje, paid_method:method}).in('id', ids);
+    if(e2) console.error('baMarcarFaturaPaga charges', e2);
+    const { error: e3 } = await sb.from('fiado_invoices').update({status:'pago'}).eq('id', invoiceId);
+    if(e3) console.error('baMarcarFaturaPaga invoice', e3);
+    await baRenderAPrazo();
+  };
+  if(await baIsDataEmPeriodoFechado(hoje)){
+    baOpenAdminGate(doPay, {subtitle:'Essa quitação cai num período de caixa já fechado. Peça pra um admin confirmar.', confirmLabel:'Confirmar quitação'});
+  } else {
+    await doPay();
+  }
+}
+async function baRenderAPrazoInvoices(){
+  const listEl = document.getElementById('ba-aprazo-invoices-list');
+  if(!listEl) return;
+  const { data, error } = await sb.from('fiado_invoices').select('*').order('created_at',{ascending:false}).limit(20);
+  if(error){ console.error('baRenderAPrazoInvoices', error); return; }
+  listEl.innerHTML = (data&&data.length) ? data.map(inv=>{
+    const badge = inv.status==='pago' ? '<span class="cap-badge cap-badge--pago">Paga</span>' : '<span class="cap-badge cap-badge--pendente">Faturado</span>';
+    return `<div class="cap-row"><div class="cap-row-head"><span class="cap-row-name">${inv.client_name}</span>${badge}</div>
+      <div class="cap-row-foot"><span class="cap-row-value">${baFormatMoney(inv.total)}</span>
+      <span class="cap-row-actions"><span class="cap-action" onclick="baShowFaturaArea(${inv.id})">ver</span></span></div>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma fatura gerada ainda.</p>';
 }
 
 // ══ Fornecedores (Supabase, admin-only, usado em Contas a Pagar) ══
