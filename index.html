@@ -1912,7 +1912,7 @@ function primeApptFromRow(r){
     ratingComment:r.rating_comment, ratingBy:r.rating_by, clientRating:r.client_rating,
     clientRatingComment:r.client_rating_comment, barberReply:r.barber_reply, name:r.client_name,
     clientEmail:r.client_email, createdAt:r.created_at, notes:r.notes,
-    couponCode:r.coupon_code, discountPrice:r.discount_price
+    couponCode:r.coupon_code, discountPrice:r.discount_price, reminderSentAt:r.reminder_sent_at
   };
 }
 function primeApptToRow(a){
@@ -1938,6 +1938,7 @@ function primeApptToRow(a){
   if('notes' in a) row.notes = a.notes;
   if('couponCode' in a) row.coupon_code = a.couponCode;
   if('discountPrice' in a) row.discount_price = a.discountPrice;
+  if('reminderSentAt' in a) row.reminder_sent_at = a.reminderSentAt;
   return row;
 }
 // ══ Cupons de desconto ══
@@ -3661,6 +3662,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <span id="ba-offline-banner-text">Sem conexão — mostrando agenda salva</span>
         </div>
         <div id="ba-pending-wrap"></div>
+        <div id="ba-lembretes-wrap"></div>
         <div class="ba-slabel" style="margin-top:.4rem">Escolha o dia</div>
         <div class="chips" id="ba-agenda-days"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem">
@@ -7225,6 +7227,7 @@ async function baRenderAgenda(){
   baBuildAgendaDays();
   await baBuildAgendaTimes();
   await baRenderPending();
+  await baRenderLembretesAmanha();
   baRenderNotifs();
   baUpdateOfflineBanner();
 }
@@ -7276,6 +7279,54 @@ async function baAcceptAppt(id){
   if(typeof caRenderNotifs==='function') caRenderNotifs();
 }
 function baFinishAppt(id){ openFeedback(id, 'barbeiro'); }
+
+// ══ Lembrete de amanhã por WhatsApp — mesmo padrão de "sem cortar há 15+ dias" (baRenderSemCorteList),
+// mas é uma query ao vivo em appointments, sem precisar de cron nem tabela derivada ══
+async function baFetchLembretesAmanha(){
+  if(!baActingBarberId) return [];
+  const d = new Date(); d.setDate(d.getDate()+1);
+  const amanha = primeLocalDate(d);
+  const { data, error } = await sb.from('appointments').select('*').eq('barber_id', baActingBarberId).eq('day', amanha).in('status', ['pendente','confirmado']);
+  if(error){ console.error('baFetchLembretesAmanha', error); return []; }
+  const appts = (data||[]).map(primeApptFromRow);
+  const clientIds = [...new Set(appts.map(a=>a.clientId).filter(Boolean))];
+  let phoneById = {};
+  if(clientIds.length){
+    const { data: clients } = await sb.from('clients').select('id, phone').in('id', clientIds);
+    (clients||[]).forEach(c=>{ phoneById[c.id] = c.phone; });
+  }
+  return appts.map(a=>({ ...a, phone: a.clientId ? phoneById[a.clientId] : null }));
+}
+function baLembreteMsg(ap){
+  const first = (ap.name||'').trim().split(' ')[0] || 'aí';
+  return `Oi, ${first}! Passando só pra confirmar seu horário amanhã (${ap.dayLabel}) às ${ap.time} na Prime Barbearia 💈 Te esperamos!`;
+}
+async function baMarcarLembreteEnviado(id){
+  await primeUpdateAppointment(id, {reminderSentAt: new Date().toISOString()});
+  await baRenderLembretesAmanha();
+}
+async function baRenderLembretesAmanha(){
+  const wrap = document.getElementById('ba-lembretes-wrap');
+  if(!wrap) return;
+  const appts = (await baFetchLembretesAmanha()).sort((a,b)=>a.time.localeCompare(b.time));
+  if(!appts.length){ wrap.innerHTML=''; return; }
+  const pendentes = appts.filter(a=>!a.reminderSentAt).length;
+  wrap.innerHTML = `<div class="ba-slabel" style="margin-top:.4rem">Amanhã você tem ${appts.length} agendamento${appts.length!==1?'s':''}${pendentes?` · ${pendentes} sem lembrete`:''}</div>` +
+    appts.map(a=>{
+      const msg = encodeURIComponent(baLembreteMsg(a));
+      const waNum = a.phone ? a.phone.replace(/\D/g,'') : '';
+      const actionBtn = a.reminderSentAt
+        ? `<span style="color:var(--verde-neon);font-size:.72rem">✓ Lembrete enviado</span>`
+        : waNum
+          ? `<a href="https://wa.me/${waNum}?text=${msg}" target="_blank" rel="noopener" class="ba-btn" style="width:auto;max-width:none;padding:.35rem .7rem;margin:0;font-size:.68rem" onclick="baMarcarLembreteEnviado(${a.id})">Mandar lembrete</a>`
+          : `<span style="color:var(--prata-dim);font-size:.72rem">Sem telefone</span>`;
+      return `<div class="ba-item" style="flex-wrap:wrap">
+        <div class="ic">${(a.name||'C').charAt(0)}</div>
+        <div class="info"><div class="n">${a.name||'Cliente'}</div><div class="d">${a.time} · ${(a.services||[]).join(' + ')}</div></div>
+        <div style="width:100%;display:flex;justify-content:flex-end;margin-top:.4rem">${actionBtn}</div>
+      </div>`;
+    }).join('');
+}
 
 // ══ Carrinho ao vivo — atendimento em andamento (Supabase, tabela cart_items) ══
 function baElapsedMin(ts){ return Math.max(0, Math.floor((Date.now()-ts)/60000)); }
