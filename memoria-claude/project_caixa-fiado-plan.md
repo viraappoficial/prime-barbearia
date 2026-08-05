@@ -1,13 +1,18 @@
 ---
 name: project-caixa-fiado-plan
-description: "Plano futuro pro módulo de Caixa (cofre, sangria, fechamento) e A Prazo/Fiado do Prime Barbearia — levantamento completo em 2026-08-01, ainda não implementado."
+description: "Módulo de Caixa (cofre, sangria, fechamento) do Prime Barbearia — Fases 1 e 2 IMPLEMENTADAS e em produção (2026-08-05). A Prazo/Fiado (Fase 3) ainda não iniciado."
 metadata:
   node_type: memory
   type: project
-  modified: 2026-08-01T00:00:00.000Z
+  modified: 2026-08-05T00:00:00.000Z
 ---
 
-**Status:** só levantamento/desenho, nada implementado ainda (2026-08-01). Gabriel pediu pra desenvolver a ideia antes de codar, do mesmo jeito que foi feito com Contas a Pagar. Não repetir esse levantamento quando ele voltar ao assunto — está tudo mapeado abaixo, só perguntar o que mudou/falta e começar.
+**STATUS (atualizado 2026-08-05): Fases 1 e 2 IMPLEMENTADAS e em produção.** Plano de implementação completo em `/root/.claude/plans/merry-hopping-sundae.md` (nessa sessão específica — pode não existir em máquinas diferentes, mas o resumo abaixo já cobre o essencial).
+
+- **Fase 1 (forma de pagamento + split)**: tabela `sale_payments` (nota_id, method, value, parcelas, nsu, bandeira, created_at), modal de pagamento com split entre várias formas (Dinheiro/Débito/Crédito/Pix QRS/Pix direto/A Prazo), parcelas 1-3x pro crédito, NSU e bandeira (Visa/Mastercard/Elo/Amex) pra débito/crédito/pix QRS. Plugado nos dois fluxos de venda (`baFinalizarCarrinho` e atendimento avulso de balcão). Commits `2f9cc4b`, `2b6e92d`.
+- **Fase 2 (Caixa)**: tabelas `cash_sangrias` e `cash_closures` (RLS admin-only). Nova sub-aba **Caixa** em Gestão → Financeiro: saldo do cofre (soma de sangrias com destino='cofre'), registro de sangria (cofre ou banco), fechamento de caixa por período livre (não precisa ser diário) com cálculo automático do esperado (dinheiro recebido − despesas em dinheiro − sangrias) comparado ao valor contado. O gate de admin (antes só usado no cancelamento de horário) foi generalizado (`baOpenAdminGate(callback, {subtitle, confirmLabel, danger})`) e agora também protege marcar/desfazer baixa e remover despesa quando a data cai num período de caixa já fechado. Commit `119d8d6`.
+- **Decisão de escopo tomada durante a Fase 2**: não existe "abrir caixa" como ação separada — só sangria e fechamento exigem o gate de admin, já que o caixa pode ficar dias sem fechar (Gabriel confirmou baixa rotatividade de papel-moeda).
+- **Não repetir o levantamento de requisitos abaixo** — já está tudo implementado conforme decidido. Só a Fase 3 (A Prazo/Fiado) segue pendente; se Gabriel voltar ao assunto, é só continuar dali, não re-perguntar o que já foi fechado nas seções 1 e 4 abaixo (só a seção 2, A Prazo, ainda é válida como plano em aberto).
 
 ## Motivação
 Gabriel precisa organizar a parte física de dinheiro da barbearia: cofre da empresa, sangria do caixa, fechamento de caixa. Avisou que o caixa pode ficar dias sem fechar (baixa rotatividade de papel-moeda), então o fechamento não pode ser obrigatoriamente diário. No processo, ficou claro que falta uma peça fundamental: **hoje `sales` não guarda forma de pagamento nenhuma** — sem isso não dá pra saber quanto do faturamento foi em dinheiro físico.
