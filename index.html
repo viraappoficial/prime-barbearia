@@ -1758,8 +1758,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <h3>Forma de pagamento</h3>
     <p style="color:var(--prata-dim);font-size:.85rem;margin:.6rem 0 1rem">Total da venda: <b id="ba-pgto-total" style="color:var(--prata)"></b></p>
     <div id="ba-pgto-linhas"></div>
-    <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .8rem;font-size:.7rem;margin-top:.3rem" onclick="baPgtoAddLinha()">+ Adicionar forma</button>
-    <p style="font-size:.8rem;color:var(--prata-dim);margin-top:.9rem">Restante a distribuir: <b id="ba-pgto-restante" style="color:var(--dourado)"></b></p>
+    <button class="btn btn-ghost" style="padding:.55rem 1.1rem;font-size:.72rem;letter-spacing:.1em;margin-top:.2rem" onclick="baPgtoAddLinha()">+ Adicionar forma</button>
+    <p style="font-size:.8rem;color:var(--prata-dim);margin-top:.9rem"><span id="ba-pgto-restante-label">Restante a distribuir:</span> <b id="ba-pgto-restante" style="color:var(--dourado)"></b></p>
     <p id="ba-pgto-err" style="color:var(--erro);font-size:.82rem;margin:.6rem 0;display:none"></p>
     <button class="btn btn-primary" id="ba-pgto-confirm" style="width:100%;margin-top:.4rem" onclick="baPgtoConfirmar()">Confirmar</button>
   </div>
@@ -7175,9 +7175,7 @@ function baPgtoRenderLinhas(){
         ${BA_PGTO_BANDEIRAS.map(b=>`<option value="${b}" ${l.bandeira===b?'selected':''}>${b||'Bandeira'}</option>`).join('')}
       </select>` : ''}
       ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
-      ${showVencimento ? `<label style="font-size:.68rem;color:var(--prata-dim);flex:1;min-width:130px">Vencimento
-        <input type="date" value="${l.dueDate||''}" onchange="baPgtoSetField(${i},'dueDate',this.value)" style="${baPgtoInputStyle('width:100%;margin-top:.15rem')}">
-      </label>` : ''}
+      ${showVencimento ? `<input type="date" title="Vencimento" value="${l.dueDate||''}" onchange="baPgtoSetField(${i},'dueDate',this.value)" style="${baPgtoInputStyle('flex:1;min-width:130px')}">` : ''}
       ${removeBtn}
     </div>`;
   }).join('');
@@ -7210,12 +7208,38 @@ function baPgtoRemoveLinha(i){
   baPgtoState.linhas.splice(i,1);
   baPgtoRenderLinhas();
 }
-function baPgtoRecalc(){
+// troco só existe quando o excedente é em dinheiro (cartão/pix nunca "sobra" — se sobrasse
+// seria erro de digitação, não troco de verdade)
+function baPgtoTotals(){
   const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
-  const restante = baPgtoState.total - distribuido;
+  const troco = Math.max(0, distribuido - baPgtoState.total);
+  const restante = Math.max(0, baPgtoState.total - distribuido);
+  return { distribuido, troco, restante };
+}
+function baPgtoRecalc(){
+  const { troco, restante } = baPgtoTotals();
+  const lbl = document.getElementById('ba-pgto-restante-label');
   const el = document.getElementById('ba-pgto-restante');
-  el.textContent = baFormatMoney(Math.abs(restante));
-  el.style.color = Math.abs(restante) < 0.005 ? 'var(--verde-neon)' : 'var(--dourado)';
+  if(troco > 0.005){
+    lbl.textContent = 'Troco:';
+    el.textContent = baFormatMoney(troco);
+    el.style.color = 'var(--verde-neon)';
+  } else {
+    lbl.textContent = 'Restante a distribuir:';
+    el.textContent = baFormatMoney(restante);
+    el.style.color = restante < 0.005 ? 'var(--verde-neon)' : 'var(--dourado)';
+  }
+}
+// reduz as linhas de dinheiro pelo troco antes de gravar — só o valor que ficou de fato
+// no caixa entra em sale_payments/fiado_charges, não o valor bruto recebido do cliente
+function baPgtoLinhasParaSalvar(){
+  let troco = baPgtoTotals().troco;
+  return baPgtoState.linhas.map(l=>{
+    if(troco<=0.005 || l.method!=='dinheiro') return l;
+    const reduz = Math.min(troco, l.value);
+    troco -= reduz;
+    return { ...l, value: l.value - reduz };
+  }).filter(l=>l.value > 0.005);
 }
 async function baInsertSalePayments(notaId, barberId, linhas){
   const rows = linhas.map(l=>({
@@ -7230,11 +7254,19 @@ async function baInsertSalePayments(notaId, barberId, linhas){
 async function baPgtoConfirmar(){
   const errEl = document.getElementById('ba-pgto-err');
   errEl.style.display = 'none';
-  const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
-  if(Math.abs(distribuido - baPgtoState.total) > 0.005){
-    errEl.textContent = 'A soma das formas de pagamento precisa bater com o total da venda.';
+  const { troco, restante } = baPgtoTotals();
+  if(restante > 0.005){
+    errEl.textContent = `Ainda falta ${baFormatMoney(restante)} pra completar o total da venda.`;
     errEl.style.display = 'block';
     return;
+  }
+  if(troco > 0.005){
+    const dinheiroSum = baPgtoState.linhas.filter(l=>l.method==='dinheiro').reduce((s,l)=>s+(l.value||0),0);
+    if(dinheiroSum < troco - 0.005){
+      errEl.textContent = 'Só dá pra dar troco quando o valor excedente for em dinheiro.';
+      errEl.style.display = 'block';
+      return;
+    }
   }
   if(baPgtoState.linhas.some(l=>!l.value || l.value<=0)){
     errEl.textContent = 'Preencha um valor válido em cada forma de pagamento.';
@@ -7249,7 +7281,8 @@ async function baPgtoConfirmar(){
   const btn = document.getElementById('ba-pgto-confirm');
   btn.disabled = true; btn.classList.add('btn-loading');
   try{
-    const { notaId, onConfirm, linhas, clientName } = baPgtoState;
+    const { notaId, onConfirm, clientName } = baPgtoState;
+    const linhas = baPgtoLinhasParaSalvar();
     document.getElementById('baPagamentoModal').classList.remove('open');
     await onConfirm();
     await baInsertSalePayments(notaId, baActingBarberId, linhas);
