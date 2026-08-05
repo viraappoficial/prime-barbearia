@@ -8520,7 +8520,7 @@ function baRenderRoster(){
       : '<span style="color:var(--prata-dim)">Não atende</span>';
     return `<div class="ba-roster-row">
       <div class="ba-item" style="border-bottom:none;padding-bottom:.3rem">
-        <div class="ic">${b.name.charAt(0)}</div>
+        <div class="ic" style="${b.photoUrl?'overflow:hidden;padding:0':''}">${b.photoUrl ? `<img src="${b.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover">` : b.name.charAt(0)}</div>
         <div class="info"><div class="n">${b.name}</div><div class="d">${b.email} · ${b.role==='admin'?'Admin':'Barbeiro'}</div></div>
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;padding:0 0 .7rem;flex-wrap:wrap">
