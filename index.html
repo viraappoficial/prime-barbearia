@@ -3701,7 +3701,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
         <div class="at-total-row">
           <span class="lbl">Valor do serviço</span>
-          <input type="text" id="at-total-value" inputmode="decimal" oninput="baAtRenderCart()">
+          <input type="text" id="at-total-value" inputmode="decimal" oninput="baAtValorChanged()">
+        </div>
+        <div class="at-total-row">
+          <span class="lbl">Desconto (%)</span>
+          <input type="text" id="at-desconto" inputmode="decimal" placeholder="0" oninput="baAtDescontoChanged()">
         </div>
 
         <div class="ba-slabel">Produtos</div>
@@ -3745,8 +3749,25 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         </div>
 
         <div class="cart-svc-row">
-          <div><div class="lbl">Serviço agendado</div><div class="svcs" id="cart-svc-names">—</div></div>
+          <div><div class="lbl">Serviço agendado <span class="cap-action" style="margin-left:.3rem" onclick="baCartToggleEditServico()">editar</span></div><div class="svcs" id="cart-svc-names">—</div></div>
           <div class="val" id="cart-svc-value">R$ 0,00</div>
+        </div>
+        <div id="cart-edit-servico" style="display:none;margin:.2rem 0 1rem;padding:.8rem;background:var(--grafite-card);border-radius:8px">
+          <div class="ba-svc-grid" id="cart-edit-svc-grid"></div>
+          <div style="display:flex;gap:.6rem;margin-top:.6rem;flex-wrap:wrap">
+            <label style="flex:1;min-width:120px;font-size:.7rem;color:var(--prata-dim)">Valor total
+              <input type="text" inputmode="decimal" id="cart-edit-valor" class="add-input" style="width:100%;margin-top:.2rem" oninput="baCartEditValorChanged()">
+            </label>
+            <label style="flex:1;min-width:120px;font-size:.7rem;color:var(--prata-dim)">Desconto (%)
+              <input type="text" inputmode="decimal" id="cart-edit-desconto" class="add-input" style="width:100%;margin-top:.2rem" oninput="baCartEditDescontoChanged()">
+            </label>
+          </div>
+          <p style="font-size:.7rem;color:var(--prata-dim);margin-top:.5rem">Preço de tabela: <b id="cart-edit-tabela" style="color:var(--prata)">R$ 0,00</b></p>
+          <div style="display:flex;gap:.5rem;margin-top:.6rem">
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.7rem" onclick="baCartSalvarServico()">Salvar</button>
+            <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.7rem" onclick="baCartToggleEditServico()">Cancelar</button>
+          </div>
+          <p class="ba-err" id="cart-edit-err" style="display:none;margin-top:.5rem"></p>
         </div>
         <p id="cart-notes" style="display:none;font-size:.78rem;color:var(--dourado-dim);margin:.4rem 0 0"></p>
 
@@ -7051,8 +7072,80 @@ async function baOpenCarrinho(apptId){
   else { notesEl.style.display = 'none'; notesEl.textContent = ''; }
   document.getElementById('cart-prod-search').value = '';
   document.getElementById('cart-prod-results').innerHTML = '';
+  document.getElementById('cart-edit-servico').style.display = 'none';
   baRenderCartItems();
   baShow('ba-screen-carrinho');
+}
+
+// ── Editar o(s) serviço(s) e valor na hora de finalizar (cliente às vezes muda de ideia) ──
+function baPrecoTabela(svcs){ return svcs.reduce((s,name)=>s+(SVC_PRICES[name]||0),0); }
+function baDescontoPctFromValor(precoTabela, valor){ return precoTabela>0 ? ((precoTabela-valor)/precoTabela*100) : 0; }
+function baValorFromDescontoPct(precoTabela, pct){ return precoTabela*(1-pct/100); }
+// parser de percentual que aceita negativo (acréscimo sobre a tabela vira "desconto negativo" de propósito —
+// serve de alerta visual pro balcão que talvez esteja cobrando errado)
+function baParseSignedPct(str){
+  const cleaned = (str||'').replace(/[^\d,.\-]/g,'').replace(',','.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+let baCartEditState = null; // {precoTabela, valor}
+function baCartToggleEditServico(){
+  const panel = document.getElementById('cart-edit-servico');
+  const opening = panel.style.display === 'none';
+  panel.style.display = opening ? 'block' : 'none';
+  if(opening) baCartOpenEditServico();
+}
+async function baCartOpenEditServico(){
+  document.getElementById('cart-edit-err').style.display = 'none';
+  const appt = await primeFetchAppointmentById(baCarrinhoApptId);
+  if(!appt) return;
+  const svcs = appt.services || (appt.service ? [appt.service] : []);
+  const valorAtual = typeof appt.discountPrice==='number' ? appt.discountPrice : baPrecoTabela(svcs);
+  document.getElementById('cart-edit-svc-grid').innerHTML = Object.keys(SVC_PRICES).map(name=>{
+    const sel = svcs.includes(name);
+    return `<div class="ba-svc-chip${sel?' selected':''}" onclick="this.classList.toggle('selected');this.querySelector('input').checked=this.classList.contains('selected');baCartEditServicosChanged()">
+      <input type="checkbox" class="cart-edit-svc" value="${name}" ${sel?'checked':''}>
+      <span class="ba-svc-chip-label">${name}<span class="ba-svc-chip-price">R$ ${SVC_PRICES[name]}</span></span>
+    </div>`;
+  }).join('');
+  baCartEditState = { precoTabela: baPrecoTabela(svcs), valor: valorAtual };
+  baCartEditSyncFields();
+}
+function baCartEditSelectedServicos(){
+  return [...document.querySelectorAll('#cart-edit-svc-grid .cart-edit-svc:checked')].map(el=>el.value);
+}
+function baCartEditServicosChanged(){
+  const svcs = baCartEditSelectedServicos();
+  const descontoPct = baDescontoPctFromValor(baCartEditState.precoTabela, baCartEditState.valor);
+  baCartEditState.precoTabela = baPrecoTabela(svcs);
+  baCartEditState.valor = baValorFromDescontoPct(baCartEditState.precoTabela, descontoPct);
+  baCartEditSyncFields();
+}
+function baCartEditSyncFields(){
+  document.getElementById('cart-edit-tabela').textContent = baFormatMoney(baCartEditState.precoTabela);
+  document.getElementById('cart-edit-valor').value = baCartEditState.valor.toFixed(2).replace('.',',');
+  const pct = baDescontoPctFromValor(baCartEditState.precoTabela, baCartEditState.valor);
+  document.getElementById('cart-edit-desconto').value = pct.toFixed(1).replace('.',',');
+}
+function baCartEditValorChanged(){
+  baCartEditState.valor = baAtParseMoney(document.getElementById('cart-edit-valor').value);
+  const pct = baDescontoPctFromValor(baCartEditState.precoTabela, baCartEditState.valor);
+  document.getElementById('cart-edit-desconto').value = pct.toFixed(1).replace('.',',');
+}
+function baCartEditDescontoChanged(){
+  const pct = baParseSignedPct(document.getElementById('cart-edit-desconto').value);
+  baCartEditState.valor = baValorFromDescontoPct(baCartEditState.precoTabela, pct);
+  document.getElementById('cart-edit-valor').value = baCartEditState.valor.toFixed(2).replace('.',',');
+}
+async function baCartSalvarServico(){
+  const errEl = document.getElementById('cart-edit-err');
+  errEl.style.display = 'none';
+  const svcs = baCartEditSelectedServicos();
+  if(!svcs.length){ errEl.textContent = 'Marque pelo menos um serviço.'; errEl.style.display = 'block'; return; }
+  const valor = baAtParseMoney(document.getElementById('cart-edit-valor').value);
+  await primeUpdateAppointment(baCarrinhoApptId, { services: svcs, discountPrice: valor });
+  await baOpenCarrinho(baCarrinhoApptId);
 }
 
 function baCartSearchProduct(){
@@ -7829,6 +7922,7 @@ function baAtResetFields(){
   document.getElementById('at-prod-search').value = '';
   document.getElementById('at-prod-results').innerHTML = '';
   document.getElementById('at-notes').value = '';
+  document.getElementById('at-desconto').value = '0';
 
   const svcsHtml = Object.keys(SVC_PRICES).map(name=>
     `<div class="ba-svc-chip" onclick="this.classList.toggle('selected');this.querySelector('input').checked=this.classList.contains('selected');baAtUpdateTotal()">
@@ -7897,10 +7991,23 @@ function baAtClearClient(){
   document.getElementById('at-selected-client').innerHTML = '';
 }
 
+let baAtPrecoTabela = 0;
 function baAtUpdateTotal(){
   const checked = [...document.querySelectorAll('.at-svc:checked')].map(x=>x.value);
-  const total = checked.reduce((s,name)=>s+(SVC_PRICES[name]||0),0);
-  document.getElementById('at-total-value').value = baFormatMoney(total);
+  const descontoPct = baParseSignedPct(document.getElementById('at-desconto').value);
+  baAtPrecoTabela = checked.reduce((s,name)=>s+(SVC_PRICES[name]||0),0);
+  document.getElementById('at-total-value').value = baFormatMoney(baValorFromDescontoPct(baAtPrecoTabela, descontoPct));
+  baAtRenderCart();
+}
+function baAtValorChanged(){
+  const valor = baAtParseMoney(document.getElementById('at-total-value').value);
+  const pct = baDescontoPctFromValor(baAtPrecoTabela, valor);
+  document.getElementById('at-desconto').value = pct.toFixed(1).replace('.',',');
+  baAtRenderCart();
+}
+function baAtDescontoChanged(){
+  const pct = baParseSignedPct(document.getElementById('at-desconto').value);
+  document.getElementById('at-total-value').value = baValorFromDescontoPct(baAtPrecoTabela, pct).toFixed(2).replace('.',',');
   baAtRenderCart();
 }
 function baAtParseMoney(str){
