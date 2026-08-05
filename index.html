@@ -1707,6 +1707,20 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
   </div>
 </div>
 
+<!-- MODAL: forma de pagamento (split) ao finalizar venda -->
+<div class="modal-backdrop" id="baPagamentoModal" role="dialog" aria-modal="true" style="z-index:1200" onclick="if(event.target===this)baClosePagamentoModal()">
+  <div class="modal" style="max-width:480px">
+    <button class="close" aria-label="Fechar" onclick="baClosePagamentoModal()">✕</button>
+    <h3>Forma de pagamento</h3>
+    <p style="color:var(--prata-dim);font-size:.85rem;margin:.6rem 0 1rem">Total da venda: <b id="ba-pgto-total" style="color:var(--prata)"></b></p>
+    <div id="ba-pgto-linhas"></div>
+    <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .8rem;font-size:.7rem;margin-top:.3rem" onclick="baPgtoAddLinha()">+ Adicionar forma</button>
+    <p style="font-size:.8rem;color:var(--prata-dim);margin-top:.9rem">Restante a distribuir: <b id="ba-pgto-restante" style="color:var(--dourado)"></b></p>
+    <p id="ba-pgto-err" style="color:var(--erro);font-size:.82rem;margin:.6rem 0;display:none"></p>
+    <button class="btn btn-primary" id="ba-pgto-confirm" style="width:100%;margin-top:.4rem" onclick="baPgtoConfirmar()">Confirmar</button>
+  </div>
+</div>
+
 <!-- MODAL: feedback com estrelas -->
 <div class="modal-backdrop" id="feedbackModal" role="dialog" aria-modal="true" style="z-index:1200">
   <div class="modal" style="max-width:420px;text-align:center">
@@ -6661,6 +6675,120 @@ async function baRenderCartItems(){
   document.getElementById('cart-sum-total').textContent = baFormatMoney(svcValue+produtosTotal);
 }
 
+// ── Forma de pagamento (split) ao finalizar uma venda ──
+// usado tanto pelo carrinho da Agenda (baFinalizarCarrinho) quanto pelo atendimento avulso de balcão
+let baPgtoState = null; // {notaId, total, onConfirm, linhas:[{method,value,parcelas,nsu}]}
+const BA_PGTO_METODOS = [
+  {v:'dinheiro', l:'Dinheiro'},
+  {v:'debito', l:'Débito'},
+  {v:'credito', l:'Crédito'},
+  {v:'pix_qrs', l:'Pix (maquininha)'},
+  {v:'pix_direto', l:'Pix (chave)'},
+  {v:'a_prazo', l:'A Prazo'}
+];
+function baOpenPagamentoModal(notaId, total, onConfirm){
+  baPgtoState = { notaId, total, onConfirm, linhas: [{method:'dinheiro', value: total, parcelas:1, nsu:''}] };
+  document.getElementById('ba-pgto-total').textContent = baFormatMoney(total);
+  document.getElementById('ba-pgto-err').style.display = 'none';
+  baPgtoRenderLinhas();
+  document.getElementById('baPagamentoModal').classList.add('open');
+}
+function baClosePagamentoModal(){
+  document.getElementById('baPagamentoModal').classList.remove('open');
+  baPgtoState = null;
+}
+function baPgtoInputStyle(extra){
+  return `background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.55rem .7rem;font-family:var(--font-body);font-size:.82rem;border-radius:4px${extra?';'+extra:''}`;
+}
+function baPgtoRenderLinhas(){
+  const box = document.getElementById('ba-pgto-linhas');
+  box.innerHTML = baPgtoState.linhas.map((l, i)=>{
+    const showNsu = ['debito','credito','pix_qrs'].includes(l.method);
+    const showParcelas = l.method==='credito';
+    const removeBtn = baPgtoState.linhas.length>1
+      ? `<button type="button" onclick="baPgtoRemoveLinha(${i})" style="background:none;border:none;color:var(--prata-dim);cursor:pointer;font-size:1rem;padding:0 .3rem" aria-label="Remover forma">✕</button>`
+      : '';
+    return `<div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap;align-items:center">
+      <select onchange="baPgtoSetField(${i},'method',this.value)" style="${baPgtoInputStyle('flex:1;min-width:130px')}">
+        ${BA_PGTO_METODOS.map(m=>`<option value="${m.v}" ${l.method===m.v?'selected':''}>${m.l}</option>`).join('')}
+      </select>
+      <input type="text" inputmode="decimal" value="${l.value?l.value.toFixed(2).replace('.',','):''}" placeholder="R$" oninput="baPgtoSetField(${i},'value',this.value)" style="${baPgtoInputStyle('flex:1;min-width:80px')}">
+      ${showParcelas ? `<select onchange="baPgtoSetField(${i},'parcelas',this.value)" style="${baPgtoInputStyle('flex:1;min-width:70px')}">
+        ${[1,2,3].map(n=>`<option value="${n}" ${Number(l.parcelas)===n?'selected':''}>${n}x</option>`).join('')}
+      </select>` : ''}
+      ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
+      ${removeBtn}
+    </div>`;
+  }).join('');
+  baPgtoRecalc();
+}
+function baPgtoSetField(i, field, val){
+  const l = baPgtoState.linhas[i];
+  if(field==='method'){
+    l.method = val;
+    l.parcelas = val==='credito' ? (l.parcelas||1) : null;
+    if(!['debito','credito','pix_qrs'].includes(val)) l.nsu = '';
+    baPgtoRenderLinhas();
+    return;
+  }
+  if(field==='value') l.value = baAtParseMoney(val);
+  else if(field==='parcelas') l.parcelas = Number(val);
+  else l[field] = val;
+  baPgtoRecalc();
+}
+function baPgtoAddLinha(){
+  const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
+  const restante = Math.max(0, baPgtoState.total - distribuido);
+  baPgtoState.linhas.push({method:'dinheiro', value: restante, parcelas:1, nsu:''});
+  baPgtoRenderLinhas();
+}
+function baPgtoRemoveLinha(i){
+  baPgtoState.linhas.splice(i,1);
+  baPgtoRenderLinhas();
+}
+function baPgtoRecalc(){
+  const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
+  const restante = baPgtoState.total - distribuido;
+  const el = document.getElementById('ba-pgto-restante');
+  el.textContent = baFormatMoney(Math.abs(restante));
+  el.style.color = Math.abs(restante) < 0.005 ? 'var(--verde-neon)' : 'var(--dourado)';
+}
+async function baInsertSalePayments(notaId, barberId, linhas){
+  const rows = linhas.map(l=>({
+    nota_id: notaId, barber_id: barberId, method: l.method, value: l.value,
+    parcelas: l.method==='credito' ? (l.parcelas||1) : null,
+    nsu: l.nsu || null
+  }));
+  const { error } = await sb.from('sale_payments').insert(rows);
+  if(error) console.error('baInsertSalePayments', error);
+}
+async function baPgtoConfirmar(){
+  const errEl = document.getElementById('ba-pgto-err');
+  errEl.style.display = 'none';
+  const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
+  if(Math.abs(distribuido - baPgtoState.total) > 0.005){
+    errEl.textContent = 'A soma das formas de pagamento precisa bater com o total da venda.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(baPgtoState.linhas.some(l=>!l.value || l.value<=0)){
+    errEl.textContent = 'Preencha um valor válido em cada forma de pagamento.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('ba-pgto-confirm');
+  btn.disabled = true; btn.classList.add('btn-loading');
+  try{
+    const { notaId, onConfirm, linhas } = baPgtoState;
+    document.getElementById('baPagamentoModal').classList.remove('open');
+    await onConfirm();
+    await baInsertSalePayments(notaId, baActingBarberId, linhas);
+  } finally {
+    btn.disabled = false; btn.classList.remove('btn-loading');
+    baPgtoState = null;
+  }
+}
+
 async function baFinalizarCarrinho(){
   const appt = await primeFetchAppointmentById(baCarrinhoApptId);
   if(!appt) return;
@@ -6680,18 +6808,25 @@ async function baFinalizarCarrinho(){
     rows.push({barberId: baActingBarberId, client: appt.name||'Cliente', appointmentId: appt.id,
       service: p.name, value: p.price*item.qty, qty: item.qty, date: today, time: now, notaId, type:'produto',
       category: p.category||'Outros', cost: (p.cost||0)*item.qty});
-    await baDecrementStock(p.id, item.qty);
   }
-  await baInsertSales(rows);
-  await baFetchProducts(); // refresh do cache pós-decremento
+  const total = rows.reduce((s,r)=>s+r.value, 0);
 
-  await sb.from('cart_items').delete().eq('appointment_id', baCarrinhoApptId);
-  if(appt.clientId) await primeCheckBrindeNotify(baActingBarberId, appt.clientId, appt.name);
+  baOpenPagamentoModal(notaId, total, async ()=>{
+    for(const item of items){
+      const p = products.find(x=>x.id===item.product_id);
+      if(p) await baDecrementStock(p.id, item.qty);
+    }
+    await baInsertSales(rows);
+    await baFetchProducts(); // refresh do cache pós-decremento
 
-  const finishedId = baCarrinhoApptId;
-  baCarrinhoApptId = null;
-  baTab('agenda');
-  openFeedback(finishedId, 'barbeiro');
+    await sb.from('cart_items').delete().eq('appointment_id', baCarrinhoApptId);
+    if(appt.clientId) await primeCheckBrindeNotify(baActingBarberId, appt.clientId, appt.name);
+
+    const finishedId = baCarrinhoApptId;
+    baCarrinhoApptId = null;
+    baTab('agenda');
+    openFeedback(finishedId, 'barbeiro');
+  });
 }
 
 // ── Sino de notificações do barbeiro ──
@@ -7372,16 +7507,23 @@ async function baAtRegistrar(){
     if(!p) continue;
     rows.push({barberId: baActingBarberId, client:clientName, service:p.name, value:p.price*item.qty, qty:item.qty, date, time, notaId, type:'produto',
       category: p.category||'Outros', cost: (p.cost||0)*item.qty});
-    await baDecrementStock(p.id, item.qty);
   }
-  await baInsertSales(rows);
-  await baFetchProducts();
-  if(linkedClientId) await primeCheckBrindeNotify(baActingBarberId, linkedClientId, clientName);
+  const totalAt = rows.reduce((s,r)=>s+r.value, 0);
 
-  baAtResetFields();
-  const successEl = document.getElementById('at-success');
-  successEl.style.display = 'block';
-  setTimeout(()=>{ successEl.style.display='none'; }, 3000);
+  baOpenPagamentoModal(notaId, totalAt, async ()=>{
+    for(const item of baAtCart){
+      const p = products.find(x=>x.id===item.productId);
+      if(p) await baDecrementStock(p.id, item.qty);
+    }
+    await baInsertSales(rows);
+    await baFetchProducts();
+    if(linkedClientId) await primeCheckBrindeNotify(baActingBarberId, linkedClientId, clientName);
+
+    baAtResetFields();
+    const successEl = document.getElementById('at-success');
+    successEl.style.display = 'block';
+    setTimeout(()=>{ successEl.style.display='none'; }, 3000);
+  });
 }
 
 function baEnter(barber){
