@@ -4105,6 +4105,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="contasbancarias" onclick="baFinanceiroTab('contasbancarias')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Contas bancárias</button>
             <button class="ba-btn ghost" data-fin="caixa" onclick="baFinanceiroTab('caixa')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Caixa</button>
             <button class="ba-btn ghost" data-fin="aprazo" onclick="baFinanceiroTab('aprazo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">A Prazo</button>
+            <button class="ba-btn ghost" data-fin="taxas" onclick="baFinanceiroTab('taxas')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Taxas de maquininha</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -4276,6 +4277,29 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
             <div class="ba-slabel">Faturas anteriores</div>
             <div id="ba-aprazo-invoices-list"></div>
+          </div>
+
+          <div id="ba-fin-taxas" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Taxas de maquininha</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Taxa cobrada pela maquininha por forma, bandeira e parcelamento — usada na conciliação financeira (quanto do faturamento em cartão/pix realmente entra líquido).</p>
+            <div id="ba-taxas-list"></div>
+            <div class="ba-slabel">Nova taxa</div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+              <select id="ba-taxa-forma" class="add-input" style="flex:1;min-width:130px" onchange="baTaxaFormaChanged()">
+                <option value="debito">Débito</option>
+                <option value="credito">Crédito</option>
+                <option value="pix_qrs">Pix maquininha</option>
+              </select>
+              <select id="ba-taxa-bandeira" class="add-input" style="flex:1;min-width:120px"></select>
+              <select id="ba-taxa-parcelas" class="add-input" style="flex:1;min-width:90px;display:none">
+                <option value="1">1x</option>
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+              </select>
+              <input type="text" inputmode="decimal" id="ba-taxa-pct" class="add-input" placeholder="Taxa %" style="flex:1;min-width:90px">
+            </div>
+            <p class="ba-err" id="ba-taxa-err" style="display:none;margin-top:.5rem"></p>
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baAddTaxaMaquininha()">Adicionar</button>
           </div>
         </div>
       </div>
@@ -4496,9 +4520,11 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-contasbancarias').style.display = sub==='contasbancarias' ? 'block' : 'none';
   document.getElementById('ba-fin-caixa').style.display = sub==='caixa' ? 'block' : 'none';
   document.getElementById('ba-fin-aprazo').style.display = sub==='aprazo' ? 'block' : 'none';
+  document.getElementById('ba-fin-taxas').style.display = sub==='taxas' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
   if(sub==='caixa') baRenderCaixa();
   if(sub==='aprazo') baRenderAPrazo();
+  if(sub==='taxas') baRenderTaxasMaquininha();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
@@ -6011,6 +6037,63 @@ function baPopulatePlanoContaSelect(){
   const current = sel.value;
   sel.innerHTML = '<option value="">Nenhum</option>' + baChartOfAccountsCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   sel.value = current;
+}
+
+// ══ Taxas de maquininha (Supabase, admin-only) — forma × bandeira × parcelas ══
+const BA_TAXA_BANDEIRAS = ['Visa', 'Mastercard', 'Elo', 'Amex', 'Outra'];
+let baTaxasMaquininhaCache = [];
+function baTaxaFormaLabel(forma){
+  return forma==='debito' ? 'Débito' : forma==='credito' ? 'Crédito' : 'Pix maquininha';
+}
+function baTaxaFormaChanged(){
+  const forma = document.getElementById('ba-taxa-forma').value;
+  const bandeiraEl = document.getElementById('ba-taxa-bandeira');
+  const parcelasEl = document.getElementById('ba-taxa-parcelas');
+  if(forma==='pix_qrs'){
+    bandeiraEl.style.display = 'none';
+    bandeiraEl.innerHTML = '';
+  } else {
+    bandeiraEl.style.display = '';
+    bandeiraEl.innerHTML = BA_TAXA_BANDEIRAS.map(b=>`<option value="${b}">${b}</option>`).join('');
+  }
+  parcelasEl.style.display = forma==='credito' ? '' : 'none';
+}
+async function baFetchTaxasMaquininha(){
+  const { data, error } = await sb.from('taxas_maquininha').select('*').order('forma').order('bandeira').order('parcelas');
+  if(error){ console.error('baFetchTaxasMaquininha', error); return []; }
+  return data || [];
+}
+async function baRenderTaxasMaquininha(){
+  const listEl = document.getElementById('ba-taxas-list');
+  baTaxasMaquininhaCache = await baFetchTaxasMaquininha();
+  baTaxaFormaChanged();
+  if(!listEl) return;
+  listEl.innerHTML = baTaxasMaquininhaCache.length ? `<div class="cad-table-wrap"><table class="cad-table">
+    <thead><tr><th>Forma</th><th>Bandeira</th><th>Parcelas</th><th>Taxa</th><th></th></tr></thead>
+    <tbody>${baTaxasMaquininhaCache.map(t=>
+      `<tr><td>${baTaxaFormaLabel(t.forma)}</td><td>${t.bandeira||'—'}</td><td>${t.forma==='credito'?t.parcelas+'x':'—'}</td><td>${Number(t.taxa_pct).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%</td><td><span class="cad-remove" onclick="baRemoveTaxaMaquininha(${t.id})">remover</span></td></tr>`
+    ).join('')}</tbody>
+  </table></div>` : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma taxa cadastrada.</p>';
+}
+async function baAddTaxaMaquininha(){
+  const errEl = document.getElementById('ba-taxa-err');
+  errEl.style.display = 'none';
+  const forma = document.getElementById('ba-taxa-forma').value;
+  const bandeira = forma==='pix_qrs' ? null : document.getElementById('ba-taxa-bandeira').value;
+  const parcelas = forma==='credito' ? Number(document.getElementById('ba-taxa-parcelas').value) : 1;
+  const pctEl = document.getElementById('ba-taxa-pct');
+  const taxa_pct = parseFloat((pctEl.value||'').replace(',','.'));
+  function fail(msg){ errEl.textContent = msg; errEl.style.display = 'block'; }
+  if(isNaN(taxa_pct) || taxa_pct<0) return fail('Digite uma taxa válida.');
+  const { error } = await sb.from('taxas_maquininha').insert({ forma, bandeira, parcelas, taxa_pct });
+  if(error){ console.error('baAddTaxaMaquininha', error); return fail('Não foi possível salvar. Tente de novo.'); }
+  pctEl.value = '';
+  await baRenderTaxasMaquininha();
+}
+async function baRemoveTaxaMaquininha(id){
+  const { error } = await sb.from('taxas_maquininha').delete().eq('id', id);
+  if(error) console.error('baRemoveTaxaMaquininha', error);
+  await baRenderTaxasMaquininha();
 }
 
 // ══ Contas bancárias (Supabase, admin-only, usadas na baixa de despesas) ══
