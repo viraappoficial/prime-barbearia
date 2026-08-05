@@ -668,7 +668,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
   <div class="modal" style="max-width:460px">
     <button class="close" aria-label="Fechar" onclick="closeBarberProfile()">✕</button>
     <div style="display:flex;align-items:center;gap:1.1rem;margin-bottom:1.4rem">
-      <div style="width:64px;height:64px;flex:none;border-radius:50%;background:linear-gradient(160deg,#243027,#141715);border:1px solid var(--dourado-dim);display:flex;align-items:center;justify-content:center">
+      <div id="bp-photo" style="width:64px;height:64px;flex:none;border-radius:50%;overflow:hidden;background:linear-gradient(160deg,#243027,#141715);border:1px solid var(--dourado-dim);display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:60%;color:var(--dourado)" aria-hidden="true"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg>
       </div>
       <div>
@@ -4330,7 +4330,9 @@ async function baLoadRoster(){
   if(error){ console.error('baLoadRoster', error); return; }
   baRosterCache = (data||[]).map(b=>({ id:b.id, name:b.name, email:b.email, role:b.role, isBarber:b.is_barber,
     commissionPct:b.commission_pct, monthlyGoal:b.monthly_goal, hours:b.hours,
-    commissionableCategories: b.commissionable_categories||{} }));
+    commissionableCategories: b.commissionable_categories||{},
+    bio:b.bio, experience:b.experience, specialties:b.specialties, funFact:b.fun_fact,
+    instagramHandle:b.instagram_handle, photoUrl:b.photo_url }));
   renderTeamSection();
 }
 function baGetRoster(){ return baRosterCache; }
@@ -8319,6 +8321,8 @@ function baToggleEditBarber(i){
   baEditingIndex = i;
   const b = baGetRoster()[i];
   if(!b) return;
+  baEditFotoFile = null;
+  baEditFotoRemoved = false;
   container.style.display='block';
   container.innerHTML = baBuildEditForm(b, i);
   container.querySelectorAll('.ba-edit-off').forEach(cb=>cb.addEventListener('change', e=>{
@@ -8328,6 +8332,29 @@ function baToggleEditBarber(i){
     if(openEl) openEl.disabled = e.target.checked;
     if(closeEl) closeEl.disabled = e.target.checked;
   }));
+}
+let baEditFotoFile = null;
+let baEditFotoRemoved = false;
+function baEditPreviewFoto(i){
+  const fotoEl = document.getElementById('ba-edit-foto-'+i);
+  const file = fotoEl.files && fotoEl.files[0] ? fotoEl.files[0] : null;
+  if(!file) return;
+  baEditFotoFile = file;
+  baEditFotoRemoved = false;
+  document.getElementById('ba-edit-photo-preview-'+i).innerHTML = `<img src="${URL.createObjectURL(file)}" alt="" style="width:100%;height:100%;object-fit:cover">`;
+}
+function baEditRemoveFoto(i){
+  baEditFotoFile = null;
+  baEditFotoRemoved = true;
+  document.getElementById('ba-edit-foto-'+i).value = '';
+  document.getElementById('ba-edit-photo-preview-'+i).innerHTML = BARBER_PHOTO_PLACEHOLDER_SVG;
+}
+async function baUploadBarberPhoto(barberId, file){
+  const blob = await primeCompressImage(file);
+  const path = `${barberId}.jpg`;
+  const { error } = await sb.storage.from('barber-photos').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+  if(error){ console.error('baUploadBarberPhoto', error); return null; }
+  return sb.storage.from('barber-photos').getPublicUrl(path).data.publicUrl + '?t=' + Date.now();
 }
 
 function baBuildEditForm(b, i){
@@ -8348,6 +8375,14 @@ function baBuildEditForm(b, i){
     </div>`;
   }).join('');
   return `
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem">
+      <div id="ba-edit-photo-preview-${i}" style="width:64px;height:64px;flex:none;border-radius:50%;overflow:hidden;background:var(--grafite);display:flex;align-items:center;justify-content:center;color:var(--prata-dim)">${b.photoUrl ? `<img src="${b.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover">` : BARBER_PHOTO_PLACEHOLDER_SVG}</div>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <label for="ba-edit-foto-${i}" class="btn btn-ghost" style="padding:.5rem .9rem;font-size:.62rem;letter-spacing:.1em;cursor:pointer">Trocar foto</label>
+        <input type="file" id="ba-edit-foto-${i}" accept="image/*" style="display:none" onchange="baEditPreviewFoto(${i})">
+        <button type="button" style="background:none;border:none;color:var(--prata-dim);font-size:.66rem;text-decoration:underline;cursor:pointer;padding:0;text-align:left" onclick="baEditRemoveFoto(${i})">remover foto</button>
+      </div>
+    </div>
     <div class="ba-field"><label>Nome</label><input type="text" id="ba-edit-name-${i}" value="${b.name.replace(/"/g,'&quot;')}"></div>
     <div class="ba-field"><label>E-mail</label><input type="email" id="ba-edit-email-${i}" value="${b.email.replace(/"/g,'&quot;')}"></div>
     <p><a href="#" onclick="baSendPasswordReset('${b.email.replace(/'/g,"\\'")}');return false" style="font-size:.78rem;color:var(--dourado)">Enviar e-mail de redefinição de senha</a></p>
@@ -8376,6 +8411,13 @@ function baBuildEditForm(b, i){
         <span style="color:var(--prata-dim);font-size:.8rem">%</span>
       </div>`;
     }).join('')}</div>
+    <div class="ba-slabel" style="margin-top:0">Perfil público (exibido no site, aba Equipe)</div>
+    <div class="ba-field"><label>Experiência</label><input type="text" id="ba-edit-exp-${i}" placeholder="Ex: 8 anos" value="${(b.experience||'').replace(/"/g,'&quot;')}"></div>
+    <div class="ba-field"><label>Especialidades</label><input type="text" id="ba-edit-esp-${i}" placeholder="Ex: Degradê e navalhado" value="${(b.specialties||'').replace(/"/g,'&quot;')}"></div>
+    <div class="ba-field"><label>Bio</label><textarea id="ba-edit-bio-${i}" rows="3" style="width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.15);color:var(--prata);padding:.6rem;font-size:.85rem;font-family:inherit;resize:vertical">${b.bio||''}</textarea></div>
+    <div class="ba-field"><label>Fun fact</label><textarea id="ba-edit-fun-${i}" rows="2" style="width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.15);color:var(--prata);padding:.6rem;font-size:.85rem;font-family:inherit;resize:vertical">${b.funFact||''}</textarea></div>
+    <div class="ba-field"><label>Instagram (sem @)</label><input type="text" id="ba-edit-ig-${i}" placeholder="Ex: nathan.barber" value="${(b.instagramHandle||'').replace(/"/g,'&quot;')}"></div>
+    <p style="color:var(--prata-dim);font-size:.72rem;margin:-.4rem 0 1rem">Deixe em branco pra usar um texto de exemplo até você preencher de verdade.</p>
     <div class="ba-slabel" style="margin-top:0">Escala semanal</div>
     ${scheduleRows}
     <p class="ba-err" id="ba-edit-err-${i}" style="display:none;margin-top:.4rem"></p>
@@ -8441,14 +8483,33 @@ async function baSaveEditBarber(i){
   });
   const hoursVal = Object.keys(hours).length ? hours : null;
 
+  const newExp = document.getElementById('ba-edit-exp-'+i).value.trim();
+  const newEsp = document.getElementById('ba-edit-esp-'+i).value.trim();
+  const newBio = document.getElementById('ba-edit-bio-'+i).value.trim();
+  const newFun = document.getElementById('ba-edit-fun-'+i).value.trim();
+  const newIg = document.getElementById('ba-edit-ig-'+i).value.trim().replace(/^@/,'');
+
+  let photoUrl = b.photoUrl;
+  if(baEditFotoFile){
+    const url = await baUploadBarberPhoto(b.id, baEditFotoFile);
+    if(url) photoUrl = url;
+  } else if(baEditFotoRemoved){
+    await sb.storage.from('barber-photos').remove([`${b.id}.jpg`]);
+    photoUrl = null;
+  }
+
   const { error } = await sb.from('barbers').update({
     name:newName, role:newRole, is_barber:newIsBarber,
     commission_pct:newCommPct/100, monthly_goal:newGoal ?? null, hours:hoursVal,
-    commissionable_categories:newCommCats
+    commissionable_categories:newCommCats,
+    experience:newExp||null, specialties:newEsp||null, bio:newBio||null, fun_fact:newFun||null,
+    instagram_handle:newIg||null, photo_url:photoUrl
   }).eq('id', b.id);
   if(error){ return fail('Não foi possível salvar. Tente de novo.'); }
 
-  roster[i] = { ...b, name:newName, role:newRole, isBarber:newIsBarber, commissionPct:newCommPct/100, monthlyGoal:newGoal, hours:hoursVal||undefined, commissionableCategories:newCommCats };
+  roster[i] = { ...b, name:newName, role:newRole, isBarber:newIsBarber, commissionPct:newCommPct/100, monthlyGoal:newGoal, hours:hoursVal||undefined, commissionableCategories:newCommCats,
+    experience:newExp||undefined, specialties:newEsp||undefined, bio:newBio||undefined, funFact:newFun||undefined,
+    instagramHandle:newIg||undefined, photoUrl };
 
   // vendas, agendamentos e carteira de clientes não precisam mais de propagação — todos guardam
   // barber_id (FK), o nome é resolvido ao vivo via apBarberName()/baSaleBarberName()
@@ -8536,19 +8597,32 @@ function barberDemoProfile(name){
   for(let i=0;i<name.length;i++) hash = (hash*31 + name.charCodeAt(i)) >>> 0;
   return BARBER_DEMO_PROFILES[hash % BARBER_DEMO_PROFILES.length];
 }
+const BARBER_PHOTO_PLACEHOLDER_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:60%;color:var(--dourado)" aria-hidden="true"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg>';
+// mescla os campos reais cadastrados pelo admin com o fallback fictício de demo, pra barbeiro sem cadastro completo continuar exibindo algo
+function baBarberProfileData(b){
+  const p = barberDemoProfile(b.name);
+  return {
+    bio: b.bio || p.bio,
+    exp: b.experience || p.exp,
+    esp: b.specialties || p.esp,
+    fun: b.funFact || p.fun,
+    ig: b.instagramHandle || (b.name.toLowerCase().replace(/[^a-z]/g,'') + '.barber'),
+    photoUrl: b.photoUrl || null
+  };
+}
 function openBarberProfile(name){
   const b = baGetRoster().find(x=>x.name===name);
   if(!b) return;
-  const p = barberDemoProfile(name);
+  const p = baBarberProfileData(b);
   document.getElementById('bp-role').textContent = b.role==='admin' ? 'Barbeiro · Admin' : 'Barbeiro';
   document.getElementById('bp-nome').textContent = b.name;
   document.getElementById('bp-bio').textContent = p.bio;
   document.getElementById('bp-exp').textContent = p.exp;
   document.getElementById('bp-esp').textContent = p.esp;
   document.getElementById('bp-fun').textContent = p.fun;
-  const igHandle = '@' + b.name.toLowerCase().replace(/[^a-z]/g,'') + '.barber';
-  document.getElementById('bp-ig').textContent = '◎ ' + igHandle;
-  document.getElementById('bp-ig').href = 'https://instagram.com/' + igHandle.slice(1);
+  document.getElementById('bp-photo').innerHTML = p.photoUrl ? `<img src="${p.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover">` : BARBER_PHOTO_PLACEHOLDER_SVG;
+  document.getElementById('bp-ig').textContent = '◎ @' + p.ig;
+  document.getElementById('bp-ig').href = 'https://instagram.com/' + p.ig;
   renderBarberPublicReviews(name);
   document.getElementById('barberProfileModal').classList.add('open');
 }
@@ -8594,15 +8668,18 @@ function renderTeamSection(){
   const grid = document.getElementById('team-grid');
   if(!grid) return;
   const barbers = baGetRoster().filter(b=>b.isBarber!==false);
-  grid.innerHTML = barbers.length ? barbers.map(b=>`
-    <div class="barber" tabindex="0" onclick="openBarberProfile('${b.name.replace(/'/g,"\\'")}')" style="cursor:pointer">
-      <div class="barber-photo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg></div>
+  grid.innerHTML = barbers.length ? barbers.map(b=>{
+    const p = baBarberProfileData(b);
+    return `<div class="barber" tabindex="0" onclick="openBarberProfile('${b.name.replace(/'/g,"\\'")}')" style="cursor:pointer">
+      <div class="barber-photo">${BARBER_PHOTO_PLACEHOLDER_SVG}</div>
+      ${p.photoUrl ? `<img src="${p.photoUrl}" alt="">` : ''}
       <div class="barber-info">
         <span class="role">${b.role==='admin'?'Barbeiro · Admin':'Barbeiro'}</span>
         <h3>${b.name}</h3>
-        <p class="bio">${barberDemoProfile(b.name).esp}</p>
+        <p class="bio">${p.esp}</p>
       </div>
-    </div>`).join('') : '<p style="color:var(--prata-dim)">Equipe em breve.</p>';
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim)">Equipe em breve.</p>';
 }
 const PROD_LANDING_PLACEHOLDER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>`;
 const PROD_CAROUSEL_POOL = 12;
