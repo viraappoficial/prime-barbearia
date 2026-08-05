@@ -7151,7 +7151,9 @@ function baClosePagamentoModal(){
   baPgtoState = null;
 }
 function baPgtoInputStyle(extra){
-  return `background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.55rem .7rem;font-family:var(--font-body);font-size:.82rem;border-radius:4px${extra?';'+extra:''}`;
+  // altura fixa pq <input type="date"> tem espaçamento nativo do navegador (ícone/spinner) que não
+  // bate com select/text mesmo com o mesmo padding — sem isso a linha fica com os campos torto
+  return `background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:0 .7rem;height:2.5rem;box-sizing:border-box;font-family:var(--font-body);font-size:.82rem;border-radius:4px${extra?';'+extra:''}`;
 }
 function baPgtoRenderLinhas(){
   const box = document.getElementById('ba-pgto-linhas');
