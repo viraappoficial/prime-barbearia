@@ -4217,9 +4217,30 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           </div>
 
           <div id="ba-fin-caixa" style="display:none">
-            <div class="ba-slabel" style="margin-top:0">Cofre da empresa</div>
+            <div class="ba-slabel" style="margin-top:0">Saldo em caixa (dinheiro físico agora)</div>
+            <p style="font-size:1.3rem;color:var(--verde-neon);font-weight:600;margin-bottom:.3rem" id="ba-caixa-saldo">R$ 0,00</p>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Suprimento + vendas em dinheiro − despesas em dinheiro − sangrias, desde o último fechamento.</p>
+
+            <div class="ba-slabel">Cofre da empresa</div>
             <p style="font-size:1.3rem;color:var(--dourado);font-weight:600;margin-bottom:.3rem" id="ba-cofre-saldo">R$ 0,00</p>
-            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Soma de todas as sangrias com destino "Cofre".</p>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Sangrias com destino "Cofre" − suprimentos com origem "Cofre".</p>
+
+            <div class="ba-slabel">Suprimento de caixa</div>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Coloca dinheiro no caixa pra ter fundo de troco/giro — ex: início de um novo ciclo, reforço de troco.</p>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+              <input type="text" inputmode="decimal" id="ba-suprimento-valor" class="add-input" placeholder="Valor (R$)" style="flex:1;min-width:110px">
+              <select id="ba-suprimento-origem" class="add-input" onchange="baSuprimentoOrigemChanged()" style="flex:1;min-width:110px">
+                <option value="cofre">Cofre</option>
+                <option value="banco">Banco</option>
+                <option value="outro">Outro</option>
+              </select>
+              <select id="ba-suprimento-banco" class="add-input" style="flex:1;min-width:150px;display:none"></select>
+            </div>
+            <div class="ba-field"><label>Observação (opcional)</label><input type="text" id="ba-suprimento-nota" placeholder="Ex: fundo de troco inicial"></div>
+            <p class="ba-err" id="ba-suprimento-err" style="display:none"></p>
+            <button class="ba-btn" style="max-width:100%" onclick="baStartSuprimento()">Registrar suprimento</button>
+            <div class="ba-slabel">Últimos suprimentos</div>
+            <div id="ba-suprimentos-list"></div>
 
             <div class="ba-slabel">Sangria</div>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
@@ -4245,6 +4266,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
             <div id="ba-fech-resumo" style="display:none;font-size:.82rem;color:var(--prata-dim);margin-bottom:.6rem">
               <div>Recebido em dinheiro: <b style="color:var(--prata)" id="ba-fech-recebido"></b></div>
+              <div>Suprido no período: <b style="color:var(--prata)" id="ba-fech-suprido"></b></div>
               <div>Despesas pagas em dinheiro: <b style="color:var(--prata)" id="ba-fech-despesas"></b></div>
               <div>Sangrias no período: <b style="color:var(--prata)" id="ba-fech-sangrias"></b></div>
               <div>Esperado no caixa: <b style="color:var(--dourado)" id="ba-fech-esperado"></b></div>
@@ -5242,14 +5264,19 @@ async function baComputeDRE(year, month){
   const cmv = sales.filter(s=>s.type==='produto').reduce((s,x)=>s+(x.cost||0),0);
   const expenses = await baFetchExpenses(from, to);
   const taxaMaquininha = expenses.filter(e=>e.category==='taxa_maquininha').reduce((s,e)=>s+e.value,0);
-  const custoDireto = comissoes + cmv + taxaMaquininha;
+  const notaIds = [...new Set(sales.map(s=>s.notaId).filter(id=>id!=null))];
+  const [payments, taxasCache] = await Promise.all([baFetchSalePaymentsByNotaIds(notaIds), baFetchTaxasMaquininha()]);
+  const estimativa = baEstimateTaxaMaquininha(payments, taxasCache);
+  const taxaMaquininhaEstimada = estimativa.valor;
+  const taxaMaquininhaSemCadastro = estimativa.semTaxa;
+  const custoDireto = comissoes + cmv + taxaMaquininha + taxaMaquininhaEstimada;
   const lucroBruto = receitaTotal - custoDireto;
   const despesasOperacionais = expenses.filter(e=>e.category!=='taxa_maquininha');
   const totalDespesas = despesasOperacionais.reduce((s,e)=>s+e.value,0);
   const lucroLiquido = lucroBruto - totalDespesas;
   const margem = receitaTotal ? (lucroLiquido/receitaTotal) : 0;
   return { year, month, receitaServicos, receitaProdutos, receitaAssinaturas, receitaTotal,
-    comissoes, cmv, taxaMaquininha, custoDireto, lucroBruto, despesasOperacionais, totalDespesas, lucroLiquido, margem };
+    comissoes, cmv, taxaMaquininha, taxaMaquininhaEstimada, taxaMaquininhaSemCadastro, custoDireto, lucroBruto, despesasOperacionais, totalDespesas, lucroLiquido, margem };
 }
 const BA_DRE_MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function baPopulateDREMonths(){
@@ -5299,7 +5326,9 @@ async function baRenderDREScreen(){
     <div class="ba-comm" style="margin-bottom:.9rem">
       <div class="row"><span class="lbl">Comissão dos barbeiros</span><span class="val small">− ${baFormatMoney(dre.comissoes)}</span></div>
       <div class="row"><span class="lbl">Custo de produtos vendidos (CMV)</span><span class="val small">− ${baFormatMoney(dre.cmv)}</span></div>
-      <div class="row"><span class="lbl">Taxa de maquininha</span><span class="val small">− ${baFormatMoney(dre.taxaMaquininha)}</span></div>
+      <div class="row"><span class="lbl">Taxa de maquininha (lançada manualmente)</span><span class="val small">− ${baFormatMoney(dre.taxaMaquininha)}</span></div>
+      <div class="row"><span class="lbl">Taxa de maquininha (estimada pelo cadastro)</span><span class="val small">− ${baFormatMoney(dre.taxaMaquininhaEstimada)}</span></div>
+      ${dre.taxaMaquininhaSemCadastro ? `<div class="row"><span class="lbl" style="color:var(--dourado);font-size:.72rem">⚠ ${dre.taxaMaquininhaSemCadastro} recebimento(s) de cartão/pix sem taxa cadastrada pra bandeira/parcela — cadastre em Financeiro → Taxas de maquininha pra entrar na estimativa</span></div>` : ''}
       <div class="row"><span class="lbl"><b>Lucro bruto</b></span><span class="val">${baFormatMoney(dre.lucroBruto)}${baDREVarLabel(dre.lucroBruto, prev.lucroBruto)}</span></div>
     </div>
     <div class="ba-comm" style="margin-bottom:.9rem">
@@ -5341,8 +5370,10 @@ async function baExportDREPDF(){
       <table class="rp-table"><tbody>
         <tr><td>Comissão dos barbeiros</td><td class="num">${baFormatMoney(d.comissoes)}</td></tr>
         <tr><td>Custo de produtos vendidos (CMV)</td><td class="num">${baFormatMoney(d.cmv)}</td></tr>
-        <tr><td>Taxa de maquininha</td><td class="num">${baFormatMoney(d.taxaMaquininha)}</td></tr>
+        <tr><td>Taxa de maquininha (lançada manualmente)</td><td class="num">${baFormatMoney(d.taxaMaquininha)}</td></tr>
+        <tr><td>Taxa de maquininha (estimada pelo cadastro)</td><td class="num">${baFormatMoney(d.taxaMaquininhaEstimada)}</td></tr>
       </tbody><tfoot><tr><td>Lucro bruto</td><td class="num">${baFormatMoney(d.lucroBruto)}</td></tr></tfoot></table>
+      ${d.taxaMaquininhaSemCadastro ? `<p style="color:var(--rp-ink-dim);font-size:.75rem;margin-top:.4rem">${d.taxaMaquininhaSemCadastro} recebimento(s) de cartão/pix sem taxa cadastrada — não entraram na estimativa.</p>` : ''}
     </div>
     <div class="rp-section">
       <div class="rp-slabel">Despesas</div>
@@ -6095,6 +6126,30 @@ async function baRemoveTaxaMaquininha(id){
   if(error) console.error('baRemoveTaxaMaquininha', error);
   await baRenderTaxasMaquininha();
 }
+// estimativa de taxa de maquininha pro DRE — usa o cadastro (não o extrato real, que ainda não existe)
+async function baFetchSalePaymentsByNotaIds(notaIds){
+  if(!notaIds.length) return [];
+  const { data, error } = await sb.from('sale_payments').select('*').in('nota_id', notaIds);
+  if(error){ console.error('baFetchSalePaymentsByNotaIds', error); return []; }
+  return data||[];
+}
+function baFindTaxaMaquininha(taxas, method, bandeira, parcelas){
+  if(method==='pix_qrs') return taxas.find(t=>t.forma==='pix_qrs');
+  if(method==='debito') return taxas.find(t=>t.forma==='debito' && t.bandeira===bandeira);
+  if(method==='credito') return taxas.find(t=>t.forma==='credito' && t.bandeira===bandeira && t.parcelas===parcelas);
+  return null;
+}
+// retorna { valor, semTaxa } — semTaxa conta recebimentos de cartão/pix maquininha sem taxa cadastrada pra aquela combinação
+function baEstimateTaxaMaquininha(payments, taxas){
+  let valor = 0, semTaxa = 0;
+  for(const p of payments){
+    if(!['debito','credito','pix_qrs'].includes(p.method)) continue;
+    const t = baFindTaxaMaquininha(taxas, p.method, p.bandeira, p.parcelas);
+    if(!t){ semTaxa++; continue; }
+    valor += p.value * (Number(t.taxa_pct)/100);
+  }
+  return { valor, semTaxa };
+}
 
 // ══ Contas bancárias (Supabase, admin-only, usadas na baixa de despesas) ══
 let baBankAccountsCache = [];
@@ -6152,9 +6207,33 @@ function baPopulateContaBancariaSelect(){
 // cofre é um valor computado (soma das sangrias com destino 'cofre'), não um saldo guardado à parte
 let baFechState = null; // {from, to, recebido, despesas, sangrias, esperado}
 async function baCashVaultBalance(){
-  const { data, error } = await sb.from('cash_sangrias').select('value').eq('destino','cofre');
-  if(error){ console.error('baCashVaultBalance', error); return 0; }
-  return (data||[]).reduce((s,r)=>s+r.value,0);
+  const [{ data: sangrias, error: e1 }, { data: supplies, error: e2 }] = await Promise.all([
+    sb.from('cash_sangrias').select('value').eq('destino','cofre'),
+    sb.from('cash_supplies').select('value').eq('origem','cofre')
+  ]);
+  if(e1||e2){ console.error('baCashVaultBalance', e1||e2); return 0; }
+  const entradas = (sangrias||[]).reduce((s,r)=>s+r.value,0);
+  const saidas = (supplies||[]).reduce((s,r)=>s+r.value,0);
+  return entradas - saidas;
+}
+// saldo de dinheiro físico no caixa desde o último fechamento (ou desde sempre, se nunca fechou) —
+// suprimento + vendas em dinheiro (inclui fiado quitado em dinheiro, que já vira sale_payments) − despesas em dinheiro − sangrias
+async function baCashRegisterBalance(){
+  const { data: lastClosure, error: e0 } = await sb.from('cash_closures').select('period_to').order('period_to',{ascending:false}).limit(1).maybeSingle();
+  if(e0) console.error('baCashRegisterBalance', e0);
+  const since = lastClosure ? lastClosure.period_to : '1900-01-01'; // período do fechamento é inclusivo, caixa reinicia no dia seguinte
+  const [{ data: pagamentos, error: e1 }, { data: despesas, error: e2 }, { data: sangrias, error: e3 }, { data: supplies, error: e4 }] = await Promise.all([
+    sb.from('sale_payments').select('value, created_at').eq('method','dinheiro'),
+    sb.from('expenses').select('value, paid_at').eq('status','pago').eq('paid_method','dinheiro').gt('paid_at', since),
+    sb.from('cash_sangrias').select('value, created_at'),
+    sb.from('cash_supplies').select('value, created_at')
+  ]);
+  if(e1||e2||e3||e4){ console.error('baCashRegisterBalance', e1||e2||e3||e4); return 0; }
+  const recebido = (pagamentos||[]).filter(p=>p.created_at.slice(0,10) > since).reduce((s,p)=>s+p.value,0);
+  const despesasDinheiro = (despesas||[]).reduce((s,e)=>s+e.value,0);
+  const sangriasVal = (sangrias||[]).filter(s=>s.created_at.slice(0,10) > since).reduce((s,r)=>s+r.value,0);
+  const supridoVal = (supplies||[]).filter(s=>s.created_at.slice(0,10) > since).reduce((s,r)=>s+r.value,0);
+  return recebido + supridoVal - despesasDinheiro - sangriasVal;
 }
 async function baFetchSangrias(){
   const { data, error } = await sb.from('cash_sangrias').select('*, bank_accounts(name)').order('created_at',{ascending:false}).limit(20);
@@ -6170,10 +6249,61 @@ function baSangriaDestinoChanged(){
   const destino = document.getElementById('ba-sangria-destino').value;
   document.getElementById('ba-sangria-banco').style.display = destino==='banco' ? 'block' : 'none';
 }
+async function baFetchSuprimentos(){
+  const { data, error } = await sb.from('cash_supplies').select('*, bank_accounts(name)').order('created_at',{ascending:false}).limit(20);
+  if(error){ console.error('baFetchSuprimentos', error); return []; }
+  return data||[];
+}
+function baPopulateSuprimentoBancoSelect(){
+  const sel = document.getElementById('ba-suprimento-banco');
+  if(!sel) return;
+  sel.innerHTML = baBankAccountsCache.map(c=>`<option value="${c.id}">${baBankAccountLabel(c)}</option>`).join('') || '<option value="">Nenhuma conta cadastrada</option>';
+}
+function baSuprimentoOrigemChanged(){
+  const origem = document.getElementById('ba-suprimento-origem').value;
+  document.getElementById('ba-suprimento-banco').style.display = origem==='banco' ? 'block' : 'none';
+}
+async function baRenderSuprimentos(){
+  const listEl = document.getElementById('ba-suprimentos-list');
+  if(!listEl) return;
+  const rows = await baFetchSuprimentos();
+  listEl.innerHTML = rows.length ? rows.map(r=>{
+    const origemLabel = r.origem==='cofre' ? 'Cofre' : r.origem==='banco' ? (r.bank_accounts?.name ? `Banco — ${r.bank_accounts.name}` : 'Banco') : 'Outro';
+    return `<div class="cap-row"><div class="cap-row-head"><span class="cap-row-name">${origemLabel}</span></div>
+      <div class="cap-row-tags">${baFormatDate(r.created_at.slice(0,10))}${r.note ? ' · '+r.note : ''}</div>
+      <div class="cap-row-foot"><span class="cap-row-value">${baFormatMoney(r.value)}</span></div>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum suprimento registrado ainda.</p>';
+}
+function baStartSuprimento(){
+  const errEl = document.getElementById('ba-suprimento-err');
+  errEl.style.display = 'none';
+  const value = baAtParseMoney(document.getElementById('ba-suprimento-valor').value);
+  const origem = document.getElementById('ba-suprimento-origem').value;
+  const bankAccountId = origem==='banco' ? Number(document.getElementById('ba-suprimento-banco').value)||null : null;
+  const note = document.getElementById('ba-suprimento-nota').value.trim() || null;
+  if(!value || value<=0){ errEl.textContent = 'Informe um valor válido.'; errEl.style.display = 'block'; return; }
+  if(origem==='banco' && !bankAccountId){ errEl.textContent = 'Selecione a conta bancária de origem.'; errEl.style.display = 'block'; return; }
+  baOpenAdminGate(async (adminId)=>{
+    const { error } = await sb.from('cash_supplies').insert({
+      value, origem, bank_account_id: bankAccountId, note,
+      admin_id: adminId, barber_id: baActingBarberId || baCurrentBarberId
+    });
+    if(error){ console.error('baInsertSuprimento', error); return; }
+    document.getElementById('ba-suprimento-valor').value = '';
+    document.getElementById('ba-suprimento-nota').value = '';
+    document.getElementById('ba-caixa-saldo').textContent = baFormatMoney(await baCashRegisterBalance());
+    if(origem==='cofre') document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
+    await baRenderSuprimentos();
+  }, {subtitle:'Todo suprimento precisa de confirmação de um admin.', confirmLabel:'Confirmar suprimento'});
+}
 async function baRenderCaixa(){
+  document.getElementById('ba-caixa-saldo').textContent = baFormatMoney(await baCashRegisterBalance());
   document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
   baPopulateSangriaBancoSelect();
+  baPopulateSuprimentoBancoSelect();
   await baRenderSangrias();
+  await baRenderSuprimentos();
   await baRenderFechamentos();
   document.getElementById('ba-fech-resumo').style.display = 'none';
   document.getElementById('ba-fech-btn').style.display = 'none';
@@ -6211,7 +6341,8 @@ function baStartSangria(){
     if(error){ console.error('baInsertSangria', error); return; }
     document.getElementById('ba-sangria-valor').value = '';
     document.getElementById('ba-sangria-nota').value = '';
-    document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
+    document.getElementById('ba-caixa-saldo').textContent = baFormatMoney(await baCashRegisterBalance());
+    if(destino==='cofre') document.getElementById('ba-cofre-saldo').textContent = baFormatMoney(await baCashVaultBalance());
     await baRenderSangrias();
   }, {subtitle:'Toda sangria precisa de confirmação de um admin.', confirmLabel:'Confirmar sangria'});
 }
@@ -6221,18 +6352,21 @@ async function baCalcularFechamento(){
   const from = document.getElementById('ba-fech-from').value;
   const to = document.getElementById('ba-fech-to').value;
   if(!from || !to || from>to){ errEl.textContent = 'Escolha um período válido.'; errEl.style.display = 'block'; return; }
-  const [{ data: pagamentos, error: e1 }, { data: despesas, error: e2 }, { data: sangrias, error: e3 }] = await Promise.all([
+  const [{ data: pagamentos, error: e1 }, { data: despesas, error: e2 }, { data: sangrias, error: e3 }, { data: supplies, error: e4 }] = await Promise.all([
     sb.from('sale_payments').select('value, created_at').eq('method','dinheiro'),
     sb.from('expenses').select('value, paid_at').eq('status','pago').eq('paid_method','dinheiro').gte('paid_at', from).lte('paid_at', to),
-    sb.from('cash_sangrias').select('value, created_at')
+    sb.from('cash_sangrias').select('value, created_at'),
+    sb.from('cash_supplies').select('value, created_at')
   ]);
-  if(e1||e2||e3){ console.error('baCalcularFechamento', e1||e2||e3); errEl.textContent = 'Erro ao calcular. Tente de novo.'; errEl.style.display = 'block'; return; }
+  if(e1||e2||e3||e4){ console.error('baCalcularFechamento', e1||e2||e3||e4); errEl.textContent = 'Erro ao calcular. Tente de novo.'; errEl.style.display = 'block'; return; }
   const recebido = (pagamentos||[]).filter(p=>{ const d=p.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,p)=>s+p.value,0);
   const despesasDinheiro = (despesas||[]).reduce((s,e)=>s+e.value,0);
   const sangriasPeriodo = (sangrias||[]).filter(s=>{ const d=s.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,r)=>s+r.value,0);
-  const esperado = recebido - despesasDinheiro - sangriasPeriodo;
-  baFechState = { from, to, recebido, despesas: despesasDinheiro, sangrias: sangriasPeriodo, esperado };
+  const supridoPeriodo = (supplies||[]).filter(s=>{ const d=s.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,r)=>s+r.value,0);
+  const esperado = recebido + supridoPeriodo - despesasDinheiro - sangriasPeriodo;
+  baFechState = { from, to, recebido, suprido: supridoPeriodo, despesas: despesasDinheiro, sangrias: sangriasPeriodo, esperado };
   document.getElementById('ba-fech-recebido').textContent = baFormatMoney(recebido);
+  document.getElementById('ba-fech-suprido').textContent = baFormatMoney(supridoPeriodo);
   document.getElementById('ba-fech-despesas').textContent = baFormatMoney(despesasDinheiro);
   document.getElementById('ba-fech-sangrias').textContent = baFormatMoney(sangriasPeriodo);
   document.getElementById('ba-fech-esperado').textContent = baFormatMoney(esperado);
