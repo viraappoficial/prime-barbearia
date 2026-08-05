@@ -6686,8 +6686,10 @@ const BA_PGTO_METODOS = [
   {v:'pix_direto', l:'Pix (chave)'},
   {v:'a_prazo', l:'A Prazo'}
 ];
+const BA_PGTO_BANDEIRAS = ['', 'Visa', 'Mastercard', 'Elo', 'Amex', 'Outra'
+];
 function baOpenPagamentoModal(notaId, total, onConfirm){
-  baPgtoState = { notaId, total, onConfirm, linhas: [{method:'dinheiro', value: total, parcelas:1, nsu:''}] };
+  baPgtoState = { notaId, total, onConfirm, linhas: [{method:'dinheiro', value: total, parcelas:1, nsu:'', bandeira:''}] };
   document.getElementById('ba-pgto-total').textContent = baFormatMoney(total);
   document.getElementById('ba-pgto-err').style.display = 'none';
   baPgtoRenderLinhas();
@@ -6704,6 +6706,7 @@ function baPgtoRenderLinhas(){
   const box = document.getElementById('ba-pgto-linhas');
   box.innerHTML = baPgtoState.linhas.map((l, i)=>{
     const showNsu = ['debito','credito','pix_qrs'].includes(l.method);
+    const showBandeira = ['debito','credito'].includes(l.method);
     const showParcelas = l.method==='credito';
     const removeBtn = baPgtoState.linhas.length>1
       ? `<button type="button" onclick="baPgtoRemoveLinha(${i})" style="background:none;border:none;color:var(--prata-dim);cursor:pointer;font-size:1rem;padding:0 .3rem" aria-label="Remover forma">✕</button>`
@@ -6715,6 +6718,9 @@ function baPgtoRenderLinhas(){
       <input type="text" inputmode="decimal" value="${l.value?l.value.toFixed(2).replace('.',','):''}" placeholder="R$" oninput="baPgtoSetField(${i},'value',this.value)" style="${baPgtoInputStyle('flex:1;min-width:80px')}">
       ${showParcelas ? `<select onchange="baPgtoSetField(${i},'parcelas',this.value)" style="${baPgtoInputStyle('flex:1;min-width:70px')}">
         ${[1,2,3].map(n=>`<option value="${n}" ${Number(l.parcelas)===n?'selected':''}>${n}x</option>`).join('')}
+      </select>` : ''}
+      ${showBandeira ? `<select onchange="baPgtoSetField(${i},'bandeira',this.value)" style="${baPgtoInputStyle('flex:1;min-width:100px')}">
+        ${BA_PGTO_BANDEIRAS.map(b=>`<option value="${b}" ${l.bandeira===b?'selected':''}>${b||'Bandeira'}</option>`).join('')}
       </select>` : ''}
       ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
       ${removeBtn}
@@ -6728,6 +6734,7 @@ function baPgtoSetField(i, field, val){
     l.method = val;
     l.parcelas = val==='credito' ? (l.parcelas||1) : null;
     if(!['debito','credito','pix_qrs'].includes(val)) l.nsu = '';
+    if(!['debito','credito'].includes(val)) l.bandeira = '';
     baPgtoRenderLinhas();
     return;
   }
@@ -6739,7 +6746,7 @@ function baPgtoSetField(i, field, val){
 function baPgtoAddLinha(){
   const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
   const restante = Math.max(0, baPgtoState.total - distribuido);
-  baPgtoState.linhas.push({method:'dinheiro', value: restante, parcelas:1, nsu:''});
+  baPgtoState.linhas.push({method:'dinheiro', value: restante, parcelas:1, nsu:'', bandeira:''});
   baPgtoRenderLinhas();
 }
 function baPgtoRemoveLinha(i){
@@ -6757,7 +6764,8 @@ async function baInsertSalePayments(notaId, barberId, linhas){
   const rows = linhas.map(l=>({
     nota_id: notaId, barber_id: barberId, method: l.method, value: l.value,
     parcelas: l.method==='credito' ? (l.parcelas||1) : null,
-    nsu: l.nsu || null
+    nsu: l.nsu || null,
+    bandeira: l.bandeira || null
   }));
   const { error } = await sb.from('sale_payments').insert(rows);
   if(error) console.error('baInsertSalePayments', error);
