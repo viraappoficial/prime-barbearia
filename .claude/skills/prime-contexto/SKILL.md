@@ -22,4 +22,4 @@ Sistema de gestão/agendamento para barbearia. Domínio: primebarbearia.app.br
 2. **Financeiro**: registrar forma de pagamento + NSU por atendimento, conciliação com extrato bancário, relatórios, contas a pagar, DRE (ver skill `prime-financeiro`)
 3. **Chatbot**: CRM + confirmação de horário via WhatsApp/Instagram, rodando em Claude Haiku
 4. **Marketing/visibilidade**: campanhas dentro do próprio SaaS (Canva, tráfego pago) — sem IA automatizando isso por enquanto
-5. **Infra**: migração da hospedagem para
+5. **Infra**: migração da hospedagem de GitHub Pages para Vercel — projeto Vercel (`prime-barbearia`) já criado e recebendo deploy automático a cada push; domínio `primebarbearia.app.br` ainda aponta pro GitHub Pages via `CNAME`, falta o corte final apontando o domínio pra Vercel
