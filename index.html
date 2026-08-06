@@ -4211,6 +4211,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="caixa" onclick="baFinanceiroTab('caixa')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Caixa</button>
             <button class="ba-btn ghost" data-fin="aprazo" onclick="baFinanceiroTab('aprazo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">A Prazo</button>
             <button class="ba-btn ghost" data-fin="taxas" onclick="baFinanceiroTab('taxas')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Taxas de maquininha</button>
+            <button class="ba-btn ghost" data-fin="comissoes" onclick="baFinanceiroTab('comissoes')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Comissões</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -4430,6 +4431,31 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
             <p class="ba-err" id="ba-taxa-err" style="display:none;margin-top:.5rem"></p>
             <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baAddTaxaMaquininha()">Adicionar</button>
+          </div>
+
+          <div id="ba-fin-comissoes" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Fechamento de comissão por barbeiro</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Calcula a comissão do período e gera uma conta a pagar — o valor pode ser ajustado antes de gerar.</p>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+              <select id="ba-com-barbeiro" class="add-input" style="flex:1;min-width:160px"></select>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">De<input type="date" id="ba-com-from" class="add-input" style="margin-top:.2rem"></label>
+              <label style="flex:1;min-width:130px;font-size:.72rem;color:var(--prata-dim)">Até<input type="date" id="ba-com-to" class="add-input" style="margin-top:.2rem"></label>
+            </div>
+            <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.5rem .9rem;font-size:.7rem" onclick="baCalcularComissao()">Calcular</button>
+            <div id="ba-com-resumo" style="display:none;font-size:.82rem;color:var(--prata-dim);margin:.8rem 0">
+              <div>Total vendido no período: <b style="color:var(--prata)" id="ba-com-bruto"></b></div>
+              <div style="margin-top:.5rem"><label style="font-size:.72rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Valor da comissão (editável)</label>
+                <input type="text" inputmode="decimal" id="ba-com-valor" class="add-input" style="width:100%;max-width:220px">
+              </div>
+              <div style="margin-top:.5rem"><label style="font-size:.72rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Vencimento</label>
+                <input type="date" id="ba-com-vencimento" class="add-input" style="width:100%;max-width:220px">
+              </div>
+            </div>
+            <p id="ba-com-aviso" style="display:none;color:var(--dourado);font-size:.78rem;margin-top:.5rem"></p>
+            <p class="ba-err" id="ba-com-err" style="display:none;margin-top:.5rem"></p>
+            <button class="ba-btn" id="ba-com-gerar-btn" style="max-width:100%;display:none;margin-top:.6rem" onclick="baGerarComissaoExpense()">Gerar conta a pagar da comissão</button>
+            <div class="ba-slabel">Comissões geradas</div>
+            <div id="ba-com-list"></div>
           </div>
         </div>
       </div>
@@ -4659,10 +4685,12 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-caixa').style.display = sub==='caixa' ? 'block' : 'none';
   document.getElementById('ba-fin-aprazo').style.display = sub==='aprazo' ? 'block' : 'none';
   document.getElementById('ba-fin-taxas').style.display = sub==='taxas' ? 'block' : 'none';
+  document.getElementById('ba-fin-comissoes').style.display = sub==='comissoes' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
   if(sub==='caixa') baRenderCaixa();
   if(sub==='aprazo') baRenderAPrazo();
   if(sub==='taxas') baRenderTaxasMaquininha();
+  if(sub==='comissoes') baRenderComissoes();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
@@ -5062,7 +5090,7 @@ async function baFetchExpenses(from, to){
 }
 const BA_EXPENSE_CATEGORY_LABEL = {
   aluguel:'Aluguel', energia:'Energia', agua_internet:'Água/Internet', salarios:'Salários',
-  produtos:'Produtos e materiais', marketing:'Marketing', software:'Software', taxa_maquininha:'Taxa de maquininha', outros:'Outros'
+  produtos:'Produtos e materiais', marketing:'Marketing', software:'Software', taxa_maquininha:'Taxa de maquininha', comissao:'Comissão de barbeiro', outros:'Outros'
 };
 function baCategoryLabel(slug){
   const acc = baChartOfAccountsCache.find(c=>c.slug===slug);
@@ -5212,7 +5240,7 @@ function baCapRange(){
 }
 async function baFetchContasPagar(){
   const { from, to } = baCapRange();
-  let q = sb.from('expenses').select('*, suppliers(name)').gte('due_date', from).lte('due_date', to).order('due_date',{ascending:true});
+  let q = sb.from('expenses').select('*, suppliers(name), barbers(name)').gte('due_date', from).lte('due_date', to).order('due_date',{ascending:true});
   const fornecedorId = document.getElementById('ba-cap-fornecedor').value;
   const planoSlug = document.getElementById('ba-cap-plano').value;
   const status = document.getElementById('ba-cap-status').value;
@@ -5246,7 +5274,7 @@ async function baRenderContasPagar(){
   document.getElementById('ba-cap-total-pago').textContent = baFormatMoney(totalPago);
   listEl.innerHTML = rows.length ? rows.map(e=>{
     const parcelaTag = e.payment_type==='parcelado' ? ` · parcela ${e.installment_number}/${e.installment_total}` : '';
-    const fornecedorTag = e.suppliers?.name ? ` · ${e.suppliers.name}` : '';
+    const fornecedorTag = e.barbers?.name ? ` · ${e.barbers.name}` : (e.suppliers?.name ? ` · ${e.suppliers.name}` : '');
     const tags = `${baCategoryLabel(e.category)}${fornecedorTag}${parcelaTag}`;
     if(e.id===baMarkingPagoId){
       return `<div class="cap-row cap-row-editing">
@@ -5387,7 +5415,7 @@ async function baComputeDRE(year, month){
   const taxaMaquininhaSemCadastro = estimativa.semTaxa;
   const custoDireto = comissoes + cmv + taxaMaquininha + taxaMaquininhaEstimada;
   const lucroBruto = receitaTotal - custoDireto;
-  const despesasOperacionais = expenses.filter(e=>e.category!=='taxa_maquininha');
+  const despesasOperacionais = expenses.filter(e=>e.category!=='taxa_maquininha' && e.category!=='comissao');
   const totalDespesas = despesasOperacionais.reduce((s,e)=>s+e.value,0);
   const lucroLiquido = lucroBruto - totalDespesas;
   const margem = receitaTotal ? (lucroLiquido/receitaTotal) : 0;
@@ -6241,6 +6269,95 @@ async function baRemoveTaxaMaquininha(id){
   const { error } = await sb.from('taxas_maquininha').delete().eq('id', id);
   if(error) console.error('baRemoveTaxaMaquininha', error);
   await baRenderTaxasMaquininha();
+}
+
+// ══ Fechamento de comissão por barbeiro (admin) — vira uma Conta a Pagar de verdade (expenses,
+// category='comissao'), não fica só num número calculado no relatório. Valor é editável antes de gerar. ══
+function baComPeriodoLabel(from, to){ return `${baFormatDate(from)} a ${baFormatDate(to)}`; }
+async function baRenderComissoes(){
+  const sel = document.getElementById('ba-com-barbeiro');
+  if(sel){
+    sel.innerHTML = baGetRoster().filter(b=>b.isBarber!==false).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  }
+  const hoje = primeLocalDate();
+  const fromEl = document.getElementById('ba-com-from'), toEl = document.getElementById('ba-com-to');
+  if(fromEl) fromEl.value = hoje.slice(0,8)+'01';
+  if(toEl) toEl.value = hoje;
+  document.getElementById('ba-com-resumo').style.display = 'none';
+  document.getElementById('ba-com-gerar-btn').style.display = 'none';
+  document.getElementById('ba-com-aviso').style.display = 'none';
+  baComState = null;
+  await baRenderComissoesGeradas();
+}
+let baComState = null;
+async function baCalcularComissao(){
+  const errEl = document.getElementById('ba-com-err');
+  errEl.style.display = 'none';
+  const barberId = document.getElementById('ba-com-barbeiro').value;
+  const from = document.getElementById('ba-com-from').value;
+  const to = document.getElementById('ba-com-to').value;
+  if(!barberId){ errEl.textContent='Escolha um barbeiro.'; errEl.style.display='block'; return; }
+  if(!from || !to || from>to){ errEl.textContent='Escolha um período válido.'; errEl.style.display='block'; return; }
+  const barber = baGetRoster().find(b=>b.id===barberId);
+  const { data, error } = await sb.from('sales').select('*').eq('barber_id', barberId).gte('date', from).lte('date', to);
+  if(error){ console.error('baCalcularComissao', error); errEl.textContent='Erro ao calcular. Tente de novo.'; errEl.style.display='block'; return; }
+  const sales = (data||[]).map(baSaleFromRow);
+  const settings = await baFetchShopSettings();
+  let excludeIds = new Set();
+  if(!settings.comissao_fiado_na_hora) excludeIds = await baFiadoUnsettledNotaIds(barberId);
+  const bruto = sales.reduce((s,x)=>s+x.value,0);
+  const comissao = baCommissionSum(sales, barber, excludeIds);
+  baComState = { barberId, barberName: barber.name, from, to };
+  document.getElementById('ba-com-bruto').textContent = baFormatMoney(bruto);
+  document.getElementById('ba-com-valor').value = comissao.toFixed(2).replace('.',',');
+  const venc = new Date(); venc.setDate(venc.getDate()+5);
+  document.getElementById('ba-com-vencimento').value = primeLocalDate(venc);
+  document.getElementById('ba-com-resumo').style.display = 'block';
+  document.getElementById('ba-com-gerar-btn').style.display = 'block';
+  const periodoLabel = baComPeriodoLabel(from, to);
+  const { data: existentes } = await sb.from('expenses').select('name').eq('category','comissao').eq('barber_id', barberId);
+  const jaTem = (existentes||[]).some(e=>e.name.includes(periodoLabel));
+  const avisoEl = document.getElementById('ba-com-aviso');
+  if(jaTem){
+    avisoEl.textContent = `Atenção: já existe uma comissão gerada pra ${barber.name} nesse mesmo período (${periodoLabel}) — confira antes de gerar de novo.`;
+    avisoEl.style.display = 'block';
+  } else avisoEl.style.display = 'none';
+}
+async function baGerarComissaoExpense(){
+  const errEl = document.getElementById('ba-com-err');
+  errEl.style.display = 'none';
+  if(!baComState) return;
+  const valor = baAtParseMoney(document.getElementById('ba-com-valor').value);
+  const vencimento = document.getElementById('ba-com-vencimento').value;
+  if(!valor || valor<=0){ errEl.textContent='Informe um valor válido.'; errEl.style.display='block'; return; }
+  if(!vencimento){ errEl.textContent='Informe o vencimento.'; errEl.style.display='block'; return; }
+  const periodoLabel = baComPeriodoLabel(baComState.from, baComState.to);
+  const { error } = await sb.from('expenses').insert({
+    name: `Comissão — ${baComState.barberName} (${periodoLabel})`,
+    category: 'comissao', value: valor, date: primeLocalDate(), due_date: vencimento,
+    status: 'pendente', payment_type: 'normal', barber_id: baComState.barberId
+  });
+  if(error){ console.error('baGerarComissaoExpense', error); errEl.textContent='Não foi possível gerar. Tente de novo.'; errEl.style.display='block'; return; }
+  document.getElementById('ba-com-resumo').style.display = 'none';
+  document.getElementById('ba-com-gerar-btn').style.display = 'none';
+  document.getElementById('ba-com-aviso').style.display = 'none';
+  baComState = null;
+  await baRenderComissoesGeradas();
+}
+async function baRenderComissoesGeradas(){
+  const listEl = document.getElementById('ba-com-list');
+  if(!listEl) return;
+  const { data, error } = await sb.from('expenses').select('*, barbers(name)').eq('category','comissao').order('date',{ascending:false}).limit(30);
+  if(error){ console.error('baRenderComissoesGeradas', error); return; }
+  const rows = data||[];
+  listEl.innerHTML = rows.length ? rows.map(e=>{
+    const badge = e.status==='pago' ? '<span class="cap-badge cap-badge--pago">Pago</span>' : '<span class="cap-badge cap-badge--pendente">Pendente</span>';
+    return `<div class="cap-row">
+      <div class="cap-row-head"><span class="cap-row-name">${e.name}</span>${badge}</div>
+      <div class="cap-row-tags">Vence ${baFormatDate(e.due_date)}</div>
+      <div class="cap-row-foot"><span class="cap-row-value">${baFormatMoney(e.value)}</span></div>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma comissão gerada ainda.</p>';
 }
 // estimativa de taxa de maquininha pro DRE — usa o cadastro (não o extrato real, que ainda não existe)
 async function baFetchSalePaymentsByNotaIds(notaIds){
