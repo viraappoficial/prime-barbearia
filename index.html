@@ -877,6 +877,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 
     <div class="wstep" data-step="3">
       <div class="chips" id="wTime"></div>
+      <div id="wWaitlist" style="display:none"></div>
     </div>
 
     <div class="wstep" data-step="4">
@@ -1132,6 +1133,7 @@ async function buildTimes(){
   const weekday = d.getDay();
   const bookedCountByTime = {};
   dayAppts.forEach(a=>{ bookedCountByTime[a.time] = (bookedCountByTime[a.time]||0) + 1; });
+  let slotCount = 0, takenCount = 0;
   for(let t=oH*60+oM; t+SLOT_MIN<=cH*60+cM; t+=SLOT_MIN){
     if(isToday && t <= now.getHours()*60+now.getMinutes()+30) continue;
     const hh=String(Math.floor(t/60)).padStart(2,'0'), mm=String(t%60).padStart(2,'0');
@@ -1139,11 +1141,40 @@ async function buildTimes(){
     // só bloqueia o horário se NENHUM barbeiro estiver escalado, ou se todos os escalados já estiverem ocupados
     const scheduledCount = barbersScheduledAt(weekday, timeStr).length;
     const isTaken = scheduledCount===0 || (bookedCountByTime[timeStr]||0) >= scheduledCount;
+    slotCount++; if(isTaken) takenCount++;
     const btn=document.createElement('button');
     btn.className='chip'+(isTaken?' taken':''); btn.dataset.v=timeStr; btn.textContent=timeStr;
     if(isTaken){ btn.disabled=true; btn.title='Nenhum barbeiro disponível nesse horário'; }
     box.appendChild(btn);
   }
+  baRenderWaitlistCTA(slotCount>0 && takenCount===slotCount);
+}
+// dia sem nenhum horário livre — oferece entrar na lista de espera em vez de só mostrar tudo bloqueado
+async function baRenderWaitlistCTA(dayFull){
+  const box = document.getElementById('wWaitlist');
+  if(!box) return;
+  if(!dayFull){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='block';
+  const already = state.waitlistDay===state.day;
+  box.innerHTML = already
+    ? `<p style="color:var(--verde-neon);text-align:center;padding:.8rem 0;font-size:.9rem">✓ Você entrou na lista de espera desse dia — te avisamos se abrir vaga.</p>`
+    : `<div style="text-align:center;padding:.8rem 0">
+        <p style="color:var(--prata-dim);font-size:.88rem;margin-bottom:.7rem">Esse dia está sem horário livre.</p>
+        <button class="btn btn-primary" id="wWaitlistBtn">Entrar na lista de espera</button>
+      </div>`;
+  const btn = document.getElementById('wWaitlistBtn');
+  if(btn) btn.addEventListener('click', baJoinWaitlist);
+}
+async function baJoinWaitlist(){
+  const acc = typeof primeGetAccount==='function' ? primeGetAccount() : null;
+  if(!acc || !acc.id){ alert('Faça login ou crie uma conta pra entrar na lista de espera.'); return; }
+  const { error } = await sb.from('appointment_waitlist').insert({
+    client_id: acc.id, client_name: acc.name||'Cliente', client_phone: acc.phone||null,
+    desired_day: state.day, desired_services: (state.services||[]).join(' + ')||null
+  });
+  if(error){ console.error('baJoinWaitlist', error); alert('Não foi possível entrar na lista de espera. Tente de novo.'); return; }
+  state.waitlistDay = state.day;
+  baRenderWaitlistCTA(true);
 }
 
 async function renderBarberStep(){
@@ -3734,6 +3765,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         </div>
         <div id="ba-pending-wrap"></div>
         <div id="ba-lembretes-wrap"></div>
+        <div id="ba-waitlist-wrap"></div>
         <div class="ba-slabel" style="margin-top:.4rem">Escolha o dia</div>
         <div class="chips" id="ba-agenda-days"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem">
@@ -7308,6 +7340,7 @@ async function baRenderAgenda(){
   await baBuildAgendaTimes();
   await baRenderPending();
   await baRenderLembretesAmanha();
+  await baRenderWaitlist();
   baRenderNotifs();
   baUpdateOfflineBanner();
 }
@@ -7406,6 +7439,45 @@ async function baRenderLembretesAmanha(){
         <div style="width:100%;display:flex;justify-content:flex-end;margin-top:.4rem">${actionBtn}</div>
       </div>`;
     }).join('');
+}
+
+// ══ Lista de espera — clientes que quiseram um dia sem horário livre (Supabase) ══
+async function baFetchWaitlist(){
+  if(!baActingBarberId) return [];
+  const { data, error } = await sb.from('appointment_waitlist').select('*').eq('status','aguardando')
+    .or(`barber_id.is.null,barber_id.eq.${baActingBarberId}`).order('desired_day');
+  if(error){ console.error('baFetchWaitlist', error); return []; }
+  return data||[];
+}
+async function baRenderWaitlist(){
+  const wrap = document.getElementById('ba-waitlist-wrap');
+  if(!wrap) return;
+  const rows = await baFetchWaitlist();
+  if(!rows.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = `<div class="ba-slabel" style="margin-top:.4rem">Lista de espera (${rows.length})</div>` +
+    rows.map(r=>{
+      const msg = encodeURIComponent(`Oi, ${(r.client_name||'').split(' ')[0]||''}! Abriu um horário no dia ${baFormatDate(r.desired_day)} na Prime Barbearia — quer aproveitar? Responde aqui que já encaixo você!`);
+      const waNum = r.client_phone ? r.client_phone.replace(/\D/g,'') : '';
+      const avisarBtn = waNum
+        ? `<a href="https://wa.me/${waNum}?text=${msg}" target="_blank" rel="noopener" class="ba-btn" style="width:auto;max-width:none;padding:.3rem .6rem;margin:0;font-size:.64rem" onclick="baMarcarWaitlistNotificado(${r.id})">Avisar</a>`
+        : `<span style="color:var(--prata-dim);font-size:.68rem">Sem telefone</span>`;
+      return `<div class="ba-item" style="flex-wrap:wrap">
+        <div class="ic">${(r.client_name||'C').charAt(0)}</div>
+        <div class="info"><div class="n">${r.client_name||'Cliente'}</div><div class="d">${baFormatDate(r.desired_day)}${r.desired_services?' · '+r.desired_services:''}</div></div>
+        <div style="width:100%;display:flex;gap:.4rem;justify-content:flex-end;margin-top:.4rem">
+          ${avisarBtn}
+          <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.3rem .6rem;margin:0;font-size:.64rem" onclick="baRemoveWaitlist(${r.id})">Remover</button>
+        </div>
+      </div>`;
+    }).join('');
+}
+async function baMarcarWaitlistNotificado(id){
+  await sb.from('appointment_waitlist').update({status:'notificado'}).eq('id', id);
+  await baRenderWaitlist();
+}
+async function baRemoveWaitlist(id){
+  await sb.from('appointment_waitlist').update({status:'cancelado'}).eq('id', id);
+  await baRenderWaitlist();
 }
 
 // ══ Carrinho ao vivo — atendimento em andamento (Supabase, tabela cart_items) ══
