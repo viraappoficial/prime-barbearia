@@ -25,6 +25,7 @@ Fonte da verdade: variáveis `:root` no `index.html`. Esta skill documenta o que
 | `--dourado` | `#C6A75E` | Acento — valor que importa, estado ativo, ação principal (ver regra do dourado em `prime-design-evolucao`) |
 | `--dourado-claro` | `#E8D5A4` | Variante mais clara do dourado — hover de elemento dourado, texto sobre fundo escuro que precisa de leitura fácil |
 | `--dourado-dim` | `rgba(198,167,94,.35)` | Dourado translúcido — bordas e divisores discretos (`.gold-rule`, cards) |
+| `--hair` | `rgba(237,237,232,.12)` | Hairline neutra — borda fina de tabelas, inputs e divisores do painel do barbeiro (`.cad-table`, `.add-input`, `.expense-row`, `.cap-row`) |
 | `--erro` | `#E58A6B` | Estado de erro/indisponível (ex: produto esgotado) |
 | `--alerta` | `#D9A441` | Estado de atenção (ex: divergência precisa de atenção, avisos no DRE) |
 | `--violeta` | `#9B7EDE` | Estado auxiliar — hoje usado pra indicação/mimo, distinto do dourado de fidelidade |
@@ -82,6 +83,6 @@ Não existe `--raio-*` como variável — os valores em pixel se repetem por con
 
 Além do `var(--glass-blur)`, o projeto usa blur pontual em headers/overlays fixos: `blur(2px)` na nav no topo da página, `blur(4px)` em modais e headers sticky dos apps, `blur(5px)`–`blur(6px)` em overlays cheios (unlock de conquista, tabbar do barbeiro). Regra prática: quanto mais o elemento cobre a tela, mais forte o blur.
 
-## Pendência conhecida (não corrigir sem avisar)
+## Histórico
 
-A variável `--hair` é usada em dezenas de lugares (`border:1px solid var(--hair)`, tabelas, inputs do painel do barbeiro) mas **nunca foi declarada em nenhum `:root`** do arquivo. Hoje isso faz esses `border` caírem silenciosamente (propriedade com `var()` não resolvido é inválida, então o navegador ignora a declaração inteira). Antes de mexer em qualquer tela que dependa de `--hair`, vale perguntar ao usuário se é pra declarar o token (provável candidato: algo próximo de `--dourado-dim` ou um cinza neutro tipo `rgba(237,237,232,.12)`) em vez de assumir um valor sozinho.
+`--hair` foi usada em dezenas de lugares por meses sem nunca ter sido declarada em nenhum `:root` — as bordas que dependiam dela ficavam silenciosamente inválidas (browser ignora a declaração inteira quando `var()` não resolve). Corrigido em 2026-08-06: token declarado com `rgba(237,237,232,.12)`, hairline neutra consistente com o resto da paleta escura.
