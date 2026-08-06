@@ -4212,6 +4212,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="aprazo" onclick="baFinanceiroTab('aprazo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">A Prazo</button>
             <button class="ba-btn ghost" data-fin="taxas" onclick="baFinanceiroTab('taxas')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Taxas de maquininha</button>
             <button class="ba-btn ghost" data-fin="comissoes" onclick="baFinanceiroTab('comissoes')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Comissões</button>
+            <button class="ba-btn ghost" data-fin="fluxo" onclick="baFinanceiroTab('fluxo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Fluxo de caixa</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -4457,6 +4458,26 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div class="ba-slabel">Comissões geradas</div>
             <div id="ba-com-list"></div>
           </div>
+
+          <div id="ba-fin-fluxo" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Fluxo de caixa projetado</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Cruza Contas a Pagar com A Prazo a receber pra estimar quanto vai sobrar ou faltar nos próximos dias. Não inclui saldo bancário real — só o que já está em caixa/cofre hoje.</p>
+            <div class="ba-vfiltros" id="ba-fluxo-filtros">
+              <button class="ba-vf" data-fx="7" onclick="baSetFluxoDias(7)">7 dias</button>
+              <button class="ba-vf" data-fx="15" onclick="baSetFluxoDias(15)">15 dias</button>
+              <button class="ba-vf active" data-fx="30" onclick="baSetFluxoDias(30)">30 dias</button>
+              <button class="ba-vf" data-fx="60" onclick="baSetFluxoDias(60)">60 dias</button>
+              <button class="ba-vf" data-fx="90" onclick="baSetFluxoDias(90)">90 dias</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.4rem;margin:.9rem 0;font-size:.85rem">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--prata-dim)">Saldo hoje (caixa + cofre)</span><b id="ba-fluxo-saldo-hoje">R$ 0,00</b></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--prata-dim)">A receber no período</span><b style="color:var(--verde-neon)" id="ba-fluxo-receber">R$ 0,00</b></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--prata-dim)">A pagar no período</span><b style="color:#E5574B" id="ba-fluxo-pagar">R$ 0,00</b></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(198,167,94,.2);padding-top:.4rem;margin-top:.2rem"><span style="font-size:.95rem"><b>Saldo projetado</b></span><b style="font-size:1.05rem;color:var(--dourado)" id="ba-fluxo-projetado">R$ 0,00</b></div>
+            </div>
+            <div class="ba-slabel">Linha do tempo</div>
+            <div id="ba-fluxo-list"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -4686,11 +4707,13 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-aprazo').style.display = sub==='aprazo' ? 'block' : 'none';
   document.getElementById('ba-fin-taxas').style.display = sub==='taxas' ? 'block' : 'none';
   document.getElementById('ba-fin-comissoes').style.display = sub==='comissoes' ? 'block' : 'none';
+  document.getElementById('ba-fin-fluxo').style.display = sub==='fluxo' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
   if(sub==='caixa') baRenderCaixa();
   if(sub==='aprazo') baRenderAPrazo();
   if(sub==='taxas') baRenderTaxasMaquininha();
   if(sub==='comissoes') baRenderComissoes();
+  if(sub==='fluxo') baRenderFluxoCaixa();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
@@ -6359,6 +6382,60 @@ async function baRenderComissoesGeradas(){
     </div>`;
   }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma comissão gerada ainda.</p>';
 }
+
+// ══ Fluxo de caixa projetado (admin) — cruza Contas a Pagar (expenses pendente) com A Prazo a
+// receber (fiado_charges em aberto/faturado), sem tabela nova, 100% computado do que já existe ══
+let baFluxoDias = 30;
+function baSetFluxoDias(dias){
+  baFluxoDias = dias;
+  document.querySelectorAll('#ba-fluxo-filtros .ba-vf').forEach(b=>b.classList.toggle('active', Number(b.dataset.fx)===dias));
+  baRenderFluxoCaixa();
+}
+async function baFetchExpensesPendentesAte(limite){
+  const { data, error } = await sb.from('expenses').select('id, name, value, due_date, barbers(name), suppliers(name)').eq('status','pendente').lte('due_date', limite).order('due_date');
+  if(error){ console.error('baFetchExpensesPendentesAte', error); return []; }
+  return data||[];
+}
+async function baRenderFluxoCaixa(){
+  const listEl = document.getElementById('ba-fluxo-list');
+  if(!listEl) return;
+  const horizonte = new Date(); horizonte.setDate(horizonte.getDate()+baFluxoDias);
+  const limite = primeLocalDate(horizonte);
+  const [saldoCaixa, saldoCofre, pagarRows, receberRows] = await Promise.all([
+    baCashRegisterBalance(), baCashVaultBalance(),
+    baFetchExpensesPendentesAte(limite),
+    baFetchFiadoOpenCharges()
+  ]);
+  const pagar = (pagarRows||[]).filter(e=>e.due_date);
+  const receber = (receberRows||[]).filter(c=>c.due_date<=limite);
+  const saldoHoje = saldoCaixa + saldoCofre;
+  const totalReceber = receber.reduce((s,c)=>s+c.value,0);
+  const totalPagar = pagar.reduce((s,e)=>s+e.value,0);
+  const projetado = saldoHoje + totalReceber - totalPagar;
+  document.getElementById('ba-fluxo-saldo-hoje').textContent = baFormatMoney(saldoHoje);
+  document.getElementById('ba-fluxo-receber').textContent = baFormatMoney(totalReceber);
+  document.getElementById('ba-fluxo-pagar').textContent = baFormatMoney(totalPagar);
+  const projEl = document.getElementById('ba-fluxo-projetado');
+  projEl.textContent = baFormatMoney(projetado);
+  projEl.style.color = projetado>=0 ? 'var(--verde-neon)' : '#E5574B';
+  const itens = [
+    ...pagar.map(e=>({ due_date:e.due_date, label:e.name, sub:e.barbers?.name||e.suppliers?.name||'', value:e.value, tipo:'pagar' })),
+    ...receber.map(c=>({ due_date:c.due_date, label:c.client_name, sub:c.status==='faturado'?'Faturado':'A Prazo em aberto', value:c.value, tipo:'receber' }))
+  ].sort((a,b)=> a.due_date.localeCompare(b.due_date));
+  listEl.innerHTML = itens.length ? itens.map(it=>{
+    const badge = it.tipo==='pagar'
+      ? '<span class="cap-badge cap-badge--pendente">A pagar</span>'
+      : '<span class="cap-badge cap-badge--pago">A receber</span>';
+    const hoje = primeLocalDate();
+    const atrasado = it.due_date < hoje ? ' · <span style="color:#E5574B">atrasado</span>' : '';
+    return `<div class="cap-row">
+      <div class="cap-row-head"><span class="cap-row-name">${it.label}</span>${badge}</div>
+      <div class="cap-row-tags">${it.sub}${it.sub?' · ':''}Vence ${baFormatDate(it.due_date)}${atrasado}</div>
+      <div class="cap-row-foot"><span class="cap-row-value" style="color:${it.tipo==='pagar'?'#E5574B':'var(--verde-neon)'}">${it.tipo==='pagar'?'−':'+'} ${baFormatMoney(it.value)}</span></div>
+    </div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nada a pagar ou receber nesse período.</p>';
+}
+
 // estimativa de taxa de maquininha pro DRE — usa o cadastro (não o extrato real, que ainda não existe)
 async function baFetchSalePaymentsByNotaIds(notaIds){
   if(!notaIds.length) return [];
