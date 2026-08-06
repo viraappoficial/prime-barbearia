@@ -4448,7 +4448,11 @@ let baRosterCache = []; // mirror em memória da tabela `barbers` do Supabase
 let baProductsCache = []; // mirror em memória da tabela `products` — refresh em pontos de entrada, leitura síncrona no resto
 
 async function baLoadRoster(){
-  const { data, error } = await sb.from('barbers').select('*').order('created_at');
+  // visitante anônimo (booking público) só pode ler a view barbers_public (sem e-mail/comissão/meta —
+  // dados sensíveis não expostos sem login); logado (barbeiro/admin) lê a tabela real com tudo
+  const { data: sessionData } = await sb.auth.getSession();
+  const table = (sessionData && sessionData.session) ? 'barbers' : 'barbers_public';
+  const { data, error } = await sb.from(table).select('*').order('created_at');
   if(error){ console.error('baLoadRoster', error); return; }
   baRosterCache = (data||[]).map(b=>({ id:b.id, name:b.name, email:b.email, role:b.role, isBarber:b.is_barber,
     commissionPct:b.commission_pct, monthlyGoal:b.monthly_goal, hours:b.hours,
