@@ -5751,9 +5751,17 @@ function baOpenQRPrint(){
     <div class="qp-sub">balcão</div>
     <div class="qp-title">Aponte a câmera do seu celular aqui</div>
     <p class="qp-desc">Escaneie o código e agende seu horário<br>direto pelo app da Prime.</p>
-    <div class="qp-code"><img src="${qrImg}" alt="QR Code Prime Barbearia"></div>
+    <div class="qp-code"><img id="ba-qr-print-img" alt="QR Code Prime Barbearia"></div>
     <div class="qp-foot">${siteUrl.replace(/^https?:\/\//,'')}</div>`;
-  window.print();
+  // espera o QR (vem de um serviço externo) carregar de verdade antes de imprimir — senão o navegador
+  // "tira a foto" da página pra impressão antes da imagem chegar, e o quadrado sai vazio
+  const img = document.getElementById('ba-qr-print-img');
+  let printed = false;
+  const doPrint = () => { if(printed) return; printed = true; window.print(); };
+  img.onload = doPrint;
+  img.onerror = doPrint; // mesmo se falhar, não trava o barbeiro sem conseguir imprimir o resto
+  img.src = qrImg;
+  setTimeout(doPrint, 4000); // rede lenta: imprime do jeito que estiver em vez de travar pra sempre
 }
 async function baShareReportWhatsApp(){
   const d = await baBuildReportData();
