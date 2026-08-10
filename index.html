@@ -8484,23 +8484,31 @@ async function baEncSearchClient(){
   const { data, error } = await sb.from('clients').select('id,name,phone,email,instagram')
     .or(`name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`).limit(5);
   if(myToken !== baEncSearchToken) return; // resultado desatualizado, uma busca mais nova já está em andamento
-  baEncSearchResults = data || [];
-  box.innerHTML = baEncSearchResults.length ? baEncSearchResults.map(c=>
-    `<div class="ba-enc-result" onclick="baEncSelectClient('${c.id}')">
-      ${c.name} <span class="enc-sub">${c.instagram||''} · ${c.email||''}</span>
+  // também busca na carteira deste barbeiro — cliente de balcão sem conta some pra sempre da busca senão
+  const myClients = await baFetchMyCrmClients();
+  const qLower = q.toLowerCase();
+  const walkins = myClients.filter(c=>!c.clientId && c.name.toLowerCase().includes(qLower));
+  const fromClients = (data||[]).map(c=>({key:'c:'+c.id, id:c.id, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram}));
+  const fromWallet = walkins.map(c=>({key:'w:'+c.id, id:null, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram, walkin:true}));
+  baEncSearchResults = [...fromClients, ...fromWallet];
+  box.innerHTML = baEncSearchResults.map(c=>
+    `<div class="ba-enc-result" onclick="baEncSelectClient('${c.key}')">
+      ${c.name} <span class="enc-sub">${c.walkin ? 'sem cadastro' : (c.instagram||'')} · ${c.email||''}</span>
     </div>`
-  ).join('') + `<div class="ba-enc-result" style="color:var(--prata-dim)" onclick="baEncUseTypedName('${q.replace(/'/g,"\\'")}')">Nenhum desses — usar "${q}" sem cadastro</div>`
-    : `<div class="ba-enc-result" onclick="baEncUseTypedName('${q.replace(/'/g,"\\'")}')">Cliente sem cadastro: usar "${q}"</div>`;
+  ).join('') + `<div class="ba-enc-result" style="color:var(--prata-dim)" onclick="baEncUseTypedName('${q.replace(/'/g,"\\'")}')">Nenhum desses — cadastrar "${q}" na hora</div>`;
 }
-function baEncSelectClient(id){
-  const client = baEncSearchResults.find(c=>c.id===id);
+function baEncSelectClient(key){
+  const client = baEncSearchResults.find(c=>c.key===key);
   if(!client) return;
   baEncSelectedClient = client;
   baEncRenderSelected();
 }
+// leva pra aba "novo cliente" com o nome já preenchido — garante que sempre capturamos telefone,
+// senão esse cliente nunca pode ser vinculado a uma conta futura (pré-cadastro depende do telefone)
 function baEncUseTypedName(name){
-  baEncSelectedClient = { id:null, name, email:null, instagram:null };
-  baEncRenderSelected();
+  document.querySelector('#ba-enc-client-seg [data-mode="novo"]').click();
+  document.getElementById('ba-enc-new-name').value = name;
+  document.getElementById('ba-enc-new-phone').focus();
 }
 function baEncRenderSelected(){
   const client = baEncSelectedClient;
@@ -8529,10 +8537,15 @@ async function baSaveEncaixe(){
     if(!name) return fail('Digite o nome do cliente.');
     if(phoneRaw.replace(/\D/g,'').length<10) return fail('Digite um telefone válido.');
     const phone = baAtNormalizePhone(phoneRaw);
+    // nome repetido é o mesmo cliente de balcão de antes — reaproveita em vez de travar (mesma lógica do Atendimento)
     const myClients = await baFetchMyCrmClients();
-    if(myClients.some(c=>c.name.toLowerCase()===name.toLowerCase())) return fail('Já existe um cliente com esse nome na carteira desse barbeiro.');
-    await baCreateCrmClient({name, phone});
-    baEncSelectedClient = { id:null, name, email:null, instagram:null };
+    const existing = myClients.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(existing){
+      baEncSelectedClient = { id: existing.clientId||null, name: existing.name, email: existing.email, instagram: existing.instagram };
+    } else {
+      await baCreateCrmClient({name, phone});
+      baEncSelectedClient = { id:null, name, email:null, instagram:null };
+    }
   }
   if(!baEncSelectedClient) return fail('Selecione um cliente.');
   const svcs = [...document.querySelectorAll('.ba-enc-svc:checked')].map(x=>x.value);
@@ -8683,10 +8696,10 @@ function baAtParseMoney(str){
   const cleaned = (str||'').replace(/[^\d,]/g,'').replace(',','.');
   return parseFloat(cleaned) || 0;
 }
+// só dígitos locais, sem DDI — mesmo padrão do telefone salvo no cadastro de cliente (clients.phone),
+// pra bater exatamente na comparação de pré-cadastro (check_precadastro/link_precadastro no banco)
 function baAtNormalizePhone(raw){
-  let d = (raw||'').replace(/\D/g,'');
-  if(d.length===10 || d.length===11) d = '55'+d;
-  return d;
+  return (raw||'').replace(/\D/g,'');
 }
 
 function baAtSearchProduct(){
