@@ -8622,20 +8622,27 @@ async function baAtSearchClient(){
   const box = document.getElementById('at-search-results');
   if(!q || q.length < 2){ box.innerHTML=''; return; }
   const myToken = ++baAtSearchToken;
-  // busca na tabela real de clientes cadastrados (nome, @ ou e-mail), não só na carteira deste barbeiro
+  // busca na tabela real de clientes cadastrados (nome, @ ou e-mail)...
   const { data, error } = await sb.from('clients').select('id,name,phone,email,instagram')
     .or(`name.ilike.%${q}%,instagram.ilike.%${q}%,email.ilike.%${q}%`).limit(5);
   if(myToken !== baAtSearchToken) return; // resultado desatualizado, uma busca mais nova já está em andamento
   if(error){ console.error('baAtSearchClient', error); return; }
-  baAtSearchResults = data || [];
+  // ...e também na carteira deste barbeiro, pra achar cliente de balcão sem conta cadastrado antes
+  // (senão fica invisível pra busca pra sempre — era exatamente o bug que travava o Atendimento)
+  const myClients = await baFetchMyCrmClients();
+  const qLower = q.toLowerCase();
+  const walkins = myClients.filter(c=>!c.clientId && c.name.toLowerCase().includes(qLower));
+  const fromClients = (data||[]).map(c=>({key:'c:'+c.id, id:c.id, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram}));
+  const fromWallet = walkins.map(c=>({key:'w:'+c.id, id:null, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram, walkin:true}));
+  baAtSearchResults = [...fromClients, ...fromWallet];
   box.innerHTML = baAtSearchResults.length ? baAtSearchResults.map(c=>
-    `<div class="ba-enc-result" onclick="baAtSelectClient('${c.id}')">
-      ${c.name} <span class="enc-sub">${c.instagram||''} · ${c.email||''}</span>
+    `<div class="ba-enc-result" onclick="baAtSelectClient('${c.key}')">
+      ${c.name} <span class="enc-sub">${c.walkin ? 'sem cadastro' : (c.instagram||'')} · ${c.email||''}</span>
     </div>`
   ).join('') : '<div style="padding:.4rem .6rem;color:var(--prata-dim);font-size:.82rem">Nenhum cliente encontrado</div>';
 }
-function baAtSelectClient(id){
-  const client = baAtSearchResults.find(c=>c.id===id);
+function baAtSelectClient(key){
+  const client = baAtSearchResults.find(c=>c.key===key);
   if(!client) return;
   baAtSelectedClient = client;
   document.getElementById('at-search').value = '';
@@ -8766,9 +8773,16 @@ async function baAtRegistrar(){
     if(!name) return fail('Digite o nome do cliente.');
     if(phoneRaw.replace(/\D/g,'').length<10) return fail('Digite um telefone válido.');
     const phone = baAtNormalizePhone(phoneRaw);
-    const clients = await baFetchMyCrmClients();
-    if(clients.some(c=>c.name.toLowerCase()===name.toLowerCase())) return fail('Já existe um cliente com esse nome na sua carteira.');
-    await baCreateCrmClient({name, phone});
+    // nome repetido na carteira não é erro — é o mesmo cliente de balcão de uma tentativa anterior
+    // (ex: atendimento cadastrado mas não finalizado). Reaproveita em vez de travar o barbeiro sem saída.
+    const myClients = await baFetchMyCrmClients();
+    const existing = myClients.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(existing){
+      baAtSelectedClient = { id: existing.clientId||null, name: existing.name, phone: existing.phone, email: existing.email, instagram: existing.instagram };
+    } else {
+      await baCreateCrmClient({name, phone});
+      baAtSelectedClient = { id:null, name, phone, email:null, instagram:null };
+    }
     clientName = name;
   }
 
