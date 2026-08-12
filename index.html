@@ -7522,12 +7522,18 @@ async function baCancelClientPlan(clientName){
 let baAgendaDay = null;
 
 const ATENDIMENTO_AUTO_START_MIN = 6;
+// horário desfeito manualmente (baUndoIniciarAtendimento) não pode ser recapturado pelo auto-início na
+// hora — senão, num horário muito atrasado, o auto-início religa sozinho antes do barbeiro nem ver que
+// desfez. Dá uma trégua de alguns minutos pro barbeiro decidir com calma (remarcar, iniciar de verdade etc).
+const baUndoneGraceUntil = new Map(); // apptId -> timestamp até quando ignorar esse id no auto-início
+const BA_UNDO_GRACE_MIN = 15;
 async function baAutoStartDueAppointments(){
   if(!baActingBarberId) return;
   const { data, error } = await sb.from('appointments').select('*').eq('barber_id', baActingBarberId).eq('status','confirmado').is('iniciado_em', null);
   if(error){ console.error('baAutoStartDueAppointments', error); return; }
   const now = Date.now();
   const due = (data||[]).filter(a=>{
+    if((baUndoneGraceUntil.get(a.id)||0) > now) return false;
     const schedTime = new Date(a.day+'T'+a.time+':00').getTime();
     return now - schedTime >= ATENDIMENTO_AUTO_START_MIN*60*1000;
   });
@@ -7699,7 +7705,8 @@ async function baIniciarAtendimento(apptId){
 // qualquer produto já jogado no carrinho, já que um atendimento desfeito começa do zero se reiniciado.
 // mesmo nível de confiança de Iniciar/Não veio (sem gate de admin) — o horário em si não é cancelado.
 async function baUndoIniciarAtendimento(apptId){
-  if(!confirm('Desfazer o início desse atendimento? Qualquer produto já adicionado ao carrinho será removido, e o horário volta pra "confirmado".')) return;
+  if(!confirm('Desfazer o início desse atendimento? Qualquer produto já adicionado ao carrinho será removido, e o horário volta pra "confirmado".\n\nSe o horário já passou há muito tempo, o sistema não vai reiniciar sozinho pelos próximos 15 minutos — dá tempo de remarcar ou decidir com calma.')) return;
+  baUndoneGraceUntil.set(apptId, Date.now() + BA_UNDO_GRACE_MIN*60*1000);
   await sb.from('cart_items').delete().eq('appointment_id', apptId);
   await primeUpdateAppointment(apptId, {iniciadoEm: null});
   baBuildAgendaTimes();
