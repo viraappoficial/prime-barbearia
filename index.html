@@ -7695,6 +7695,15 @@ async function baIniciarAtendimento(apptId){
   await primeUpdateAppointment(apptId, {iniciadoEm: Date.now()});
   baOpenCarrinho(apptId);
 }
+// desfaz um "Iniciar" clicado sem querer — volta o horário pra confirmado (não iniciado) e limpa
+// qualquer produto já jogado no carrinho, já que um atendimento desfeito começa do zero se reiniciado.
+// mesmo nível de confiança de Iniciar/Não veio (sem gate de admin) — o horário em si não é cancelado.
+async function baUndoIniciarAtendimento(apptId){
+  if(!confirm('Desfazer o início desse atendimento? Qualquer produto já adicionado ao carrinho será removido, e o horário volta pra "confirmado".')) return;
+  await sb.from('cart_items').delete().eq('appointment_id', apptId);
+  await primeUpdateAppointment(apptId, {iniciadoEm: null});
+  baBuildAgendaTimes();
+}
 
 let baCarrinhoApptId = null;
 async function baOpenCarrinho(apptId){
@@ -8216,7 +8225,7 @@ async function baBuildAgendaTimes(){
         ? `${svcName} · iniciado há ${baElapsedMin(a.iniciadoEm)}min`
         : `${svcName}${dur} · <span style="color:${statusColor[st]}">${statusLabel[st]||st}</span>`;
       const statusBtn = st==='pendente' ? `<button class="ba-btn" style="width:auto;max-width:none;padding:.3rem .6rem;margin:0;font-size:.65rem" onclick="baAcceptAppt(${a.id})">Aceitar</button>`
-        : emAndamento ? `<button class="ba-mini-btn amber" onclick="baOpenCarrinho(${a.id})">Abrir carrinho</button>`
+        : emAndamento ? `<button class="ba-mini-btn amber" onclick="baOpenCarrinho(${a.id})">Abrir carrinho</button><button class="ba-mini-btn ghost" onclick="baUndoIniciarAtendimento(${a.id})">Desfazer início</button>`
         : st==='confirmado' ? `<button class="ba-mini-btn primary" onclick="baIniciarAtendimento(${a.id})">Iniciar</button>`
         : '';
       const canManage = (st==='pendente' || st==='confirmado') && !emAndamento;
