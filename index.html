@@ -1584,8 +1584,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
       <div id="ca-login-form">
         <div class="ca-form-title">Entrar na sua conta</div>
-        <div class="ca-field" id="ca-f-email"><label>E-mail</label><input type="email" id="ca-email" placeholder="seu@email.com" autocomplete="off"><span class="err">Digite um e-mail válido</span></div>
-        <div class="ca-field" id="ca-f-pass"><label>Senha</label><input type="password" id="ca-pass" placeholder="••••••••"><span class="err">Mínimo de 6 caracteres</span></div>
+        <div class="ca-field" id="ca-f-email"><label>E-mail</label><input type="email" id="ca-email" placeholder="seu@email.com" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ca-pass').focus();}"><span class="err">Digite um e-mail válido</span></div>
+        <div class="ca-field" id="ca-f-pass"><label>Senha</label><input type="password" id="ca-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter'){event.preventDefault();primeBtnLoading(this.closest('#ca-login-form').querySelector('.ca-btn'),400);caLogin();}"><span class="err">Mínimo de 6 caracteres</span></div>
         <button class="ca-btn" onclick="primeBtnLoading(this,400);caLogin()">Entrar</button>
         <p class="ca-login-err" id="ca-login-err" style="display:none;color:var(--erro);font-size:.82rem;margin-top:.8rem">E-mail ou senha incorretos.</p>
         <p class="ca-signup"><a href="#" onclick="caSendPasswordReset();return false">Esqueceu a senha?</a></p>
@@ -3556,15 +3556,6 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .bar-labels span{flex:1;text-align:center;font-size:.58rem;color:var(--prata-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #barberApp .bar-day-wrap{flex:1;display:flex;justify-content:center;width:100%;align-items:flex-end}
 
-#barberApp .line-wrap{position:relative}
-#barberApp .line-svg{width:100%;height:120px;display:block;overflow:visible}
-#barberApp .line-path{fill:none;stroke:var(--dourado);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#barberApp .line-area{fill:var(--dourado);opacity:.08}
-#barberApp .line-dot{fill:var(--dourado);stroke:var(--grafite-card);stroke-width:2}
-#barberApp .line-months{display:flex;justify-content:space-between;margin-top:.4rem}
-#barberApp .line-months span{font-size:.62rem;color:var(--prata-dim)}
-#barberApp .line-endlabel{font-size:.68rem;fill:var(--dourado-claro);font-weight:600}
-
 /* ── ranking da equipe (admin) ── */
 #barberApp .rank-list{display:flex;flex-direction:column;gap:.5rem}
 #barberApp .rank-row{background:var(--grafite-card);border:1px solid rgba(198,167,94,.12);border-radius:10px;padding:.8rem .9rem;display:flex;align-items:center;gap:.7rem;position:relative;overflow:hidden}
@@ -3734,8 +3725,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <div class="ba-sub">Área do barbeiro</div>
         <div id="ba-login-form">
           <div class="ba-form-title">Entrar</div>
-          <div class="ba-field" id="ba-f-email"><label>E-mail</label><input type="email" id="ba-email" placeholder="seu@email.com" autocomplete="off"><span class="err">Digite um e-mail válido</span></div>
-          <div class="ba-field" id="ba-f-pass"><label>Senha</label><input type="password" id="ba-pass" placeholder="••••••••"><span class="err">Mínimo de 6 caracteres</span></div>
+          <div class="ba-field" id="ba-f-email"><label>E-mail</label><input type="email" id="ba-email" placeholder="seu@email.com" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ba-pass').focus();}"><span class="err">Digite um e-mail válido</span></div>
+          <div class="ba-field" id="ba-f-pass"><label>Senha</label><input type="password" id="ba-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter'){event.preventDefault();primeBtnLoading(this.closest('#ba-login-form').querySelector('.ba-btn'),400);baLogin();}"><span class="err">Mínimo de 6 caracteres</span></div>
           <button class="ba-btn" onclick="primeBtnLoading(this,400);baLogin()">Entrar</button>
           <p class="ba-err" id="ba-login-err">E-mail ou senha incorretos.</p>
           <p class="ba-hint">Recebeu um código de convite? <a href="#" onclick="baShowInviteForm();return false">Tenho um convite</a></p>
@@ -3964,10 +3955,9 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
                 <button class="period-chip" data-months="12">12m</button>
               </div>
             </div>
-            <div class="line-wrap">
-              <svg class="line-svg" viewBox="0 0 400 120" preserveAspectRatio="none" id="ba-dash-line"></svg>
-            </div>
-            <div class="line-months" id="ba-dash-line-months"></div>
+            <div class="chart-sub" id="ba-dash-trend-sub"></div>
+            <div class="bars" id="ba-dash-trend-bars"></div>
+            <div class="bar-labels" id="ba-dash-trend-labels"></div>
           </div>
 
           <div id="ba-dash-ranking-wrap" style="display:none">
@@ -5012,32 +5002,24 @@ function baRenderDashLine(months){
     const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
     data.push({month:d, val: baScopedMonthlyTotal(d.getFullYear(), d.getMonth())});
   }
-  const vals = data.map(d=>d.val);
-  const maxM = Math.max(...vals), minM = Math.min(...vals);
-  if(maxM===0){
-    document.getElementById('ba-dash-line').innerHTML = `<text x="200" y="60" text-anchor="middle" fill="var(--prata-dim)" font-size="11" font-family="var(--font-body)">Sem faturamento registrado nesse período ainda</text>`;
-    document.getElementById('ba-dash-line-months').innerHTML = data.map((d,i)=>
-      `<span>${i===data.length-1 || i%(months<=6?1:2)===0 ? BA_MONTHS[d.month.getMonth()] : ''}</span>`
-    ).join('');
-    return;
+  const subEl = document.getElementById('ba-dash-trend-sub');
+  const last = data[data.length-1].val, prev = data.length>1 ? data[data.length-2].val : 0;
+  if(data.every(d=>d.val===0)){
+    subEl.textContent = 'Sem faturamento registrado nesse período ainda';
+  } else if(prev>0){
+    const pct = ((last-prev)/prev)*100;
+    subEl.innerHTML = `Mês atual: <b style="color:var(--prata)">${baFormatMoney(last)}</b> <span style="color:${pct>=0?'var(--verde-neon)':'#E0665C'}">${pct>=0?'▲':'▼'} ${Math.abs(pct).toFixed(0)}% vs mês anterior</span>`;
+  } else {
+    subEl.textContent = `Mês atual: ${baFormatMoney(last)}`;
   }
-  const pad = 10, w = 400, h = 100;
-  const pts = data.map((d,i)=>{
-    const x = pad + (i/(data.length-1||1)) * (w-pad*2);
-    const y = h - ((d.val-minM)/((maxM-minM)||1)) * (h-20) - 5;
-    return [x,y];
-  });
-  const pathD = pts.map((p,i)=> (i===0?'M':'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
-  const areaD = pathD + ` L${pts[pts.length-1][0]},${h} L${pts[0][0]},${h} Z`;
-  document.getElementById('ba-dash-line').innerHTML = `
-    <path class="line-area" d="${areaD}"></path>
-    <path class="line-path" d="${pathD}"></path>
-    ${pts.map((p,i)=> i===pts.length-1 ? '' : `<circle class="line-dot" cx="${p[0]}" cy="${p[1]}" r="3.5"></circle>`).join('')}
-    <circle class="line-dot" cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="5" fill="var(--dourado-claro)"></circle>
-    <text class="line-endlabel" x="${pts[pts.length-1][0]-4}" y="${pts[pts.length-1][1]-12}" text-anchor="end">${baFormatMoney(data[data.length-1].val)}</text>
-  `;
+  const max = Math.max(...data.map(d=>d.val), 1);
+  document.getElementById('ba-dash-trend-bars').innerHTML = data.map((d,i)=>{
+    const h = Math.max((d.val/max)*100, d.val>0?5:0);
+    const isCurrent = i===data.length-1;
+    return `<div class="bar-col"><div class="bar-day-wrap"><div class="bar-fill${isCurrent?' today':''}" style="height:${h}%"><div class="bar-tip">${baFormatMoney(d.val)}</div></div></div></div>`;
+  }).join('');
   const labelEvery = months<=6 ? 1 : 2;
-  document.getElementById('ba-dash-line-months').innerHTML = data.map((d,i)=>{
+  document.getElementById('ba-dash-trend-labels').innerHTML = data.map((d,i)=>{
     const show = i%labelEvery===0 || i===data.length-1;
     return `<span>${show ? BA_MONTHS[d.month.getMonth()] : ''}</span>`;
   }).join('');
