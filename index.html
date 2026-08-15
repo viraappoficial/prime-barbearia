@@ -835,11 +835,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
     <div class="progress"><span id="p1"></span><span id="p2"></span><span id="p3"></span><span id="p4"></span><span id="p5"></span></div>
 
     <div class="wstep active" data-step="1">
-      <div class="wsvc-cats" id="wServiceCats">
-        <button class="wsvc-cat active" data-cat="servico">Serviços</button>
-        <button class="wsvc-cat" data-cat="combo">Combos</button>
-        <button class="wsvc-cat" data-cat="tratamento">Tratamentos</button>
-      </div>
+      <div class="wsvc-cats" id="wServiceCats"></div>
       <div class="chips" id="wService"></div>
     </div>
 
@@ -930,11 +926,21 @@ async function primeFetchServices(){
   if(typeof primeRenderServiceChips==='function') primeRenderServiceChips();
   if(typeof primeRenderLandingServices==='function') primeRenderLandingServices();
 }
-function primeSvcCatLabel(cat){ return cat==='combo' ? 'Combos' : cat==='tratamento' ? 'Tratamentos' : 'Serviços'; }
+function primeSvcCatLabel(cat){
+  const known = {servico:'Serviços', combo:'Combos', tratamento:'Tratamentos'};
+  if(known[cat]) return known[cat];
+  return cat ? cat.charAt(0).toUpperCase()+cat.slice(1) : 'Outros';
+}
 // grades de serviço do app do barbeiro (Atendimento, Encaixe, editar carrinho) — mesmo catálogo do
 // agendamento do cliente, só que agrupado por categoria em vez de aba, pra não perder espaço na tela
+function primeSvcCategoriesInOrder(){
+  const known = ['servico','combo','tratamento'];
+  const present = Array.from(new Set(primeServicesCache.map(s=>s.category)));
+  const extras = present.filter(c=>!known.includes(c)).sort();
+  return [...known, ...extras].filter(c=>present.includes(c));
+}
 function primeGroupedSvcHtml(itemHtmlFn){
-  return ['servico','combo','tratamento'].map(cat=>{
+  return primeSvcCategoriesInOrder().map(cat=>{
     const items = primeServicesCache.filter(s=>s.category===cat);
     if(!items.length) return '';
     return `<div class="ba-svc-catlabel">${primeSvcCatLabel(cat)}</div>` + items.map(itemHtmlFn).join('');
@@ -1089,7 +1095,13 @@ document.getElementById('wServiceCats').addEventListener('click', e=>{
 // já feita em outras categorias (state.services), então trocar de aba não perde o que já foi marcado
 function primeRenderServiceChips(){
   const box = document.getElementById('wService');
-  if(!box) return;
+  const catsBox = document.getElementById('wServiceCats');
+  if(!box || !catsBox) return;
+  const cats = primeSvcCategoriesInOrder();
+  if(!cats.includes(wServiceCat)) wServiceCat = cats[0] || 'servico';
+  catsBox.innerHTML = cats.map(cat=>
+    `<button class="wsvc-cat${cat===wServiceCat?' active':''}" data-cat="${cat}">${primeSvcCatLabel(cat)}</button>`
+  ).join('');
   const items = primeServicesCache.filter(s=>s.category===wServiceCat);
   box.innerHTML = items.length ? items.map(s=>{
     const active = state.services.includes(s.name) ? ' active' : '';
@@ -3338,6 +3350,10 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-svc-grid{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.6rem}
 #barberApp .ba-svc-catlabel{width:100%;margin:.5rem 0 .1rem;font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dourado)}
 #barberApp .ba-svc-catlabel:first-child{margin-top:0}
+#barberApp .ba-color-swatches{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.3rem}
+#barberApp .ba-color-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);transition:transform .12s,border-color .12s;flex:none;padding:0}
+#barberApp .ba-color-swatch:hover{transform:scale(1.12)}
+#barberApp .ba-color-swatch.selected{border-color:var(--prata)}
 #barberApp .ba-svc-chip{display:inline-flex;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #barberApp .ba-svc-chip input{display:none}
 #barberApp .ba-svc-chip-label{display:flex;align-items:center;gap:.45rem;padding:.5rem .95rem;border-radius:999px;border:1px solid var(--dourado-dim);background:rgba(198,167,94,.08);color:var(--prata);font-size:.78rem;letter-spacing:.03em;transition:all .2s;white-space:nowrap;user-select:none}
@@ -4163,34 +4179,15 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="ba-field"><label>Descrição (aparece na página principal)</label><input type="text" id="ba-servico-desc" placeholder="Ex: Fade moderno com acabamento na navalha."></div>
           <div style="display:flex;gap:.6rem;flex-wrap:wrap">
             <div class="ba-field" style="flex:1;min-width:130px"><label>Categoria</label>
-              <select id="ba-servico-categoria">
-                <option value="servico">Serviço</option>
-                <option value="combo">Combo</option>
-                <option value="tratamento">Tratamento</option>
-              </select>
+              <select id="ba-servico-categoria" onchange="baServicoCategoriaChanged()"></select>
+              <input type="text" id="ba-servico-categoria-nova" placeholder="Nome da categoria nova..." style="display:none;margin-top:.4rem">
             </div>
             <div class="ba-field" style="flex:1;min-width:100px"><label>Preço (R$)</label><input type="text" inputmode="decimal" id="ba-servico-preco" placeholder="Ex: 45,00"></div>
             <div class="ba-field" style="flex:1;min-width:100px"><label>Duração (min)</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-servico-duracao" placeholder="Ex: 45"></div>
           </div>
           <div class="ba-field"><label>Cor na agenda</label>
-            <select id="ba-servico-cor">
-              <option value="#C6A75E">Dourado</option>
-              <option value="#D9A566">Âmbar</option>
-              <option value="#8FA6C7">Azul</option>
-              <option value="#7FBF8A">Verde</option>
-              <option value="#9B7EDE">Violeta</option>
-              <option value="#D98C7A">Terracota</option>
-              <option value="#6E8CA0">Petróleo</option>
-              <option value="#A0A4AE">Cinza</option>
-              <option value="#E58A6B">Coral</option>
-              <option value="#D9A441">Mostarda</option>
-              <option value="#4E9B8F">Verde-azulado</option>
-              <option value="#B98CC9">Lilás</option>
-              <option value="#7A9E6E">Oliva</option>
-              <option value="#9E8A6E">Marrom claro</option>
-              <option value="#E8D5A4">Dourado claro</option>
-              <option value="#C9986B">Bronze</option>
-            </select>
+            <div class="ba-color-swatches" id="ba-servico-cor-swatches"></div>
+            <input type="hidden" id="ba-servico-cor" value="#C6A75E">
           </div>
           <p class="ba-err" id="ba-servico-err" style="display:none"></p>
           <div style="display:flex;gap:.5rem">
@@ -7240,6 +7237,7 @@ function baProdCategoryList(all){
 }
 // ══ Catálogo de serviços (Supabase, admin-only) — alimenta agendamento, Atendimento, Encaixe e a landing ══
 let baEditingServicoId = null;
+const BA_SVC_COLOR_PRESETS = ['#C6A75E','#D9A566','#8FA6C7','#7FBF8A','#9B7EDE','#D98C7A','#6E8CA0','#A0A4AE','#E58A6B','#D9A441','#4E9B8F','#B98CC9','#7A9E6E','#9E8A6E','#E8D5A4','#C9986B'];
 async function baFetchAllServicos(){
   // sem filtro de "active" — a policy services_admin_read_all deixa o admin ver os desativados também,
   // pra poder reativar depois; primeFetchServices() (usada no resto do app) só traz os ativos
@@ -7247,12 +7245,50 @@ async function baFetchAllServicos(){
   if(error){ console.error('baFetchAllServicos', error); return []; }
   return data || [];
 }
+function baRenderServicoCorSwatches(selected){
+  const box = document.getElementById('ba-servico-cor-swatches');
+  if(!box) return;
+  box.innerHTML = BA_SVC_COLOR_PRESETS.map(hex=>
+    `<button type="button" class="ba-color-swatch${hex.toUpperCase()===String(selected||'').toUpperCase()?' selected':''}" style="background:${hex}" title="${hex}" onclick="baSelectServicoCor('${hex}')"></button>`
+  ).join('');
+}
+function baSelectServicoCor(hex){
+  document.getElementById('ba-servico-cor').value = hex;
+  document.querySelectorAll('#ba-servico-cor-swatches .ba-color-swatch').forEach(b=>b.classList.toggle('selected', b.style.background && b.getAttribute('title').toUpperCase()===hex.toUpperCase()));
+}
+// categoria vem de um <select> com o que já existe + opção "criar categoria nova" — sem precisar
+// de uma tela própria de categorias, o admin digita o nome na hora de cadastrar/editar um serviço
+function baPopulateServicoCategoriaSelect(categorias, selected){
+  const sel = document.getElementById('ba-servico-categoria');
+  if(!sel) return;
+  const known = ['servico','combo','tratamento'];
+  const all = Array.from(new Set([...known, ...categorias]));
+  sel.innerHTML = all.map(c=>`<option value="${c}">${primeSvcCatLabel(c)}</option>`).join('')
+    + `<option value="__nova__">+ Criar categoria nova...</option>`;
+  sel.value = selected && all.includes(selected) ? selected : (known.includes('servico') ? 'servico' : all[0]);
+  baServicoCategoriaChanged();
+}
+function baServicoCategoriaChanged(){
+  const sel = document.getElementById('ba-servico-categoria');
+  const novaInput = document.getElementById('ba-servico-categoria-nova');
+  const isNova = sel.value === '__nova__';
+  novaInput.style.display = isNova ? 'block' : 'none';
+  if(isNova) novaInput.focus();
+}
+function baServicoCategoriaValue(){
+  const sel = document.getElementById('ba-servico-categoria');
+  if(sel.value === '__nova__') return document.getElementById('ba-servico-categoria-nova').value.trim().toLowerCase();
+  return sel.value;
+}
 async function baRenderServicosConfig(){
   const listEl = document.getElementById('ba-servicos-list');
   if(!listEl) return;
   const servicos = await baFetchAllServicos();
+  const categorias = Array.from(new Set(servicos.map(s=>s.category)));
+  baPopulateServicoCategoriaSelect(categorias, document.getElementById('ba-servico-categoria').value);
+  if(!document.getElementById('ba-servico-cor-swatches').children.length) baRenderServicoCorSwatches(document.getElementById('ba-servico-cor').value);
   if(!servicos.length){ listEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum serviço cadastrado.</p>'; return; }
-  listEl.innerHTML = ['servico','combo','tratamento'].map(cat=>{
+  listEl.innerHTML = categorias.map(cat=>{
     const items = servicos.filter(s=>s.category===cat);
     if(!items.length) return '';
     return `<div class="ba-svc-catlabel" style="margin-top:.8rem">${primeSvcCatLabel(cat)}</div>
@@ -7277,10 +7313,11 @@ function baStartEditServico(id){
     baEditingServicoId = id;
     document.getElementById('ba-servico-nome').value = s.name||'';
     document.getElementById('ba-servico-desc').value = s.description||'';
-    document.getElementById('ba-servico-categoria').value = s.category;
+    baPopulateServicoCategoriaSelect(Array.from(new Set(servicos.map(x=>x.category))), s.category);
     document.getElementById('ba-servico-preco').value = String(s.price).replace('.',',');
     document.getElementById('ba-servico-duracao').value = s.duration_min;
     document.getElementById('ba-servico-cor').value = s.color;
+    baRenderServicoCorSwatches(s.color);
     document.getElementById('ba-servico-form-title').textContent = 'Editando serviço';
     document.getElementById('ba-servico-submit-btn').textContent = 'Salvar alterações';
     document.getElementById('ba-servico-cancel-btn').style.display = 'inline-block';
@@ -7291,14 +7328,16 @@ function baCancelEditServico(){
   baEditingServicoId = null;
   document.getElementById('ba-servico-nome').value = '';
   document.getElementById('ba-servico-desc').value = '';
-  document.getElementById('ba-servico-categoria').value = 'servico';
+  document.getElementById('ba-servico-categoria-nova').value = '';
   document.getElementById('ba-servico-preco').value = '';
   document.getElementById('ba-servico-duracao').value = '';
   document.getElementById('ba-servico-cor').value = '#C6A75E';
+  baRenderServicoCorSwatches('#C6A75E');
   document.getElementById('ba-servico-form-title').textContent = 'Novo serviço';
   document.getElementById('ba-servico-submit-btn').textContent = 'Adicionar serviço';
   document.getElementById('ba-servico-cancel-btn').style.display = 'none';
   document.getElementById('ba-servico-err').style.display = 'none';
+  baRenderServicosConfig();
 }
 async function baSubmitServico(){
   const errEl = document.getElementById('ba-servico-err');
@@ -7306,12 +7345,13 @@ async function baSubmitServico(){
   errEl.style.display = 'none';
   const name = document.getElementById('ba-servico-nome').value.trim();
   const description = document.getElementById('ba-servico-desc').value.trim();
-  const category = document.getElementById('ba-servico-categoria').value;
+  const category = baServicoCategoriaValue();
   const priceRaw = document.getElementById('ba-servico-preco').value.trim();
   const price = parseFloat(priceRaw.replace(/\./g,'').replace(',','.'));
   const duration = parseInt(document.getElementById('ba-servico-duracao').value, 10);
   const color = document.getElementById('ba-servico-cor').value;
   if(!name) return fail('Digite o nome do serviço.');
+  if(!category) return fail('Digite o nome da categoria nova.');
   if(!priceRaw || isNaN(price) || price < 0) return fail('Informe um preço válido.');
   if(!duration || duration <= 0) return fail('Informe uma duração válida (em minutos).');
   const payload = { name, description: description||null, category, price, duration_min: duration, color };
@@ -7319,8 +7359,7 @@ async function baSubmitServico(){
     ? await sb.from('services').update(payload).eq('id', baEditingServicoId)
     : await sb.from('services').insert({ ...payload, display_order: 999 });
   if(error){ console.error('baSubmitServico', error); return fail('Não foi possível salvar. Tente de novo.'); }
-  baCancelEditServico();
-  await baRenderServicosConfig();
+  baCancelEditServico(); // já re-renderiza a lista/categorias
   await primeFetchServices(); // atualiza agendamento e landing na hora, sem precisar recarregar a página
 }
 async function baToggleServicoAtivo(id, active){
