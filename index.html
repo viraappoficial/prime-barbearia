@@ -7599,7 +7599,14 @@ async function baFetchLembretesAmanha(){
     const { data: clients } = await sb.from('clients').select('id, phone').in('id', clientIds);
     (clients||[]).forEach(c=>{ phoneById[c.id] = c.phone; });
   }
-  return appts.map(a=>({ ...a, phone: a.clientId ? phoneById[a.clientId] : null }));
+  // agendamento sem conta vinculada (encaixe/atendimento de balcão) guarda o telefone só na
+  // carteira do barbeiro (crm_clients) — busca por nome pra não perder o lembrete desses clientes
+  let phoneByName = {};
+  if(appts.some(a=>!a.clientId)){
+    const myClients = await baFetchMyCrmClients();
+    myClients.forEach(c=>{ if(c.phone) phoneByName[c.name.toLowerCase()] = c.phone; });
+  }
+  return appts.map(a=>({ ...a, phone: a.clientId ? phoneById[a.clientId] : (phoneByName[(a.name||'').toLowerCase()]||null) }));
 }
 function baLembreteMsg(ap){
   const first = (ap.name||'').trim().split(' ')[0] || 'aí';
