@@ -3827,7 +3827,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
         <p class="ba-err" id="at-err" style="display:none;margin-bottom:.6rem"></p>
         <p class="at-success" id="at-success" style="display:none">Atendimento registrado ✓</p>
-        <button class="ba-btn" style="max-width:100%" onclick="baAtRegistrar()">Registrar atendimento</button>
+        <button class="ba-btn" id="ba-at-registrar-btn" style="max-width:100%" onclick="baAtRegistrar()">Registrar atendimento</button>
       </div>
     </div>
 
@@ -8468,7 +8468,7 @@ function baToggleEncaixe(){
     </label>
     <p class="ba-err" id="ba-enc-err" style="display:none;margin-bottom:.6rem"></p>
     <div style="display:flex;gap:.5rem">
-      <button class="ba-btn" style="flex:1;margin:0" onclick="baSaveEncaixe()">Confirmar encaixe</button>
+      <button class="ba-btn" id="ba-enc-confirm-btn" style="flex:1;margin:0" onclick="baSaveEncaixe()">Confirmar encaixe</button>
       <button class="ba-btn ghost" style="flex:1;margin:0" onclick="baToggleEncaixe()">Cancelar</button>
     </div>
   </div>`;
@@ -8544,6 +8544,12 @@ async function baSaveEncaixe(){
   const fail = msg => { errEl.textContent=msg; errEl.style.display='block'; };
   errEl.style.display='none';
   if(!baActingBarberId) return fail('Escolha um barbeiro em "Atendendo em nome de" antes de confirmar.');
+  // trava o botão pelo tempo real do salvamento — sem isso, um duplo toque no balcão (comum, com pressa)
+  // disparava dois agendamentos idênticos, já que cada clique rodava a função inteira de novo
+  const btn = document.getElementById('ba-enc-confirm-btn');
+  if(btn && btn.disabled) return;
+  if(btn){ btn.disabled = true; btn.classList.add('btn-loading'); }
+  try{
   if(baEncMode==='novo'){
     const name = document.getElementById('ba-enc-new-name').value.trim();
     const phoneRaw = document.getElementById('ba-enc-new-phone').value.trim();
@@ -8584,6 +8590,9 @@ async function baSaveEncaixe(){
   document.getElementById('ba-encaixe-form').style.display='none';
   document.getElementById('ba-encaixe-form').innerHTML='';
   baRenderAgenda();
+  } finally {
+    if(btn){ btn.disabled = false; btn.classList.remove('btn-loading'); }
+  }
   if(typeof caRenderNextAppointment==='function') caRenderNextAppointment();
   if(typeof renderMyAppointments==='function') renderMyAppointments();
 }
@@ -8778,6 +8787,12 @@ async function baAtRegistrar(){
   const fail = msg => { errEl.textContent=msg; errEl.style.display='block'; document.getElementById('at-success').style.display='none'; };
   errEl.style.display='none';
   if(!baActingBarberId) return fail('Escolha um barbeiro em "Atendendo em nome de" antes de registrar.');
+  // trava o botão até abrir o modal de pagamento — evita duplo toque criando o cliente/agendamento
+  // retroativo duas vezes antes do modal (o modal em si já tem sua própria trava, em baPgtoConfirmar)
+  const regBtn = document.getElementById('ba-at-registrar-btn');
+  if(regBtn && regBtn.disabled) return;
+  if(regBtn){ regBtn.disabled = true; regBtn.classList.add('btn-loading'); }
+  try{
 
   let clientName;
   if(baAtMode==='buscar'){
@@ -8866,6 +8881,9 @@ async function baAtRegistrar(){
     successEl.style.display = 'block';
     setTimeout(()=>{ successEl.style.display='none'; }, 3000);
   }, {clientName});
+  } finally {
+    if(regBtn){ regBtn.disabled = false; regBtn.classList.remove('btn-loading'); }
+  }
 }
 
 function baEnter(barber){
