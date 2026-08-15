@@ -409,6 +409,11 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 .chip small{display:block;font-size:.68rem;letter-spacing:.08em;opacity:.7}
 .chip.taken{position:relative;opacity:.45;border-color:var(--erro);color:var(--erro);cursor:not-allowed}
 .chip.taken:hover{border-color:var(--erro);color:var(--erro)}
+.wsvc-cats{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.wsvc-cat{background:transparent;border:1px solid var(--dourado-dim);color:var(--prata-dim);padding:.45rem 1rem;font-family:var(--font-body);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;border-radius:99px}
+.wsvc-cat:hover{border-color:var(--dourado);color:var(--prata)}
+.wsvc-cat.active{background:var(--dourado);border-color:var(--dourado);color:var(--verde-noite);font-weight:600}
+.wsvc-empty{color:var(--prata-dim);font-size:.85rem;padding:.4rem 0}
 .chip.taken::after{content:"";position:absolute;top:14%;bottom:14%;left:50%;width:2px;background:var(--erro);transform:translateX(-50%) rotate(14deg)}
 .wbarber-list{display:flex;flex-direction:column;gap:.7rem}
 .wbarber-card{position:relative;display:flex;align-items:center;gap:1rem;border:1px solid rgba(237,237,232,.2);padding:.9rem 1.1rem;cursor:pointer;transition:all .2s}
@@ -533,16 +538,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
     <div class="lp-carousel" id="svc-carousel">
       <button class="lp-car-arrow lp-car-prev" aria-label="Anterior" onclick="svcCarousel.nav(-1)">‹</button>
       <div class="lp-car-viewport" id="svc-car-viewport">
-        <div class="lp-car-track" id="svc-car-track">
-          <div class="svc"><h3>Corte Social</h3><p>Clássico e versátil, alinhado ao seu estilo.</p><span class="price price-locked" data-price="R$ 30">Faça login para ver</span><span class="time"> · 30 min</span></div>
-          <div class="svc"><h3>Corte Degradê</h3><p>Fade moderno com acabamento na navalha.</p><span class="price price-locked" data-price="R$ 45">Faça login para ver</span><span class="time"> · 45 min</span></div>
-          <div class="svc"><h3>Corte Raspado</h3><p>Máquina do início ao fim, prático e no capricho.</p><span class="price price-locked" data-price="R$ 20">Faça login para ver</span><span class="time"> · 20 min</span></div>
-          <div class="svc"><h3>Corte Infantil</h3><p>Paciência e capricho pros pequenos clientes.</p><span class="price price-locked" data-price="R$ 35">Faça login para ver</span><span class="time"> · 35 min</span></div>
-          <div class="svc"><h3>Acabamento</h3><p>Pezinho e retoque pra manter o corte em dia.</p><span class="price price-locked" data-price="R$ 15">Faça login para ver</span><span class="time"> · 15 min</span></div>
-          <div class="svc"><h3>Barba Express</h3><p>Modelagem rápida com toalha quente.</p><span class="price price-locked" data-price="R$ 25">Faça login para ver</span><span class="time"> · 25 min</span></div>
-          <div class="svc"><h3>Barbaterapia</h3><p>Ritual relaxante com vapor, massagem e hidratação.</p><span class="price price-locked" data-price="R$ 45">Faça login para ver</span><span class="time"> · 50 min</span></div>
-          <div class="svc"><h3>Sobrancelha</h3><p>Design alinhado na navalha, respeitando o natural.</p><span class="price price-locked" data-price="R$ 20">Faça login para ver</span><span class="time"> · 15 min</span></div>
-        </div>
+        <div class="lp-car-track" id="svc-car-track"></div>
       </div>
       <button class="lp-car-arrow lp-car-next" aria-label="Próximo" onclick="svcCarousel.nav(1)">›</button>
     </div>
@@ -562,13 +558,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
     <div class="lp-carousel" id="combo-carousel">
       <button class="lp-car-arrow lp-car-prev" aria-label="Anterior" onclick="comboCarousel.nav(-1)">‹</button>
       <div class="lp-car-viewport" id="combo-car-viewport">
-        <div class="lp-car-track" id="combo-car-track">
-          <div class="svc"><h3>Corte e Sobrancelha</h3><p>Os dois serviços numa visita só, sem perder tempo extra.</p><span class="price price-locked" data-price="R$ 60">Faça login para ver</span></div>
-          <div class="svc"><h3>Corte e Barba</h3><p>O clássico combo completo, pronto pra qualquer ocasião.</p><span class="price price-locked" data-price="R$ 85">Faça login para ver</span></div>
-          <div class="svc"><h3>Corte, Barba e Sobrancelha</h3><p>Pacote completo pra sair totalmente renovado da cadeira.</p><span class="price price-locked" data-price="R$ 95">Faça login para ver</span></div>
-          <div class="svc"><h3>Social e Barba</h3><p>Corte social alinhado com barba bem modelada.</p><span class="price price-locked" data-price="R$ 70">Faça login para ver</span></div>
-          <div class="svc"><h3>Raspado e Barba</h3><p>Raspado na máquina e barba no capricho, rápido e prático.</p><span class="price price-locked" data-price="R$ 60">Faça login para ver</span></div>
-        </div>
+        <div class="lp-car-track" id="combo-car-track"></div>
       </div>
       <button class="lp-car-arrow lp-car-next" aria-label="Próximo" onclick="comboCarousel.nav(1)">›</button>
     </div>
@@ -589,16 +579,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
     <div class="lp-carousel" id="trat-carousel">
       <button class="lp-car-arrow lp-car-prev" aria-label="Anterior" onclick="tratCarousel.nav(-1)">‹</button>
       <div class="lp-car-viewport" id="trat-car-viewport">
-        <div class="lp-car-track" id="trat-car-track">
-          <div class="svc"><h3>Limpeza nasal/orelha</h3><p>Remoção de cera com cera quente, cuidado e conforto.</p><span class="price price-locked" data-price="R$ 24,90">Faça login para ver</span></div>
-          <div class="svc"><h3>Limpeza de pele</h3><p>Renovação facial completa com produtos profissionais.</p><span class="price price-locked" data-price="R$ 49,90">Faça login para ver</span></div>
-          <div class="svc"><h3>Botox capilar</h3><p>Alisamento com reconstrução e nutrição dos fios.</p><span class="price price-locked" data-price="R$ 109,90">Faça login para ver</span></div>
-          <div class="svc"><h3>Relaxamento</h3><p>Alisamento suave que reduz o volume sem perder o movimento.</p><span class="price price-locked" data-price="R$ 99,90">Faça login para ver</span></div>
-          <div class="svc"><h3>Progressiva</h3><p>Alisamento duradouro, fios lisos, macios e alinhados.</p><span class="price price-locked" data-price="R$ 109,90">Faça login para ver</span></div>
-          <div class="svc"><h3>Hidratação</h3><p>Reposição de nutrientes pro cabelo ficar mais saudável.</p><span class="price price-locked" data-price="R$ 39,90">Faça login para ver</span></div>
-          <div class="svc"><h3>Luzes</h3><p>Mechas claras com técnica e acabamento natural.</p><span class="price price-locked" data-price="R$ 129,90">Faça login para ver</span></div>
-          <div class="svc"><h3>Platinado</h3><p>Descoloração completa pra um visual marcante e único.</p><span class="price price-locked" data-price="R$ 179,90">Faça login para ver</span></div>
-        </div>
+        <div class="lp-car-track" id="trat-car-track"></div>
       </div>
       <button class="lp-car-arrow lp-car-next" aria-label="Próximo" onclick="tratCarousel.nav(1)">›</button>
     </div>
@@ -854,22 +835,12 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
     <div class="progress"><span id="p1"></span><span id="p2"></span><span id="p3"></span><span id="p4"></span><span id="p5"></span></div>
 
     <div class="wstep active" data-step="1">
-      <div class="chips" id="wService">
-        <button class="chip" data-v="Corte Social">Corte Social</button>
-        <button class="chip" data-v="Corte Degradê">Corte Degradê</button>
-        <button class="chip" data-v="Corte Raspado">Corte Raspado</button>
-        <button class="chip" data-v="Corte Infantil">Corte Infantil</button>
-        <button class="chip" data-v="Acabamento">Acabamento</button>
-        <button class="chip" data-v="Barba Express">Barba Express</button>
-        <button class="chip" data-v="Barbaterapia">Barbaterapia</button>
-        <button class="chip" data-v="Sobrancelha">Sobrancelha</button>
-        <div style="width:100%;margin:.6rem 0 .2rem;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dourado)">Ou escolha um combo</div>
-        <button class="chip" data-v="Corte e Sobrancelha">Corte e Sobrancelha</button>
-        <button class="chip" data-v="Corte e Barba">Corte e Barba</button>
-        <button class="chip" data-v="Corte, Barba e Sobrancelha">Corte, Barba e Sobrancelha</button>
-        <button class="chip" data-v="Social e Barba">Social e Barba</button>
-        <button class="chip" data-v="Raspado e Barba">Raspado e Barba</button>
+      <div class="wsvc-cats" id="wServiceCats">
+        <button class="wsvc-cat active" data-cat="servico">Serviços</button>
+        <button class="wsvc-cat" data-cat="combo">Combos</button>
+        <button class="wsvc-cat" data-cat="tratamento">Tratamentos</button>
       </div>
+      <div class="chips" id="wService"></div>
     </div>
 
     <div class="wstep" data-step="2">
@@ -940,8 +911,35 @@ const HORARIOS = {
   4: ["09:00","20:00"], 5: ["09:00","20:00"], 6: ["09:00","18:00"]
 };
 const SLOT_MIN = 45;
-const SVC_PRICES = {'Corte Social':30,'Corte Degradê':45,'Corte Raspado':20,'Corte Infantil':35,'Acabamento':15,'Barba Express':25,'Barbaterapia':45,'Sobrancelha':20,'Corte e Sobrancelha':60,'Corte e Barba':85,'Corte, Barba e Sobrancelha':95,'Social e Barba':70,'Raspado e Barba':60};
-const SVC_COLORS = {'Corte Social':'#C6A75E','Corte Degradê':'#D9A566','Corte Raspado':'#8FA6C7','Corte Infantil':'#7FBF8A','Acabamento':'#A0A4AE','Barba Express':'#6E8CA0','Barbaterapia':'#9B7EDE','Sobrancelha':'#D98C7A','Corte e Sobrancelha':'#C9986B','Corte e Barba':'#4E9B8F','Corte, Barba e Sobrancelha':'#B98CC9','Social e Barba':'#7A9E6E','Raspado e Barba':'#9E8A6E'};
+// catálogo único de serviços — vem do banco (tabela `services`), populado por primeFetchServices().
+// SVC_PRICES/SVC_COLORS ficam com os mesmos nomes/formato de antes (name->valor, name->cor) só pra não
+// precisar reescrever os ~20 lugares do código que já leem essas duas variáveis diretamente.
+let SVC_PRICES = {};
+let SVC_COLORS = {};
+let primeServicesCache = []; // linha completa de cada serviço (id, descrição, categoria, duração...)
+function primeFormatPriceDisplay(n){
+  const hasCents = Math.round(n*100) % 100 !== 0;
+  return 'R$ ' + Number(n).toLocaleString('pt-BR', {minimumFractionDigits: hasCents?2:0, maximumFractionDigits:2});
+}
+async function primeFetchServices(){
+  const { data, error } = await sb.from('services').select('*').eq('active', true).order('display_order');
+  if(error){ console.error('primeFetchServices', error); return; }
+  primeServicesCache = data || [];
+  SVC_PRICES = {}; SVC_COLORS = {};
+  primeServicesCache.forEach(s=>{ SVC_PRICES[s.name] = Number(s.price); SVC_COLORS[s.name] = s.color; });
+  if(typeof primeRenderServiceChips==='function') primeRenderServiceChips();
+  if(typeof primeRenderLandingServices==='function') primeRenderLandingServices();
+}
+function primeSvcCatLabel(cat){ return cat==='combo' ? 'Combos' : cat==='tratamento' ? 'Tratamentos' : 'Serviços'; }
+// grades de serviço do app do barbeiro (Atendimento, Encaixe, editar carrinho) — mesmo catálogo do
+// agendamento do cliente, só que agrupado por categoria em vez de aba, pra não perder espaço na tela
+function primeGroupedSvcHtml(itemHtmlFn){
+  return ['servico','combo','tratamento'].map(cat=>{
+    const items = primeServicesCache.filter(s=>s.category===cat);
+    if(!items.length) return '';
+    return `<div class="ba-svc-catlabel">${primeSvcCatLabel(cat)}</div>` + items.map(itemHtmlFn).join('');
+  }).join('');
+}
 // data local no formato YYYY-MM-DD — NUNCA usar toISOString().slice(0,10) pra isso: converte pra UTC
 // e "quebra" o dia (fica um dia à frente) em fusos negativos como o do Brasil, entre ~21h e meia-noite.
 function primeLocalDate(d){
@@ -1020,7 +1018,7 @@ const modal = document.getElementById('bookingModal');
 const steps = [...document.querySelectorAll('.wstep')];
 const labels = ["Escolha o serviço","Escolha o dia","Escolha o horário","Escolha o barbeiro","Seus dados"];
 
-function openModal(){ modal.classList.add('open'); document.body.style.overflow='hidden'; buildDays(); }
+function openModal(){ modal.classList.add('open'); document.body.style.overflow='hidden'; buildDays(); primeRenderServiceChips(); }
 function closeModal(){ modal.classList.remove('open'); const appOpen = document.querySelector('#clientApp.open,#barberApp.open'); if(!appOpen) document.body.style.overflow=''; }
 function closeAuthPrompt(){ document.getElementById('authPromptModal').classList.remove('open'); }
 function dismissAuthPrompt(){ pendingBooking=null; pendingProductCatalog=false; closeAuthPrompt(); }
@@ -1080,6 +1078,24 @@ document.getElementById('wService').addEventListener('click',e=>{
   const cm = document.getElementById('wCouponMsg'); if(cm) cm.textContent = '';
   render();
 });
+let wServiceCat = 'servico';
+document.getElementById('wServiceCats').addEventListener('click', e=>{
+  const b = e.target.closest('.wsvc-cat'); if(!b) return;
+  wServiceCat = b.dataset.cat;
+  document.querySelectorAll('#wServiceCats .wsvc-cat').forEach(x=>x.classList.toggle('active', x===b));
+  primeRenderServiceChips();
+});
+// desenha os chips da categoria escolhida a partir do catálogo vindo do banco — reaproveita a seleção
+// já feita em outras categorias (state.services), então trocar de aba não perde o que já foi marcado
+function primeRenderServiceChips(){
+  const box = document.getElementById('wService');
+  if(!box) return;
+  const items = primeServicesCache.filter(s=>s.category===wServiceCat);
+  box.innerHTML = items.length ? items.map(s=>{
+    const active = state.services.includes(s.name) ? ' active' : '';
+    return `<button class="chip${active}" data-v="${s.name.replace(/"/g,'&quot;')}">${s.name}<small>${primeFormatPriceDisplay(s.price)}</small></button>`;
+  }).join('') : '<p class="wsvc-empty">Nenhum serviço nessa categoria ainda.</p>';
+}
 document.getElementById('wCouponApply').addEventListener('click', async ()=>{
   const codeInput = document.getElementById('wCoupon');
   const msgEl = document.getElementById('wCouponMsg');
@@ -3320,6 +3336,8 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-encaixe{background:var(--grafite-card);border:1px solid var(--dourado);padding:1rem 1.2rem;margin:.6rem 0}
 #barberApp .ba-encaixe .ba-slabel:first-child{margin-top:0}
 #barberApp .ba-svc-grid{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.6rem}
+#barberApp .ba-svc-catlabel{width:100%;margin:.5rem 0 .1rem;font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dourado)}
+#barberApp .ba-svc-catlabel:first-child{margin-top:0}
 #barberApp .ba-svc-chip{display:inline-flex;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #barberApp .ba-svc-chip input{display:none}
 #barberApp .ba-svc-chip-label{display:flex;align-items:center;gap:.45rem;padding:.5rem .95rem;border-radius:999px;border:1px solid var(--dourado-dim);background:rgba(198,167,94,.08);color:var(--prata);font-size:.78rem;letter-spacing:.03em;transition:all .2s;white-space:nowrap;user-select:none}
@@ -4096,6 +4114,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <button class="ba-btn ghost active" data-sub="equipe" onclick="baGestaoTab('equipe')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Equipe</button>
           <button class="ba-btn ghost" data-sub="brindes" onclick="baGestaoTab('brindes')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Brindes</button>
+          <button class="ba-btn ghost" data-sub="servicos" onclick="baGestaoTab('servicos')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Serviços</button>
           <button class="ba-btn ghost" data-sub="produtos" onclick="baGestaoTab('produtos')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Produtos</button>
           <button class="ba-btn ghost" data-sub="cupons" onclick="baGestaoTab('cupons')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Cupons</button>
           <button class="ba-btn ghost" data-sub="instagram" onclick="baGestaoTab('instagram')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Instagram</button>
@@ -4132,6 +4151,51 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div style="display:flex;gap:.4rem;margin-top:.6rem">
             <input type="text" id="ba-brinde-new" class="ba-field" placeholder="Nome do novo brinde..." style="flex:1;margin:0;padding:.5rem .7rem;font-size:.78rem">
             <button class="ba-btn" style="width:auto;max-width:none;padding:.45rem .8rem;margin:0;font-size:.68rem" onclick="baAddBrindeOpt()">Adicionar</button>
+          </div>
+        </div>
+
+        <div class="ba-card" id="ba-servicos-config" style="display:none">
+          <div class="ba-slabel" style="margin-top:0">Catálogo de serviços</div>
+          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Serviços, combos e tratamentos aparecem tanto no agendamento quanto na página principal. Desativar um serviço tira ele dos dois lugares sem apagar o histórico de atendimentos antigos.</p>
+          <div id="ba-servicos-list"></div>
+          <div class="ba-slabel" id="ba-servico-form-title">Novo serviço</div>
+          <div class="ba-field"><label>Nome</label><input type="text" id="ba-servico-nome" placeholder="Ex: Corte Degradê"></div>
+          <div class="ba-field"><label>Descrição (aparece na página principal)</label><input type="text" id="ba-servico-desc" placeholder="Ex: Fade moderno com acabamento na navalha."></div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <div class="ba-field" style="flex:1;min-width:130px"><label>Categoria</label>
+              <select id="ba-servico-categoria">
+                <option value="servico">Serviço</option>
+                <option value="combo">Combo</option>
+                <option value="tratamento">Tratamento</option>
+              </select>
+            </div>
+            <div class="ba-field" style="flex:1;min-width:100px"><label>Preço (R$)</label><input type="text" inputmode="decimal" id="ba-servico-preco" placeholder="Ex: 45,00"></div>
+            <div class="ba-field" style="flex:1;min-width:100px"><label>Duração (min)</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-servico-duracao" placeholder="Ex: 45"></div>
+          </div>
+          <div class="ba-field"><label>Cor na agenda</label>
+            <select id="ba-servico-cor">
+              <option value="#C6A75E">Dourado</option>
+              <option value="#D9A566">Âmbar</option>
+              <option value="#8FA6C7">Azul</option>
+              <option value="#7FBF8A">Verde</option>
+              <option value="#9B7EDE">Violeta</option>
+              <option value="#D98C7A">Terracota</option>
+              <option value="#6E8CA0">Petróleo</option>
+              <option value="#A0A4AE">Cinza</option>
+              <option value="#E58A6B">Coral</option>
+              <option value="#D9A441">Mostarda</option>
+              <option value="#4E9B8F">Verde-azulado</option>
+              <option value="#B98CC9">Lilás</option>
+              <option value="#7A9E6E">Oliva</option>
+              <option value="#9E8A6E">Marrom claro</option>
+              <option value="#E8D5A4">Dourado claro</option>
+              <option value="#C9986B">Bronze</option>
+            </select>
+          </div>
+          <p class="ba-err" id="ba-servico-err" style="display:none"></p>
+          <div style="display:flex;gap:.5rem">
+            <button class="ba-btn" style="max-width:100%" id="ba-servico-submit-btn" onclick="baSubmitServico()">Adicionar serviço</button>
+            <button class="ba-btn ghost" style="max-width:100%;display:none" id="ba-servico-cancel-btn" onclick="baCancelEditServico()">Cancelar</button>
           </div>
         </div>
 
@@ -4682,6 +4746,7 @@ function baGestaoTab(sub){
   document.querySelectorAll('#ba-screen-gestao [data-sub]').forEach(b=>b.classList.toggle('active', b.dataset.sub===sub));
   document.getElementById('ba-admin-panel').style.display = sub==='equipe' ? 'block' : 'none';
   document.getElementById('ba-brinde-config').style.display = sub==='brindes' ? 'block' : 'none';
+  document.getElementById('ba-servicos-config').style.display = sub==='servicos' ? 'block' : 'none';
   document.getElementById('ba-produtos-config').style.display = sub==='produtos' ? 'block' : 'none';
   document.getElementById('ba-cupons-config').style.display = sub==='cupons' ? 'block' : 'none';
   document.getElementById('ba-instagram-config').style.display = sub==='instagram' ? 'block' : 'none';
@@ -4708,7 +4773,7 @@ function baFinanceiroTab(sub){
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
-  baRenderRoster(); baRenderBrindeConfig(); baRenderProdutosConfig(); baRenderCupons(); baRenderInstagramConfig(); baRenderPlanoContas().then(baRenderFornecedores); baRenderContasBancarias(); baRenderContasPagar();
+  baRenderRoster(); baRenderBrindeConfig(); baRenderServicosConfig(); baRenderProdutosConfig(); baRenderCupons(); baRenderInstagramConfig(); baRenderPlanoContas().then(baRenderFornecedores); baRenderContasBancarias(); baRenderContasPagar();
 }
 
 function baMyCommissionPct(){
@@ -7173,6 +7238,105 @@ function baProdCategoryList(all){
     return ia-ib;
   });
 }
+// ══ Catálogo de serviços (Supabase, admin-only) — alimenta agendamento, Atendimento, Encaixe e a landing ══
+let baEditingServicoId = null;
+async function baFetchAllServicos(){
+  // sem filtro de "active" — a policy services_admin_read_all deixa o admin ver os desativados também,
+  // pra poder reativar depois; primeFetchServices() (usada no resto do app) só traz os ativos
+  const { data, error } = await sb.from('services').select('*').order('category').order('display_order');
+  if(error){ console.error('baFetchAllServicos', error); return []; }
+  return data || [];
+}
+async function baRenderServicosConfig(){
+  const listEl = document.getElementById('ba-servicos-list');
+  if(!listEl) return;
+  const servicos = await baFetchAllServicos();
+  if(!servicos.length){ listEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum serviço cadastrado.</p>'; return; }
+  listEl.innerHTML = ['servico','combo','tratamento'].map(cat=>{
+    const items = servicos.filter(s=>s.category===cat);
+    if(!items.length) return '';
+    return `<div class="ba-svc-catlabel" style="margin-top:.8rem">${primeSvcCatLabel(cat)}</div>
+      <div class="cad-table-wrap"><table class="cad-table">
+      <thead><tr><th>Nome</th><th>Preço</th><th>Duração</th><th>Status</th><th></th></tr></thead>
+      <tbody>${items.map(s=>`<tr style="${s.active?'':'opacity:.5'}">
+        <td>${primeEsc(s.name)}</td><td>${primeFormatPriceDisplay(s.price)}</td><td>${s.duration_min} min</td>
+        <td>${s.active ? 'Ativo' : 'Inativo'}</td>
+        <td style="white-space:nowrap">
+          <span class="cad-edit" onclick="baStartEditServico(${s.id})">editar</span>
+          <span class="cad-edit" onclick="baToggleServicoAtivo(${s.id},${!s.active})">${s.active?'desativar':'ativar'}</span>
+          <span class="cad-remove" onclick="baRemoveServico(${s.id})">remover</span>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }).join('');
+}
+function baStartEditServico(id){
+  baFetchAllServicos().then(servicos=>{
+    const s = servicos.find(x=>x.id===id);
+    if(!s) return;
+    baEditingServicoId = id;
+    document.getElementById('ba-servico-nome').value = s.name||'';
+    document.getElementById('ba-servico-desc').value = s.description||'';
+    document.getElementById('ba-servico-categoria').value = s.category;
+    document.getElementById('ba-servico-preco').value = String(s.price).replace('.',',');
+    document.getElementById('ba-servico-duracao').value = s.duration_min;
+    document.getElementById('ba-servico-cor').value = s.color;
+    document.getElementById('ba-servico-form-title').textContent = 'Editando serviço';
+    document.getElementById('ba-servico-submit-btn').textContent = 'Salvar alterações';
+    document.getElementById('ba-servico-cancel-btn').style.display = 'inline-block';
+    document.getElementById('ba-servico-nome').scrollIntoView({behavior:'smooth', block:'center'});
+  });
+}
+function baCancelEditServico(){
+  baEditingServicoId = null;
+  document.getElementById('ba-servico-nome').value = '';
+  document.getElementById('ba-servico-desc').value = '';
+  document.getElementById('ba-servico-categoria').value = 'servico';
+  document.getElementById('ba-servico-preco').value = '';
+  document.getElementById('ba-servico-duracao').value = '';
+  document.getElementById('ba-servico-cor').value = '#C6A75E';
+  document.getElementById('ba-servico-form-title').textContent = 'Novo serviço';
+  document.getElementById('ba-servico-submit-btn').textContent = 'Adicionar serviço';
+  document.getElementById('ba-servico-cancel-btn').style.display = 'none';
+  document.getElementById('ba-servico-err').style.display = 'none';
+}
+async function baSubmitServico(){
+  const errEl = document.getElementById('ba-servico-err');
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  errEl.style.display = 'none';
+  const name = document.getElementById('ba-servico-nome').value.trim();
+  const description = document.getElementById('ba-servico-desc').value.trim();
+  const category = document.getElementById('ba-servico-categoria').value;
+  const priceRaw = document.getElementById('ba-servico-preco').value.trim();
+  const price = parseFloat(priceRaw.replace(/\./g,'').replace(',','.'));
+  const duration = parseInt(document.getElementById('ba-servico-duracao').value, 10);
+  const color = document.getElementById('ba-servico-cor').value;
+  if(!name) return fail('Digite o nome do serviço.');
+  if(!priceRaw || isNaN(price) || price < 0) return fail('Informe um preço válido.');
+  if(!duration || duration <= 0) return fail('Informe uma duração válida (em minutos).');
+  const payload = { name, description: description||null, category, price, duration_min: duration, color };
+  const { error } = baEditingServicoId
+    ? await sb.from('services').update(payload).eq('id', baEditingServicoId)
+    : await sb.from('services').insert({ ...payload, display_order: 999 });
+  if(error){ console.error('baSubmitServico', error); return fail('Não foi possível salvar. Tente de novo.'); }
+  baCancelEditServico();
+  await baRenderServicosConfig();
+  await primeFetchServices(); // atualiza agendamento e landing na hora, sem precisar recarregar a página
+}
+async function baToggleServicoAtivo(id, active){
+  const { error } = await sb.from('services').update({active}).eq('id', id);
+  if(error){ console.error('baToggleServicoAtivo', error); return; }
+  await baRenderServicosConfig();
+  await primeFetchServices();
+}
+async function baRemoveServico(id){
+  if(!confirm('Remover esse serviço? Atendimentos já registrados com ele continuam no histórico normalmente — só some do cadastro e do agendamento.')) return;
+  const { error } = await sb.from('services').delete().eq('id', id);
+  if(error){ console.error('baRemoveServico', error); return; }
+  if(baEditingServicoId===id) baCancelEditServico();
+  await baRenderServicosConfig();
+  await primeFetchServices();
+}
 function baProdCategoryInput(v){
   baProdCategoryFilter = v;
   baRenderProdutosConfig();
@@ -7748,13 +7912,13 @@ async function baCartOpenEditServico(){
   if(!appt) return;
   const svcs = appt.services || (appt.service ? [appt.service] : []);
   const valorAtual = typeof appt.discountPrice==='number' ? appt.discountPrice : baPrecoTabela(svcs);
-  document.getElementById('cart-edit-svc-grid').innerHTML = Object.keys(SVC_PRICES).map(name=>{
-    const sel = svcs.includes(name);
+  document.getElementById('cart-edit-svc-grid').innerHTML = primeGroupedSvcHtml(s=>{
+    const sel = svcs.includes(s.name);
     return `<div class="ba-svc-chip${sel?' selected':''}" onclick="this.classList.toggle('selected');this.querySelector('input').checked=this.classList.contains('selected');baCartEditServicosChanged()">
-      <input type="checkbox" class="cart-edit-svc" value="${name}" ${sel?'checked':''}>
-      <span class="ba-svc-chip-label">${name}<span class="ba-svc-chip-price">R$ ${SVC_PRICES[name]}</span></span>
+      <input type="checkbox" class="cart-edit-svc" value="${s.name}" ${sel?'checked':''}>
+      <span class="ba-svc-chip-label">${s.name}<span class="ba-svc-chip-price">${primeFormatPriceDisplay(s.price)}</span></span>
     </div>`;
-  }).join('');
+  });
   baCartEditState = { precoTabela: baPrecoTabela(svcs), valor: valorAtual };
   baCartEditSyncFields();
 }
@@ -8424,11 +8588,11 @@ function baToggleEncaixe(){
   const me = baGetRoster().find(b=>b.id===baActingBarberId);
   const h = resolveBarberHours(me, new Date(baAgendaDay+'T12:00:00').getDay());
   if(!h){ alert('Esse barbeiro está de folga neste dia.'); return; }
-  const svcsHtml = Object.keys(SVC_PRICES).map(name=>
+  const svcsHtml = primeGroupedSvcHtml(s=>
     `<div class="ba-svc-chip" onclick="this.classList.toggle('selected');this.querySelector('input').checked=this.classList.contains('selected')">
-      <input type="checkbox" class="ba-enc-svc" value="${name}">
-      <span class="ba-svc-chip-label">${name}<span class="ba-svc-chip-price">R$ ${SVC_PRICES[name]}</span></span>
-    </div>`).join('');
+      <input type="checkbox" class="ba-enc-svc" value="${s.name}">
+      <span class="ba-svc-chip-label">${s.name}<span class="ba-svc-chip-price">${primeFormatPriceDisplay(s.price)}</span></span>
+    </div>`);
   form.innerHTML = `<div class="ba-encaixe">
     <div class="ba-slabel">Novo encaixe</div>
     <div class="seg" id="ba-enc-client-seg">
@@ -8621,12 +8785,11 @@ function baAtResetFields(){
   document.getElementById('at-notes').value = '';
   document.getElementById('at-desconto').value = '0';
 
-  const svcsHtml = Object.keys(SVC_PRICES).map(name=>
+  document.getElementById('at-svc-grid').innerHTML = primeGroupedSvcHtml(s=>
     `<div class="ba-svc-chip" onclick="this.classList.toggle('selected');this.querySelector('input').checked=this.classList.contains('selected');baAtUpdateTotal()">
-      <input type="checkbox" class="at-svc" value="${name}">
-      <span class="ba-svc-chip-label">${name}<span class="ba-svc-chip-price">R$ ${SVC_PRICES[name]}</span></span>
-    </div>`).join('');
-  document.getElementById('at-svc-grid').innerHTML = svcsHtml;
+      <input type="checkbox" class="at-svc" value="${s.name}">
+      <span class="ba-svc-chip-label">${s.name}<span class="ba-svc-chip-price">${primeFormatPriceDisplay(s.price)}</span></span>
+    </div>`);
   baAtUpdateTotal();
   baAtRenderCart();
 
@@ -9513,6 +9676,24 @@ svcCarousel.init();
 comboCarousel.init();
 tratCarousel.init();
 igCarousel.init({stickyPause:true});
+// ══ Serviços/Combos/Tratamentos da landing — vem do mesmo catálogo do agendamento (tabela `services`) ══
+function primeSvcCardHtml(s, showTime){
+  const timeSuffix = showTime ? `<span class="time"> · ${s.duration_min} min</span>` : '';
+  return `<div class="svc"><h3>${primeEsc(s.name)}</h3><p>${primeEsc(s.description||'')}</p><span class="price price-locked" data-price="${primeFormatPriceDisplay(s.price)}">Faça login para ver</span>${timeSuffix}</div>`;
+}
+function primeRenderLandingServices(){
+  const byCat = { servico: [], combo: [], tratamento: [] };
+  primeServicesCache.forEach(s=>{ if(byCat[s.category]) byCat[s.category].push(s); });
+  const svcTrack = document.getElementById('svc-car-track');
+  if(svcTrack) svcTrack.innerHTML = byCat.servico.map(s=>primeSvcCardHtml(s, true)).join('');
+  const comboTrack = document.getElementById('combo-car-track');
+  if(comboTrack) comboTrack.innerHTML = byCat.combo.map(s=>primeSvcCardHtml(s, false)).join('');
+  const tratTrack = document.getElementById('trat-car-track');
+  if(tratTrack) tratTrack.innerHTML = byCat.tratamento.map(s=>primeSvcCardHtml(s, false)).join('');
+  primeUpdatePriceVisibility();
+  svcCarousel.init(); comboCarousel.init(); tratCarousel.init();
+}
+primeFetchServices();
 // ══ Posts do Instagram na landing page (link gerenciado pelo admin em Gestão) ══
 async function baFetchInstagramPosts(){
   const { data, error } = await sb.from('instagram_posts').select('*').order('created_at',{ascending:false});
