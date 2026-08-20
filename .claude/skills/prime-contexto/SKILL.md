@@ -10,7 +10,7 @@ Sistema de gestão/agendamento para barbearia. Domínio: primebarbearia.app.br
 ## Stack e decisões já tomadas (não reabrir sem motivo forte)
 
 - **Backend/dados**: Supabase
-- **Hospedagem**: em migração de Git (hospedagem atual) para **Vercel**, por segurança
+- **Hospedagem**: **Vercel** (migração do GitHub Pages concluída, domínio `primebarbearia.app.br` já apontando pra lá) — feita por segurança
 - **E-mails do sistema** (auth, confirmação de agendamento): devem sair do domínio próprio (primebarbearia.app.br), não do domínio padrão do Supabase
 - **WhatsApp**: integração direta com **WhatsApp Cloud API (Meta)**, sem BSP/integrador pago — o time (Gabriel + Claude) desenvolve por conta própria
 - **IA no produto**: usar **Claude Haiku** (barato) só para o chatbot de CRM/agendamento. Campanhas de marketing com IA foram tiradas do escopo (Haiku não dava conta bem dessa parte)
@@ -22,4 +22,4 @@ Sistema de gestão/agendamento para barbearia. Domínio: primebarbearia.app.br
 2. **Financeiro**: registrar forma de pagamento + NSU por atendimento, conciliação com extrato bancário, relatórios, contas a pagar, DRE (ver skill `prime-financeiro`)
 3. **Chatbot**: CRM + confirmação de horário via WhatsApp/Instagram, rodando em Claude Haiku
 4. **Marketing/visibilidade**: campanhas dentro do próprio SaaS (Canva, tráfego pago) — sem IA automatizando isso por enquanto
-5. **Infra**: migração da hospedagem de GitHub Pages para Vercel — projeto Vercel (`prime-barbearia`) já criado e recebendo deploy automático a cada push; domínio `primebarbearia.app.br` ainda aponta pro GitHub Pages via `CNAME`, falta o corte final apontando o domínio pra Vercel
+5. **Infra**: migração de hospedagem GitHub Pages → Vercel concluída — domínio `primebarbearia.app.br` já aponta pra Vercel, deploy automático a cada push
