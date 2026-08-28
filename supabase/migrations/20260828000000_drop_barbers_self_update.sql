@@ -1,0 +1,29 @@
+-- Fecha o furo de auto-promoção a admin.
+--
+-- A policy barbers_self_update era FOR UPDATE USING (auth.uid() = id). O
+-- predicado valida apenas identidade — que a linha é do próprio usuário —
+-- e não restringe role nem quais colunas podem mudar. Combinado com
+-- GRANT ALL ON barbers TO authenticated (sem grant de coluna), qualquer
+-- barbeiro podia, mantendo o próprio id, gravar qualquer coluna da própria
+-- linha via PostgREST — inclusive role => 'admin'. Isso destrava todas as
+-- policies de admin do schema (appointments, bank_accounts,
+-- chart_of_accounts, cupons, contas a pagar...).
+--
+-- Um WITH CHECK (auth.uid() = id) não resolveria: continuaria sendo um
+-- predicado só de identidade. Fechar exige restringir role/colunas — o que
+-- nenhum fluxo atual precisa (ver abaixo).
+--
+-- Nenhum fluxo do app usa self-update: a tela de perfil do barbeiro
+-- (#ba-screen-perfil) é só leitura; toda escrita em barbers passa pelas
+-- telas de admin (policy barbers_admin_update_any). Foto vai pro Storage,
+-- senha é do auth.
+--
+-- Qualquer edição de perfil pelo próprio barbeiro no futuro exige uma policy
+-- nova, com colunas permitidas via GRANT de coluna e WITH CHECK explícito.
+--
+-- Validado no lab self-hosted (prime-staging) em 2026-08-28:
+--   antes  -> barbeiro não-admin: PATCH barbers?id=eq.<self> {role:admin} => 200, role vira admin
+--   depois -> mesmo PATCH => 0 linhas alteradas; leitura da própria linha e
+--             edição via admin continuam funcionando.
+
+drop policy if exists "barbers_self_update" on public.barbers;
