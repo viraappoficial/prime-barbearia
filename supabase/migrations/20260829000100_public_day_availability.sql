@@ -1,13 +1,18 @@
 -- Disponibilidade pública real da agenda, agregada, SEM PII e com DURAÇÃO.
 --
--- Correção de bug (revisão do Codex): a agenda não é slot fixo — os serviços
--- têm durações de 15 a 150 min. Um atendimento de 90 min às 09:00 ocupa até
--- 10:30; a RPC precisa considerar o intervalo [início, início+duração), não só
--- o horário inicial.
+-- A agenda não é slot fixo (services.duration_min de 15 a 150 min). A RPC
+-- considera o intervalo [início, início + duração_total), não só o horário.
 --
--- Recebe os IDs dos serviços (mesma base do book_appointment) e calcula a
--- duração total no servidor. Retorna APENAS `slot` (HH:MM) + `livre boolean`.
--- Nunca client_id, nome, barber_id, contagem, nem coluna de appointments.
+-- Revisão do Codex (2ª): a validação de serviços aqui tem a MESMA semântica de
+-- book_appointment (helper compartilhado _validate_services):
+--   - lista não vazia;
+--   - sem IDs duplicados;
+--   - todos existem e estão ativos;
+--   - contagem encontrada = cardinalidade recebida.
+-- ID inválido -> erro SERVICE_INVALID (não calcula duração parcial).
+--
+-- Retorna APENAS `slot` (HH:MM) + `livre boolean`. Nunca client_id, nome,
+-- barber_id, contagem, nem coluna de appointments/clients.
 --
 -- `livre` é AGREGADO: aparece livre se EXISTE algum barbeiro cuja escala cobre
 -- o intervalo inteiro E que não tem intervalo ativo sobreposto.
@@ -15,6 +20,7 @@
 --
 -- Rollback:
 --   drop function public.public_day_availability(date, bigint[]);
+--   drop function public._validate_services(bigint[]);
 --   drop function public._barber_covers(jsonb, integer, integer, integer);
 --   drop function public._hhmm_to_min(text);
 -- Impacto: nenhum no legado. Não altera grants de appointments.
@@ -33,11 +39,45 @@ as $$
   end
 $$;
 
+-- ── helper: valida os serviços e devolve nomes + duração total ──
+-- Semântica única (usada por public_day_availability e _insert_appointment).
+create or replace function public._validate_services(
+  p_service_ids bigint[],
+  out o_names text[],
+  out o_dur   integer
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_card     integer;
+  v_distinct integer;
+  v_found    integer;
+begin
+  select count(*), count(distinct e) into v_card, v_distinct
+  from unnest(coalesce(p_service_ids, '{}'::bigint[])) e;
+
+  if v_card = 0 or v_card <> v_distinct then
+    raise exception 'SERVICE_INVALID' using errcode = 'P0001';   -- vazio ou com duplicata
+  end if;
+
+  select array_agg(s.name order by s.display_order), sum(s.duration_min), count(*)
+    into o_names, o_dur, v_found
+  from public.services s
+  where s.id = any(p_service_ids) and s.active = true;
+
+  if coalesce(v_found, 0) <> v_distinct then
+    raise exception 'SERVICE_INVALID' using errcode = 'P0001';   -- algum id não existe ou inativo
+  end if;
+end;
+$$;
+
 -- ── helper: a escala do barbeiro cobre [slot_start, slot_start + dur]? ──
 -- Espelha resolveBarberHours de domain/agenda.ts:
---   hours null                 -> usa a janela da loja
---   dia não é chave em hours    -> usa a janela da loja
---   hours[dia] presente         -> usa hours[dia] (pode ser null = folga)
+--   hours null / dia não é chave  -> janela da loja
+--   hours[dia] presente           -> hours[dia] (pode ser null = folga)
 create or replace function public._barber_covers(
   p_hours jsonb, p_dow integer, p_slot_start_min integer, p_duration_min integer
 )
@@ -68,20 +108,20 @@ $$;
 -- ── RPC pública ──
 create or replace function public.public_day_availability(p_day date, p_service_ids bigint[])
 returns table(slot text, livre boolean)
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
+declare
+  v_dur integer;
+begin
+  -- valida com a mesma semântica do book_appointment; ID inválido -> SERVICE_INVALID
+  select o_dur into v_dur from public._validate_services(p_service_ids);
+
+  return query
   with cfg as (
     select slot_min, open_hours, max_advance_days, timezone from public.shop_settings where id = 1
-  ),
-  dur as (
-    select coalesce(
-      (select sum(s.duration_min) from public.services s
-        where s.id = any(p_service_ids) and s.active = true),
-      (select slot_min from cfg)
-    )::int as total
   ),
   ctx as (
     select
@@ -95,12 +135,12 @@ as $$
     where p_day >= ctx.hoje
       and p_day <= ctx.hoje + cfg.max_advance_days
   ),
-  slots as (
+  s as (
     select to_char(make_time(m / 60, m % 60, 0), 'HH24:MI') as slot, m as m0
-    from win, ctx, dur,
+    from win, ctx,
       lateral generate_series(
         public._hhmm_to_min(win.janela ->> 0),
-        public._hhmm_to_min(win.janela ->> 1) - dur.total,   -- cabe a duração inteira antes de fechar
+        public._hhmm_to_min(win.janela ->> 1) - v_dur,   -- cabe a duração inteira antes de fechar
         win.slot_min
       ) as m
     where win.janela is not null
@@ -111,27 +151,28 @@ as $$
     s.slot,
     exists (
       select 1
-      from public.barbers b, dur, cfg
+      from public.barbers b, cfg
       where b.is_barber = true
-        and public._barber_covers(b.hours, extract(dow from p_day)::int, s.m0, dur.total)
+        and public._barber_covers(b.hours, extract(dow from p_day)::int, s.m0, v_dur)
         and not exists (
           select 1 from public.appointments a
           where a.barber_id = b.id
             and a.day = p_day
             and a.status in ('pendente', 'confirmado')
-            -- intervalos [x, x+dx) e [s.m0, s.m0+dur) se sobrepõem?
-            and public._hhmm_to_min(a.time) < s.m0 + dur.total
+            and public._hhmm_to_min(a.time) < s.m0 + v_dur
             and s.m0 < public._hhmm_to_min(a.time) + coalesce(a.duration, cfg.slot_min)
         )
     ) as livre
-  from slots s
-  order by s.slot
+  from s
+  order by s.slot;
+end;
 $$;
 
 -- ── grants mínimos (revisão do Codex) ──
--- SÓ a RPC pública é executável por anon/authenticated. Os helpers são
--- chamados internamente pelas RPCs SECURITY DEFINER (como owner), nunca direto.
+-- SÓ a RPC pública é executável por role externa. Os helpers rodam como owner
+-- dentro das RPCs SECURITY DEFINER.
 revoke all on function public._hhmm_to_min(text) from public;
+revoke all on function public._validate_services(bigint[]) from public;
 revoke all on function public._barber_covers(jsonb, integer, integer, integer) from public;
 revoke all on function public.public_day_availability(date, bigint[]) from public;
 

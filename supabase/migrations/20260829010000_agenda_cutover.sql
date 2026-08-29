@@ -40,7 +40,9 @@
 -- 0. extensão para combinar `barber_id WITH =` e range `WITH &&` num exclude
 create extension if not exists btree_gist;
 
--- 1. backfill de duração (nulls -> soma real dos serviços, fallback slot_min)
+-- 1. backfill de duração das linhas antigas (o cliente legado nunca gravava).
+--    Linhas novas já são cobertas pela trigger appointments_fill_duration
+--    (migration 20260829000050), que usa o slot_min ATUAL de shop_settings.
 update public.appointments a
 set duration = greatest(
   coalesce((select sum(s.duration_min) from public.services s
@@ -49,8 +51,9 @@ set duration = greatest(
 )
 where a.duration is null;
 
+-- SEM default fixo: a fonte canônica é shop_settings.slot_min, aplicada pela
+-- trigger. Só garante NOT NULL (backfill + trigger cobrem todos os caminhos).
 alter table public.appointments
-  alter column duration set default 45,   -- fallback = slot_min do seed; RPCs sempre gravam a real
   alter column duration set not null;
 
 -- 2. checagem de sobreposição ativa pré-existente (mesma predicate do exclude)
