@@ -9,13 +9,18 @@
 -- proteção definitiva de concorrência.
 --
 -- Faz:
---   1. backfill de `duration` (agendamentos antigos do cliente legado têm
---      duration NULL — a wizard nunca gravava) + default + NOT NULL;
---   2. EXCLUSION CONSTRAINT por INTERVALO [início, início+duração) por
---      barbeiro — a rede definitiva contra sobreposição (não só horário
---      inicial igual). Encaixe NÃO é isento (decisão): overbooking futuro será
---      permissão explícita de staff em fluxo separado;
---   3. remove as POLICIES de escrita direta do CLIENTE em appointments
+--   0. PREFLIGHT de serviço legado não resolvido — aborta se houver agendamento
+--      ATIVO (pendente/confirmado) com `duration IS NULL` e `services` que não
+--      resolvem 100% pelo catálogo atual (por nome). Nada de fallback silencioso
+--      de slot_min para agenda ativa: o operador corrige à mão antes;
+--   1. backfill de `duration` das linhas antigas + `NOT NULL` (a canônica das
+--      linhas NOVAS é a trigger appointments_fill_duration de 20260829000050 —
+--      slot_min atual de shop_settings; nenhum default fixo na coluna);
+--   2. PREFLIGHT de sobreposição ativa pré-existente;
+--   3. EXCLUSION CONSTRAINT por INTERVALO [início, início+duração) por barbeiro
+--      — a rede definitiva contra sobreposição. Encaixe NÃO é isento (decisão):
+--      overbooking futuro será permissão explícita de staff em fluxo separado;
+--   4. remove as POLICIES de escrita direta do CLIENTE em appointments
 --      (`clients_insert_own`, `clients_update_own`). Escrita do cliente passa a
 --      ser exclusivamente pelas RPCs (SECURITY DEFINER, bypassam RLS).
 --
@@ -26,8 +31,6 @@
 --
 -- `clients_select_own` e `appointment_waitlist` NÃO são tocadas.
 --
--- Pré-requisito verificado: nenhuma sobreposição ativa pré-existente.
---
 -- Rollback:
 --   alter table public.appointments drop constraint appointments_no_overlap;
 --   -- (opcional) alter table public.appointments alter column duration drop not null;
@@ -37,26 +40,49 @@
 --     for update using (client_id = auth.uid()) with check (client_id = auth.uid());
 -- Impacto: cliente só escreve agenda via RPC; staff inalterado.
 
--- 0. extensão para combinar `barber_id WITH =` e range `WITH &&` num exclude
+-- 0. PREFLIGHT — serviço legado não resolvido em agenda ATIVA
+do $$
+declare
+  v_bad int;
+begin
+  -- cardinalidade de a.services vs. quantos desses nomes existem no catálogo atual.
+  -- se algum nome sumiu, count < cardinalidade -> registro ativo precisa de correção manual.
+  select count(*) into v_bad
+  from public.appointments a
+  where a.status in ('pendente', 'confirmado')
+    and a.duration is null
+    and coalesce(cardinality(a.services), 0) <> (
+      select count(*) from public.services s where s.name = any(a.services)
+    );
+  if v_bad > 0 then
+    raise exception
+      'CUTOVER abortado: % agendamento(s) ATIVO(s) com duration NULL e serviços não resolvíveis pelo catálogo atual (nome sumiu). Corrigir manualmente (setar `duration` ou ajustar `services`) antes do cutover — NÃO usar fallback de slot_min para agenda ativa.',
+      v_bad;
+  end if;
+end $$;
+
+-- extensão para combinar `barber_id WITH =` e range `WITH &&` num exclude
 create extension if not exists btree_gist;
 
 -- 1. backfill de duração das linhas antigas (o cliente legado nunca gravava).
---    Linhas novas já são cobertas pela trigger appointments_fill_duration
---    (migration 20260829000050), que usa o slot_min ATUAL de shop_settings.
+--    - totalmente resolvível pelo catálogo -> soma real de duration_min;
+--    - não resolvível -> slot_min (só alcançável por histórico INATIVO, pois o
+--      preflight §0 já barrou os ativos não resolvíveis; e o inativo não entra
+--      na exclusion constraint).
 update public.appointments a
-set duration = greatest(
-  coalesce((select sum(s.duration_min) from public.services s
-            where s.name = any(a.services)), 0),
-  (select slot_min from public.shop_settings where id = 1)
-)
+set duration = case
+  when coalesce(cardinality(a.services), 0) = (
+    select count(*) from public.services s where s.name = any(a.services)
+  )
+    then (select sum(s.duration_min) from public.services s where s.name = any(a.services))
+  else (select slot_min from public.shop_settings where id = 1)
+end
 where a.duration is null;
 
--- SEM default fixo: a fonte canônica é shop_settings.slot_min, aplicada pela
--- trigger. Só garante NOT NULL (backfill + trigger cobrem todos os caminhos).
 alter table public.appointments
   alter column duration set not null;
 
--- 2. checagem de sobreposição ativa pré-existente (mesma predicate do exclude)
+-- 2. PREFLIGHT — sobreposição ativa pré-existente (mesma predicate do exclude)
 do $$
 declare
   v_over int;
@@ -66,10 +92,10 @@ begin
   join public.appointments b
     on b.barber_id = a.barber_id
    and b.id <> a.id
-   and b.status in ('pendente','confirmado')
+   and b.status in ('pendente', 'confirmado')
    and (a.day + a."time"::time) < (b.day + b."time"::time + make_interval(mins => b.duration))
    and (b.day + b."time"::time) < (a.day + a."time"::time + make_interval(mins => a.duration))
-  where a.status in ('pendente','confirmado');
+  where a.status in ('pendente', 'confirmado');
   if v_over > 0 then
     raise exception
       'CUTOVER abortado: % pares de agendamentos ativos com intervalos sobrepostos para o mesmo barbeiro. Resolver antes de criar a exclusion constraint.',
