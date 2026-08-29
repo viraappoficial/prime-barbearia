@@ -18,30 +18,34 @@
 --       comissao_fiado_na_hora). Sem mexer na policy. → migration 20260829000110.
 --   (A) relaxar `shop_settings_select_all` para `using (true)` — expõe também
 --       `comissao_fiado_na_hora`.
--- Este arquivo só adiciona as colunas + seed; a saída de leitura é decisão à
--- parte.
+-- Decisão do Codex (aprovada): ALTER TABLE; preservar `comissao_fiado_na_hora`,
+-- as policies (`shop_settings_admin_update`, `shop_settings_select_all`) e os
+-- grants existentes; adicionar SÓ as 4 colunas de agenda; o seed atualiza
+-- explicitamente SÓ essas 4 colunas da linha id=1 (sem update amplo).
 --
 -- Rollback:
 --   alter table public.shop_settings
+--     drop constraint if exists shop_settings_slot_min_chk,
+--     drop constraint if exists shop_settings_max_advance_days_chk;
+--   alter table public.shop_settings
 --     drop column slot_min, drop column open_hours,
 --     drop column max_advance_days, drop column timezone;
--- Impacto: nenhum no legado — colunas novas, nullable até o seed; nenhuma
--- policy/grant alterada.
+-- Impacto: nenhum no legado — colunas novas; `comissao_fiado_na_hora`,
+-- `updated_at`, policies e grants intocados.
 
 alter table public.shop_settings
-  add column if not exists slot_min         integer,
-  add column if not exists open_hours       jsonb,
-  add column if not exists max_advance_days integer,
-  add column if not exists timezone         text;
+  add column slot_min         integer,
+  add column open_hours       jsonb,
+  add column max_advance_days integer,
+  add column timezone         text;
 
--- seed = os valores que já valiam em domain/agenda.ts + o fuso decidido.
--- (a linha id=1 já existe; UPDATE, não INSERT)
+-- seed explícito — SÓ as 4 colunas de agenda da linha id=1 (que já existe).
+-- Valores = os que já valiam em domain/agenda.ts + o fuso decidido.
 update public.shop_settings set
-  slot_min         = coalesce(slot_min, 45),
-  open_hours       = coalesce(open_hours,
-    '{"0": null, "1": ["09:00","20:00"], "2": ["09:00","20:00"], "3": ["09:00","20:00"], "4": ["09:00","20:00"], "5": ["09:00","20:00"], "6": ["09:00","18:00"]}'::jsonb),
-  max_advance_days = coalesce(max_advance_days, 10),
-  timezone         = coalesce(timezone, 'America/Sao_Paulo')
+  slot_min         = 45,
+  open_hours       = '{"0": null, "1": ["09:00","20:00"], "2": ["09:00","20:00"], "3": ["09:00","20:00"], "4": ["09:00","20:00"], "5": ["09:00","20:00"], "6": ["09:00","18:00"]}'::jsonb,
+  max_advance_days = 10,
+  timezone         = 'America/Sao_Paulo'
 where id = 1;
 
 -- trava depois do seed (a linha id=1 sempre existe; a trigger/RPCs assumem non-null)
