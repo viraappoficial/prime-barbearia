@@ -171,9 +171,16 @@ $$;
 -- ── grants mínimos (revisão do Codex) ──
 -- SÓ a RPC pública é executável por role externa. Os helpers rodam como owner
 -- dentro das RPCs SECURITY DEFINER.
-revoke all on function public._hhmm_to_min(text) from public;
-revoke all on function public._validate_services(bigint[]) from public;
-revoke all on function public._barber_covers(jsonb, integer, integer, integer) from public;
-revoke all on function public.public_day_availability(date, bigint[]) from public;
+-- os default privileges do Supabase concedem EXECUTE a anon/authenticated/
+-- service_role em toda função nova de `public`; revogar explicitamente dos
+-- helpers (só o owner os chama de dentro das RPCs SECURITY DEFINER).
+revoke execute on function public._hhmm_to_min(text)
+  from public, anon, authenticated, service_role;
+revoke execute on function public._validate_services(bigint[])
+  from public, anon, authenticated, service_role;
+revoke execute on function public._barber_covers(jsonb, integer, integer, integer)
+  from public, anon, authenticated, service_role;
 
+revoke execute on function public.public_day_availability(date, bigint[])
+  from public, anon, authenticated, service_role;
 grant execute on function public.public_day_availability(date, bigint[]) to anon, authenticated;

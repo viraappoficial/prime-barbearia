@@ -24,5 +24,6 @@ as $$
   where s.id = 1
 $$;
 
-revoke all on function public.public_shop_grid() from public;
+revoke execute on function public.public_shop_grid()
+  from public, anon, authenticated, service_role;
 grant execute on function public.public_shop_grid() to anon, authenticated;

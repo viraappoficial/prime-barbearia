@@ -33,9 +33,12 @@ begin
 end;
 $$;
 
-revoke all on function public._fill_appointment_duration() from public;
+-- default privileges do Supabase concedem EXECUTE a anon/authenticated/service_role
+-- em toda função nova de `public`; revogar explicitamente — só o owner chama.
+revoke execute on function public._fill_appointment_duration()
+  from public, anon, authenticated, service_role;
 
-create trigger appointments_fill_duration
+create or replace trigger appointments_fill_duration
   before insert on public.appointments
   for each row
   execute function public._fill_appointment_duration();

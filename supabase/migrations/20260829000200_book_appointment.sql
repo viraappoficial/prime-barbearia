@@ -178,6 +178,11 @@ end;
 $$;
 
 -- ── grants mínimos ──
-revoke all on function public._insert_appointment(uuid, uuid, date, text, bigint[]) from public;
-revoke all on function public.book_appointment(uuid, date, text, bigint[]) from public;
+-- default privileges do Supabase concedem EXECUTE a anon/authenticated/service_role;
+-- revogar explicitamente. _insert_appointment: só as RPCs o chamam (como owner).
+-- book_appointment: só cliente logado (authenticated), NUNCA anon.
+revoke execute on function public._insert_appointment(uuid, uuid, date, text, bigint[])
+  from public, anon, authenticated, service_role;
+revoke execute on function public.book_appointment(uuid, date, text, bigint[])
+  from public, anon, authenticated, service_role;
 grant execute on function public.book_appointment(uuid, date, text, bigint[]) to authenticated;

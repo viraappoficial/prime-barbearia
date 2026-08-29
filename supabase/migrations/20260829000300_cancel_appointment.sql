@@ -46,5 +46,6 @@ begin
 end;
 $$;
 
-revoke all on function public.cancel_appointment(bigint) from public;
+revoke execute on function public.cancel_appointment(bigint)
+  from public, anon, authenticated, service_role;
 grant execute on function public.cancel_appointment(bigint) to authenticated;

@@ -77,5 +77,6 @@ begin
 end;
 $$;
 
-revoke all on function public.reschedule_appointment(bigint, uuid, date, text, bigint[]) from public;
+revoke execute on function public.reschedule_appointment(bigint, uuid, date, text, bigint[])
+  from public, anon, authenticated, service_role;
 grant execute on function public.reschedule_appointment(bigint, uuid, date, text, bigint[]) to authenticated;

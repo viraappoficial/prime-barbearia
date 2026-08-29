@@ -22,5 +22,9 @@ as $$
 $$;
 
 -- grants como já eram (anon+authenticated), sem o service_role amplo herdado.
-revoke all on function public.validate_coupon(text) from public;
-grant execute on function public.validate_coupon(text) to anon, authenticated;
+-- `validate_coupon` já existia com GRANT a anon/authenticated/service_role
+-- (baseline). O `create or replace` re-emite as default privileges; a única
+-- mudança de comportamento é o `search_path` fixo. Mantém o mesmo conjunto de
+-- grants (nada de regressão), só tira o PUBLIC implícito.
+revoke execute on function public.validate_coupon(text) from public;
+grant execute on function public.validate_coupon(text) to anon, authenticated, service_role;
