@@ -8,8 +8,9 @@
 -- `slot_min` ATUAL de shop_settings. Duração enviada explicitamente é
 -- preservada. Sem DEFAULT fixo na coluna.
 --
--- SECURITY INVOKER (não precisa escalar — shop_settings tem SELECT liberado);
--- `search_path` fixo e objeto qualificado.
+-- SECURITY DEFINER (owner) + `search_path` fixo: lê `shop_settings` sempre,
+-- independente da RLS `shop_settings_select_all` (que hoje é staff-only). Só
+-- lê 1 coluna de config e seta NEW.duration — superfície mínima.
 --
 -- Rollback:
 --   drop trigger appointments_fill_duration on public.appointments;
@@ -21,7 +22,7 @@
 create or replace function public._fill_appointment_duration()
 returns trigger
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 begin
