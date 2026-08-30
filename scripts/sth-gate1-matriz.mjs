@@ -18,6 +18,7 @@ const FILES = [
   '20260830000000_barber_role.sql',
   '20260830000100_policies_appointments_crm_via_role.sql',
   '20260830000200_appointments_col_guard.sql',
+  '20260830000250_appointments_guard_hybrid.sql',
   '20260830000300_staff_status_rpcs.sql',
   '20260830000400_higiene_grants_staff.sql',
 ]
@@ -115,7 +116,8 @@ drop function if exists public._sthg1_invoker(bigint, text);
 `
 
 // ─── seed ────────────────────────────────────────────────────────────────────
-let CLI, BARBA, BARBB, VEND, ADM, APPT_A, APPT_B
+let CLI, BARBA, BARBB, VEND, ADM, HYB, APPT_A, APPT_B
+let APPT_HYB_CLI, APPT_HYB_OWN, APPT_FOREIGN  // p/ SH32 (híbrido)
 const baseAppt = (clientUid, barberUid, name, email) =>
   `insert into public.appointments (client_id,barber_id,services,day,day_label,time,duration,status,client_name,client_email,discount_price)
    values (${clientUid ? `'${clientUid}'` : 'null'},'${barberUid}',array['Corte Degradê'],current_date+5,'x','10:30',45,'pendente','${name}',${email ? `'${email}'` : 'null'},80) returning id;`
@@ -134,16 +136,23 @@ const setStatusA = (s) => psql(`update public.appointments set status='${s}' whe
 
 async function seed() {
   CLI = await signup('cliA'); BARBA = await signup('barbA'); BARBB = await signup('barbB')
-  VEND = await signup('vend'); ADM = await signup('adm')
+  VEND = await signup('vend'); ADM = await signup('adm'); HYB = await signup('hyb')
+  // HYB entra em clients E em barbers (usuário híbrido — SH32)
   psql(`insert into public.clients (id,email,name) values
-    ('${CLI.uid}','${CLI.email}','${PFX} cliA');`)
+    ('${CLI.uid}','${CLI.email}','${PFX} cliA'),
+    ('${HYB.uid}','${HYB.email}','${PFX} hyb');`)
   psql(`insert into public.barbers (id,name,email,role,is_barber) values
     ('${BARBA.uid}','${PFX} BarbA','${BARBA.email}','barbeiro',true),
     ('${BARBB.uid}','${PFX} BarbB','${BARBB.email}','barbeiro',true),
     ('${VEND.uid}','${PFX} Vend','${VEND.email}','vendas',false),
-    ('${ADM.uid}','${PFX} Adm','${ADM.email}','admin',false);`)
+    ('${ADM.uid}','${PFX} Adm','${ADM.email}','admin',false),
+    ('${HYB.uid}','${PFX} Hyb','${HYB.email}','barbeiro',true);`)
   APPT_A = psql(baseAppt(CLI.uid, BARBA.uid, `${PFX} cliA`, CLI.email))
   APPT_B = psql(baseAppt(CLI.uid, BARBB.uid, `${PFX} cliB`, CLI.email))
+  // SH32 — híbrido:
+  APPT_HYB_CLI = psql(baseAppt(HYB.uid, BARBA.uid, `${PFX} hybAsClient`, HYB.email))   // HYB é o CLIENTE, barbeiro é BARBA
+  APPT_HYB_OWN = psql(baseAppt(CLI.uid, HYB.uid, `${PFX} hybOwnAgenda`, CLI.email))    // HYB é o BARBEIRO da linha
+  APPT_FOREIGN = psql(baseAppt(CLI.uid, BARBB.uid, `${PFX} foreignToHyb`, CLI.email))  // HYB não é nem cliente nem barbeiro
 }
 
 // helper: espera bloqueio (>=400) e que a linha NÃO mudou a coluna testada
@@ -194,10 +203,15 @@ async function main() {
     ok('SH2 admin lê agenda (admin_update/select via barber_role)', Array.isArray(admAll.b) && admAll.b.length >= 2, `n=${admAll.b?.length}`)
     const vendAll = await g(VEND.tok, `appointments?select=id&client_name=like.${PFX}*`)
     ok('SH2 vendas lê agenda (appointments_vendas_read via barber_role)', Array.isArray(vendAll.b) && vendAll.b.length >= 2, `n=${vendAll.b?.length}`)
+    // BARBA é barbeiro de APPT_A + APPT_HYB_CLI → 2
     const barbAsees = await g(BARBA.tok, `appointments?select=id,barber_id&client_name=like.${PFX}*`)
-    ok('SH2 barbeiro A lê só a própria (barbers_select_own intacta)', barbAsees.b?.every((x) => x.barber_id === BARBA.uid) && barbAsees.b.length === 1, `n=${barbAsees.b?.length}`)
-    const cliSees = await g(CLI.tok, `appointments?select=id&client_name=like.${PFX}*`)
-    ok('SH2 cliente lê só as próprias (2)', cliSees.b?.length === 2, `n=${cliSees.b?.length}`)
+    ok('SH2 barbeiro A lê só as próprias (barbers_select_own intacta)', barbAsees.b?.every((x) => x.barber_id === BARBA.uid) && barbAsees.b.length === 2, `n=${barbAsees.b?.length}`)
+    // CLI é cliente de APPT_A + APPT_B + APPT_HYB_OWN + APPT_FOREIGN → 4
+    const cliSees = await g(CLI.tok, `appointments?select=id,client_id&client_name=like.${PFX}*`)
+    ok('SH2 cliente lê só as próprias', cliSees.b?.every((x) => x.client_id === CLI.uid) && cliSees.b.length === 4, `n=${cliSees.b?.length}`)
+    // HYB: barbeiro de APPT_HYB_OWN (1) + cliente de APPT_HYB_CLI (1) → vê 2, uma por cada policy
+    const hybSees = await g(HYB.tok, `appointments?select=id,barber_id,client_id&client_name=like.${PFX}*`)
+    ok('SH2 híbrido lê a própria agenda (1) + a própria linha-como-cliente (1)', hybSees.b?.length === 2 && hybSees.b.some((x) => x.barber_id === HYB.uid) && hybSees.b.some((x) => x.client_id === HYB.uid), `n=${hybSees.b?.length}`)
   }
 
   // ═══ SH2b — current_user por caminho (sonda efêmera, guard REAL intacto) ═══
@@ -547,6 +561,90 @@ async function main() {
   await expectOk(authed(ADM.tok), 'SH31 admin PATCH notes', { notes: 'admin note' })
   await expectBlocked(authed(ADM.tok), 'SH31 admin PATCH client_id → bloqueado', { client_id: BARBB.uid })
   await expectBlocked(authed(ADM.tok), 'SH31 admin PATCH barber_id → bloqueado', { barber_id: BARBB.uid })
+
+  // ═══ SH32 — usuário HÍBRIDO (barbeiro + cliente) — achado do Codex ═══
+  console.log('\n── SH32 — híbrido: "barbeiro operando sua agenda" vs "barbeiro agindo como cliente" ──')
+  {
+    const H = authed(HYB.tok)
+    const patchId = async (hdrs, id, body) => {
+      const r = await fetch(`${LAB}/rest/v1/appointments?id=eq.${id}`, { method: 'PATCH', headers: { ...hdrs, Prefer: 'return=minimal' }, body: JSON.stringify(body) })
+      return { status: r.status, msg: (await r.text()).replace(/\s+/g, ' ').trim().slice(0, 160) }
+    }
+    const c = (id, cc) => psql(`select ${cc}::text from public.appointments where id=${id};`)
+    const resetHybCli = () => psql(`update public.appointments set status='pendente', discount_price=80, services=array['Corte Degradê'], day=current_date+5, time='10:30', notes=null, rating=null, rating_by=null, rating_comment=null where id=${APPT_HYB_CLI};`)
+    const resetHybOwn = () => psql(`update public.appointments set status='pendente', discount_price=80, services=array['Corte Degradê'], iniciado_em=null, notes=null where id=${APPT_HYB_OWN};`)
+
+    // barber_role() do híbrido → 'barbeiro' (ele TEM linha em barbers)
+    ok('SH32 barber_role(híbrido) = barbeiro', (() => {
+      return psql(`begin; set local role authenticated; set local request.jwt.claims to '{"sub":"${HYB.uid}","role":"authenticated"}'; select public.barber_role(); rollback;`) === 'barbeiro'
+    })())
+
+    // 1) HÍBRIDO COMO CLIENTE (linha com BARBA; client_id = HYB) → regras de cliente
+    for (const [lbl, body] of [
+      ['discount_price', { discount_price: 0 }],
+      ['services', { services: ['Corte de graça'] }],
+      ['day + time', { day: '2099-01-01', time: '23:00' }],
+      ['notes', { notes: 'x' }],
+    ]) {
+      const before = c(APPT_HYB_CLI, 'discount_price') + '|' + c(APPT_HYB_CLI, 'services') + '|' + c(APPT_HYB_CLI, 'day') + '|' + c(APPT_HYB_CLI, 'notes')
+      const r = await patchId(H, APPT_HYB_CLI, body)
+      const after = c(APPT_HYB_CLI, 'discount_price') + '|' + c(APPT_HYB_CLI, 'services') + '|' + c(APPT_HYB_CLI, 'day') + '|' + c(APPT_HYB_CLI, 'notes')
+      ok(`SH32.1 híbrido-como-cliente: ${lbl} → CLIENT_COL_FORBIDDEN`, r.status === 400 && r.msg.includes('CLIENT_COL_FORBIDDEN') && before === after, `HTTP ${r.status} [${errcode(r.msg)}]${before === after ? '' : ' ⚠️ROW CHANGED'}`)
+      resetHybCli()
+    }
+    {
+      const r = await patchId(H, APPT_HYB_CLI, { status: 'confirmado' })
+      ok('SH32.1 híbrido-como-cliente: status → confirmado → CLIENT_STATUS_FORBIDDEN', r.status === 400 && r.msg.includes('CLIENT_STATUS_FORBIDDEN'), `HTTP ${r.status} [${errcode(r.msg)}]`)
+      resetHybCli()
+    }
+    {
+      const r = await patchId(H, APPT_HYB_CLI, { status: 'cancelado' })
+      ok('SH32.1 híbrido-como-cliente: cancelar o próprio ativo → ok', r.status < 300 && c(APPT_HYB_CLI, 'status') === 'cancelado', `HTTP ${r.status}, status=${c(APPT_HYB_CLI, 'status')}`)
+      resetHybCli()
+    }
+    {
+      psql(`update public.appointments set status='concluido' where id=${APPT_HYB_CLI};`)
+      const r = await patchId(H, APPT_HYB_CLI, { rating: 5, rating_comment: 'bom', rating_by: 'cliente' })
+      ok('SH32.1 híbrido-como-cliente: avaliar 1× o corte concluído → ok', r.status < 300 && c(APPT_HYB_CLI, 'rating') === '5', `HTTP ${r.status}, rating=${c(APPT_HYB_CLI, 'rating')}`)
+      resetHybCli()
+    }
+
+    // 2) HÍBRIDO NA PRÓPRIA AGENDA (barber_id = HYB) → staff operacional
+    for (const [lbl, body] of [
+      ['status → confirmado', { status: 'confirmado' }],
+      ['services + discount_price', { services: ['Corte Degradê', 'Barba'], discount_price: 60 }],
+      ['day + day_label + time', { day: '2026-12-24', day_label: 'Qui', time: '15:00' }],
+      ['notes', { notes: 'obs do atendimento' }],
+    ]) {
+      const r = await patchId(H, APPT_HYB_OWN, body)
+      ok(`SH32.2 híbrido-na-própria-agenda: ${lbl} → ok`, r.status < 300, `HTTP ${r.status} ${r.status >= 300 ? r.msg : ''}`)
+      resetHybOwn()
+    }
+    {
+      const r = await patchId(H, APPT_HYB_OWN, { client_id: BARBB.uid })
+      ok('SH32.2 híbrido-na-própria-agenda: client_id → bloqueado', r.status >= 400, `HTTP ${r.status} [${errcode(r.msg)}]`)
+      resetHybOwn()
+    }
+
+    // 3) LINHA TOTALMENTE ALHEIA (client=CLI, barber=BARBB) → RLS: 0 linhas
+    {
+      const before = psql(`select discount_price::text from public.appointments where id=${APPT_FOREIGN};`)
+      const r = await patchId(H, APPT_FOREIGN, { discount_price: 0 })
+      const after = psql(`select discount_price::text from public.appointments where id=${APPT_FOREIGN};`)
+      ok('SH32.3 híbrido: linha totalmente alheia → não muda (RLS)', before === after, `HTTP ${r.status}, discount ${before}→${after}`)
+    }
+
+    // 4) RPCs DEFINER de staff: posse inalterada
+    {
+      psql(`update public.appointments set status='pendente' where id=${APPT_HYB_OWN};`)
+      let r = await rpc(H, 'staff_accept_appointment', { p_id: APPT_HYB_OWN })
+      ok('SH32.4 híbrido: staff_accept na PRÓPRIA agenda → ok', r.status < 300 && c(APPT_HYB_OWN, 'status') === 'confirmado', `HTTP ${r.status}`)
+      psql(`update public.appointments set status='pendente' where id=${APPT_HYB_CLI};`)
+      r = await rpc(H, 'staff_accept_appointment', { p_id: APPT_HYB_CLI })
+      ok('SH32.4 híbrido: staff_accept na linha-como-cliente → NOT_FOUND (posse)', r.msg.includes('NOT_FOUND'), `HTTP ${r.status} [${errcode(r.msg)}]`)
+      resetHybOwn(); resetHybCli()
+    }
+  }
 
   // ═══ SH2 (bis) — ST-0 test:staff-lab regressão ═══
   console.log('\n── regressão ST-0 (test:staff-lab) ──')

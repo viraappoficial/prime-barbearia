@@ -3,12 +3,23 @@
 status: **migrations escritas e aplicadas SÓ no lab self-hosted. Produção
 intocada. Sem `db push`. Sem merge. Sem cutover de agenda.**
 branch: `staff/st-h-gate1` (repo `prime-barbearia`), sobre `7b60d9d`
-data: 2026-08-30
+data: 2026-08-30 · **rev. 1 (30/08): +ST-H.3b (achado do Codex — usuário híbrido)**
 proposta: `prime-next@proposta/staff-hardening:docs/investigacoes/05-staff-hardening.md`
 Gate 0: `prime-next@proposta/staff-hardening` `d53d8e0` (`79 OK / 0 FAIL`)
 
-**Resultado da matriz: `141 OK / 0 FAIL`** (`scripts/sth-gate1-matriz.mjs`).
+**Resultado da matriz: `158 OK / 0 FAIL`** (`scripts/sth-gate1-matriz.mjs`).
 Lab volta a **37 appointments**, sem objeto/dado de teste.
+
+> **rev. 1 — revisão do Codex ao Gate 1.** O guard escolhia o allow-list só por
+> `barber_role()`. Um usuário **barbeiro + cliente**, com agendamento próprio
+> marcado com OUTRO barbeiro (`client_id=auth.uid()` ∧ `barber_id<>auth.uid()`),
+> passava pela RLS `clients_update_own` mas era tratado como staff → editava
+> `discount_price`/`services`/data/`notes` da própria linha. **Furo provado no
+> lab.** Corrigido por **migration incremental** `20260830000250` (não altera a
+> `…000200` já aplicada): o guard distingue *"barbeiro operando SUA agenda"*
+> (`OLD.barber_id = auth.uid()` → staff) de *"barbeiro agindo como cliente"*
+> (`OLD.barber_id <> auth.uid()` → cliente). admin/vendas mantêm o caminho de
+> staff (escopo global deliberado das policies). SH32 cobre (15 asserções).
 
 ---
 
@@ -19,25 +30,18 @@ aplicada). Data corrente 2026-08-30 → prefixo livre **`20260830`** (não `2026
 como a proposta chutou). Ordena **depois** de todas as de agenda; a ST-H **não**
 depende do cutover e **não** o toca.
 
-| # | arquivo | linhas |
+| # | arquivo | o quê |
 |---|---|---|
-| ST-H.1 | `20260830000000_barber_role.sql` | 44 |
-| ST-H.2 | `20260830000100_policies_appointments_crm_via_role.sql` | 74 |
-| ST-H.3 | `20260830000200_appointments_col_guard.sql` | 176 |
-| ST-H.4 | `20260830000300_staff_status_rpcs.sql` | 215 |
-| ST-H.5 | `20260830000400_higiene_grants_staff.sql` | 31 |
+| ST-H.1 | `20260830000000_barber_role.sql` | helper `barber_role()` |
+| ST-H.2 | `20260830000100_policies_appointments_crm_via_role.sql` | 8 policies de papel → `barber_role()` |
+| ST-H.3 | `20260830000200_appointments_col_guard.sql` | camada 1 (grant 16 col) + camada 2 (trigger) |
+| **ST-H.3b** | `20260830000250_appointments_guard_hybrid.sql` | **rev.1** — `create or replace` do guard: distingue barbeiro-staff × barbeiro-como-cliente |
+| ST-H.4 | `20260830000300_staff_status_rpcs.sql` | 5 RPCs de status |
+| ST-H.5 | `20260830000400_higiene_grants_staff.sql` | higiene de grants |
 
 `git diff 7b60d9d..HEAD --stat` (path-limited, o branch só tem estes arquivos):
-
-```
- scripts/sth-gate1-matriz.mjs                                        | 640 +
- supabase/migrations/20260830000000_barber_role.sql                  |  44 +
- supabase/migrations/20260830000100_policies_appointments_crm_via_role.sql | 74 +
- supabase/migrations/20260830000200_appointments_col_guard.sql       | 176 +
- supabase/migrations/20260830000300_staff_status_rpcs.sql            | 215 +
- supabase/migrations/20260830000400_higiene_grants_staff.sql         |  31 +
- 6 files changed, 1180 insertions(+)
-```
+migrations `20260830000000..20260830000400` (5) + `20260830000250` (rev.1) +
+`scripts/sth-gate1-matriz.mjs` + `docs/st-h-gate1/RELATORIO.md`.
 
 ---
 
@@ -107,6 +111,37 @@ brechas latentes não exercitadas — (a) `rating_comment`/`rating_by` sozinhos 
 `rating_by='cliente'` passava. O guard da migration fecha as duas
 (`'rating' = any(v_changed)` + `coalesce(…, false)`). SH6e cobre.
 
+### ST-H.3b — guard: barbeiro-staff × barbeiro-como-cliente (rev.1, achado do Codex)
+
+`20260830000250_appointments_guard_hybrid.sql` — `create or replace` **só** de
+`_appointments_guard_update()` (o trigger e os grants da `…000200` ficam; a
+migration aplicada **não** é tocada).
+
+**Furo (provado no lab):** usuário com linha em `barbers(role='barbeiro')` **e**
+em `clients`, dono de um agendamento marcado com OUTRO barbeiro (`client_id =
+auth.uid()` ∧ `barber_id <> auth.uid()`): passa no `USING` por
+`clients_update_own` (a `barbers_update_own` exige `barber_id = auth.uid()`),
+mas o guard escolhia o allow-list por `barber_role()` = `'barbeiro'` → **caminho
+de staff** → editava `discount_price`/`services`/`day`/`time`/`notes` da própria
+linha.
+
+**Correção — a decisão agora é por posse da linha, não só por papel:**
+
+| condição | caminho |
+|---|---|
+| `barber_role()` is null | CLIENTE |
+| `barber_role()='barbeiro'` ∧ `OLD.barber_id = auth.uid()` | STAFF operacional |
+| `barber_role()='barbeiro'` ∧ `OLD.barber_id <> auth.uid()` | **CLIENTE** (só chegou por `clients_update_own`) |
+| `barber_role()` in (`admin`,`vendas`) | STAFF (escopo global deliberado das policies `admin_update_all` / `appointments_vendas_update`) |
+
+As RPCs `SECURITY DEFINER` de staff **não mudam**: `_staff_appt_for_write` já
+checa posse (`v_appt.barber_id = auth.uid() OR admin [OR vendas]`) — um híbrido
+chamando `staff_accept` sobre a própria linha-como-cliente recebe `NOT_FOUND`
+(SH32.4).
+
+Rollback da ST-H.3b: reaplicar o corpo de `…000200` (guard sem `v_as_client`).
+Rollback completo (harness): `drop trigger … ; drop function …` cobre as duas.
+
 ### ST-H.4 — RPCs de status
 `_staff_appt_for_write(p_id, p_allow_vendas)` (helper `security definer`, sem
 grant a role externa) resolve `appt` + valida `auth.uid()` (`NOT_AUTH`) +
@@ -174,6 +209,10 @@ UPDATE por coluna de `authenticated`: **as 16** listadas na §2 (nada estrutural
 appointments_fill_duration  BEFORE INSERT  (inalterado, agenda)
 appointments_guard_update   BEFORE UPDATE FOR EACH ROW  EXECUTE _appointments_guard_update()   ← novo
 ```
+`_appointments_guard_update` no lab = corpo da **rev.1** (`…000250`): `declare`
+inclui `v_as_client`; a escolha do allow-list é `v_role is null OR (v_role =
+'barbeiro' AND old.barber_id IS DISTINCT FROM auth.uid())`. Definição completa no
+dump de evidências do harness.
 
 ### policies (contagem e comando inalterados; 8 agora chamam `barber_role()`)
 ```
@@ -208,7 +247,9 @@ o guard lê.)
 
 ---
 
-## 5. Matriz SH1–SH31 (`141 OK / 0 FAIL`)
+## 5. Matriz SH1–SH32 (`158 OK / 0 FAIL`)
+
+`141` na rev.0 + **17** da SH32 (usuário híbrido).
 
 | SH | o quê | resultado |
 |---|---|---|
@@ -253,6 +294,15 @@ o guard lê.)
 | **SH29** | smoke legado barbeiro: aceitar→iniciar→remarcar in-place→serviço+desconto→feedback→reply→lembrete | **passa** |
 | **SH30** | smoke legado vendas: `appointments_vendas_insert` + PATCH `status` passa; PATCH `barber_id` → 403 | conforme |
 | **SH31** | smoke legado admin: `admin_update_all` PATCH `status`/`discount_price`/`notes` passa; `client_id`/`barber_id` → 403 | conforme |
+| **SH32** | **usuário HÍBRIDO** (barbeiro + cliente): |
+| SH32 | `barber_role(híbrido)` = `barbeiro` | conforme |
+| SH32.1 | híbrido como cliente de OUTRO barbeiro (`OLD.barber_id<>uid`): `discount_price`/`services`/`day`+`time`/`notes` | **400 `CLIENT_COL_FORBIDDEN`** |
+| SH32.1 | híbrido-como-cliente: `status → confirmado` | **400 `CLIENT_STATUS_FORBIDDEN`** |
+| SH32.1 | híbrido-como-cliente: cancelar o próprio ativo; avaliar 1× o corte concluído | **204** (regras de cliente) |
+| SH32.2 | híbrido na PRÓPRIA agenda (`OLD.barber_id=uid`): `status`/`services`+`discount_price`/`day`+`time`/`notes` | **204** (staff operacional) |
+| SH32.2 | híbrido na própria agenda: `client_id` | **403** (camada 1) |
+| SH32.3 | híbrido numa linha totalmente alheia | **RLS** — 0 linhas, nada muda |
+| SH32.4 | híbrido `staff_accept` na própria agenda OK; na linha-como-cliente → `NOT_FOUND` | conforme (posse do RPC inalterada) |
 | regressão | `agenda-lab-matriz` (40/40) + `staff-lab-test` (A/B/C/D) | **0 falhas** |
 
 Saída completa: `scripts/sth-gate1-matriz.mjs` (roda tudo + limpa + evidências).
@@ -269,8 +319,10 @@ Saída completa: `scripts/sth-gate1-matriz.mjs` (roda tudo + limpa + evidências
 - status (≠ cancelar ativo) → SH4/SH5b `CLIENT_STATUS_FORBIDDEN`
 - avaliação (re-avaliar, sem `rating_by`, comentário solto, fora de `concluido`,
   fora de 1..5) → SH6b–SH6e `CLIENT_RATING_FORBIDDEN`
-- só passa: `status → cancelado` de ativo (SH5) e avaliar 1× o próprio corte
-  concluído (SH6).
+- **inclusive quando o cliente é um barbeiro logado** editando o próprio corte
+  com um colega (`OLD.barber_id <> auth.uid()`) → SH32.1 (rev.1)
+- só passa: `status → cancelado` de ativo (SH5/SH32.1) e avaliar 1× o próprio
+  corte concluído (SH6/SH32.1).
 
 **Barbeiro NÃO altera:**
 - cliente/barbeiro da linha (`client_id`/`barber_id`) → SH9 403
@@ -294,9 +346,13 @@ SH29, SH30, SH31 — todos com token real por papel, `PATCH`/`POST` no PostgREST
 Cada arquivo tem o rollback no cabeçalho. O harness executa o ciclo completo
 **reverter → verificar baseline → re-aplicar** e confere: funções ST-H removidas,
 trigger removido, `authenticated` volta a ter `UPDATE` tabela-inteira,
-`admin_update_all` volta ao `EXISTS` inline. Ordem de reversão: ST-H.5 → .4 → .3 →
-.2 → .1 (as RPCs antes do helper; o trigger antes da função; as policies antes de
-dropar `barber_role()`).
+`admin_update_all` volta ao `EXISTS` inline. Ordem de reversão: ST-H.5 → .4 →
+.3b/.3 → .2 → .1 (as RPCs antes do helper; o trigger antes da função; as policies
+antes de dropar `barber_role()`).
+
+ST-H.3b sozinha reverte reaplicando o corpo de `…000200`. O `drop trigger … ;
+drop function _appointments_guard_update()` do rollback completo cobre `…000200`
+e `…000250` (é um único objeto, `create or replace`).
 
 Consolidado em `scripts/sth-gate1-matriz.mjs` (`ROLLBACK_SQL`).
 
