@@ -446,16 +446,18 @@ async function main() {
 }
 
 function limpar() {
+  // varre a FAMÍLIA 'st1b4-%' (não só este rid) — um run morto por SIGTERM se
+  // auto-cura no próximo. Nunca toca linha sem o prefixo.
   psql(`
-    delete from public.notifications where appt_id in (select id from public.appointments where client_name like '${PFX}%')
-      or recipient_client_id in (select id from auth.users where email like '${PFX}-%');
-    delete from public.appointments where client_name like '${PFX}%'
-      or client_id in (select id from auth.users where email like '${PFX}-%')
-      or barber_id in (select id from auth.users where email like '${PFX}-%');
-    delete from public.crm_clients where barber_id in (select id from auth.users where email like '${PFX}-%') or name like '${PFX}%';
-    delete from public.clients where id in (select id from auth.users where email like '${PFX}-%');
-    delete from public.barbers where id in (select id from auth.users where email like '${PFX}-%');
-    delete from auth.users where email like '${PFX}-%';`)
+    delete from public.notifications where appt_id in (select id from public.appointments where client_name like 'st1b4-%')
+      or recipient_client_id in (select id from auth.users where email like 'st1b4-%');
+    delete from public.appointments where client_name like 'st1b4-%'
+      or client_id in (select id from auth.users where email like 'st1b4-%')
+      or barber_id in (select id from auth.users where email like 'st1b4-%');
+    delete from public.crm_clients where barber_id in (select id from auth.users where email like 'st1b4-%') or name like 'st1b4-%';
+    delete from public.clients where id in (select id from auth.users where email like 'st1b4-%');
+    delete from public.barbers where id in (select id from auth.users where email like 'st1b4-%');
+    delete from auth.users where email like 'st1b4-%';`)
   const c = psql(`select count(*) from public.appointments;`)
   console.log(`(limpeza concluída — appointments no lab: ${c}; os 10 ativos backfillados pela ST-1b.0 permanecem)`)
 }
