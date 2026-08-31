@@ -152,8 +152,19 @@ async function main() {
   ok('M12 anon continua sem enxergar linhas de appointments (RLS)', anonSel.ok && anonSel.out === '0', anonSel.out || anonSel.err.split('\n')[0])
 
   // ── M13 — erros de domínio ──
+  // PAST_DAY: "ontem" tem que ser derivado no FUSO DA LOJA, não em `current_date`
+  // (que segue o timezone do banco/UTC). O `book_appointment` calcula o dia atual
+  // com `shop_settings.timezone`; se o lab virar a meia-noite UTC enquanto ainda
+  // é "ontem" no Brasil — ou se `current_date - 1` cair num dia de folga (aí o
+  // RPC devolve BAD_SLOT antes de PAST_DAY) — o teste falha à toa.
+  // `shop_settings` só é legível por staff (RLS), então a data é resolvida aqui
+  // via `psql` (role postgres) e passada como literal. Assim o argumento é
+  // sempre "ontem para a loja", em qualquer dia da semana.
+  const ONTEM_LOJA = psql(
+    `select ((now() at time zone (select timezone from public.shop_settings where id = 1))::date - 1)::text;`,
+  )
   const dom = [
-    [`select public.book_appointment('${NATHAN}', current_date - 1, '10:30', array[${SVC45}]::bigint[]);`, 'PAST_DAY'],
+    [`select public.book_appointment('${NATHAN}', date '${ONTEM_LOJA}', '10:30', array[${SVC45}]::bigint[]);`, 'PAST_DAY'],
     [`select public.book_appointment('${NATHAN}', current_date + 999, '10:30', array[${SVC45}]::bigint[]);`, 'OUT_OF_WINDOW'],
     [`select public.book_appointment('${NATHAN}','${TUE}','10:31', array[${SVC45}]::bigint[]);`, 'BAD_SLOT'],
     [`select public.book_appointment('${NATHAN}','${TUE}','25:00', array[${SVC45}]::bigint[]);`, 'BAD_SLOT'],
