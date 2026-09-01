@@ -1,9 +1,9 @@
 # ST-2 · Atendimento + carrinho + checkout do staff — Relatório do lab
 
-status: **6 migrations escritas e aplicadas SÓ no lab self-hosted. Produção
+status: **7 migrations escritas e aplicadas SÓ no lab self-hosted. Produção
 intocada. Sem `db push`. Sem merge. Cutover `20260829010000` intocado/bloqueado.**
 branch: `staff/st-2` (repo `prime-barbearia`), sobre `8c7654b` (ST-1b.5)
-data: 2026-08-31
+data: 2026-08-31 · **hardening de entrada `20260831001600` em 2026-09-01 (pré-merge)**
 proposta (aprovada, rev.1): `prime-next@proposta/staff-st2-checkout:docs/investigacoes/10-staff-st2-checkout.md` (`cf083cf`)
 UI: `prime-next@fatia/staff-st2-checkout` — Server Actions + modal de fechar conta
 depende de: ST-H (`barber_role()`, guard de coluna, RPCs de status) + ST-1b.0–5
@@ -15,28 +15,29 @@ vendas até **20%**; admin até **100%**; **acima de 20%** o desconto exige
 **motivo obrigatório** (`shop_settings.max_discount_barbeiro/_vendas/_admin` +
 `discount_motivo_threshold`, seed 15/20/100/20).
 
-**Resultado da matriz: `76 OK / 0 FAIL`** (`scripts/st2-checkout-matriz.mjs` —
+**Resultado da matriz: `103 OK / 0 FAIL`** (`scripts/st2-checkout-matriz.mjs` —
 V papel · AB isolamento · C corridas/idempotência atômica (C1a–g) · F1–F22
-adulteração/regras · A atomicidade · EV evidências).
+adulteração/regras · **F23 payload REST malformado (novo, §9)** · A atomicidade ·
+EV evidências).
 
 Regressões, todas verdes:
 
 | suíte | resultado |
 |---|---|
-| `scripts/st2-checkout-matriz.mjs` (ST-2) | **76 OK / 0 FAIL** |
+| `scripts/st2-checkout-matriz.mjs` (ST-2) | **103 OK / 0 FAIL** (era 76; +27 do hardening de entrada) |
 | `scripts/agenda-lab-matriz.mjs` | **40 OK / 0 FAIL** |
 | `scripts/sth-gate1-matriz.mjs` (ST-H) | **158 OK / 0 FAIL** |
-| `scripts/st1b-lab-matriz.mjs` (ST-1b) | **85 OK / 0 FAIL** (E18 hoje-passado deixou de ser SKIP — hora do lab) |
+| `scripts/st1b-lab-matriz.mjs` (ST-1b) | **85 OK / 0 FAIL** — ⚠️ `E18 encaixe hoje-passado` é *flake de relógio* do harness ST-1b: FALHA só quando o relógio do lab está entre ~09:31 e 10:00 num dia útil (o slot "passado" = `agora−60min` cai antes da abertura 09:00 → `staff_book_encaixe` devolve `BAD_SLOT` em vez de `PAST_DAY`). NÃO tem relação com a ST-2 (o harness ST-1b não carrega migration ST-2). Verde fora dessa janela. |
 | `scripts/st1b4-concurrency-matriz.mjs` | **28 OK / 0 FAIL** |
 | `scripts/st1b5-agenda-lock-matriz.mjs` | **26 OK / 0 FAIL** |
 | `prime-next` `check` (168) + `build` | verdes |
-| `prime-next` `test:staff-st2-lab` (REST) · `shots:staff-st2` (E2E) | verdes |
+| `prime-next` `test:staff-st2-lab` (REST, +18 casos malformados) · `shots:staff-st2` (E2E) | verdes |
 
 Lab termina com **37 appointments / 64 sales**, sem objeto/dado de teste desta
-tarefa. As 6 funções/RPCs novas + a sequence + as colunas aditivas ficam
-**aplicadas** (rollout lab-first, igual à ST-H/ST-1b). `sales_nota_seq` fica
-**avançada** (ids "queimados" pelas iterações de teste — inofensivo; `nota_id`
-não precisa ser contíguo).
+tarefa. As 6 funções/RPCs novas + a sequence + as colunas aditivas + os 3 helpers
+de guarda de entrada da ST-2.7 ficam **aplicados** (rollout lab-first, igual à
+ST-H/ST-1b). `sales_nota_seq` fica **avançada** (ids "queimados" pelas iterações
+de teste — inofensivo; `nota_id` não precisa ser contíguo).
 
 ---
 
@@ -55,10 +56,14 @@ do cutover (`20260829010000`) e **não** o toca.
 | **ST-2.4** | `20260831001300_staff_cart_rpcs.sql` | `_staff_cart_appt(bigint)` (appt travado + em andamento → `BAD_STATE`); `staff_cart_add_item` / `staff_cart_set_qty` (valida `stock`, posse, estado); `staff_cart_set_services(bigint, bigint[], jsonb)` (**único escritor** de `appointments.services/discount_price/coupon_code/discount_motivo` pelo app); `staff_checkout_get(bigint)` (estado consolidado da tela). Policy nova `cart_items_admin_all` (**`EXISTS` inline**, não `barber_role()` — ver §5). RPCs públicas `revoke … + grant authenticated`. | `drop function` de cada; `drop policy cart_items_admin_all on public.cart_items` |
 | **ST-2.5** | `20260831001400_staff_checkout.sql` | tabela `staff_checkout_log` (PK `idempotency_key`, RLS `select own/admin` via `EXISTS` inline, **sem** INSERT/UPDATE/DELETE externo); `_staff_resolve_client_ref(uuid, jsonb)` (contrato ST-1b.3 — account por regex, walk-in concorrente-seguro com locks `crm|`); **`staff_checkout(...)`** — a transação (§3). `revoke … + grant authenticated`. | `drop function public.staff_checkout(bigint,uuid,jsonb,bigint[],jsonb,jsonb,jsonb,text,uuid);` `drop function public._staff_resolve_client_ref(uuid, jsonb);` `drop table public.staff_checkout_log;` |
 | **ST-2.6** | `20260831001500_checkout_grants_hygiene.sql` | `revoke truncate, trigger, references` de `anon, authenticated` em `sales, sale_payments, cart_items, coupons, products, services, taxas_maquininha, cash_*, bank_accounts, fiado_*` (mesmo H-F da ST-H.5). **Mantém** INSERT/UPDATE/DELETE/SELECT até o cutover — a RLS filtra e o `#barberApp` legado ainda escreve. | `grant truncate, trigger, references on … to anon, authenticated;` |
+| **ST-2.7** | `20260831001600_checkout_input_guards.sql` | **hardening de entrada (pré-merge, §9).** `_checkout_num` / `_checkout_int` / `_checkout_date` (helpers puros, owner-only, `search_path=''`) — validam tipo/forma do JSON **antes** de todo cast vindo do cliente. `create or replace` de **`_resolve_discount`** (`price`/`pct` via `_checkout_num`; payload não-objeto → `DISCOUNT_NOT_ALLOWED`) e **`staff_checkout`** (container `p_products`/`p_payments` não-array → `BAD_INPUT`; `product_id`/`qty` via `_checkout_int`; `value` via `_checkout_num` nos 2 laços; `due_date` via `_checkout_date`; `parcelas` via `_checkout_int`). **Não** altera as 6 migrations ST-2 já aplicadas. | `create or replace` de `_resolve_discount` (corpo de `..001200`) e `staff_checkout` (corpo de `..001400`); `drop function` dos 3 helpers `_checkout_*` |
 
-`git diff 8c7654b..HEAD`: as 6 migrations + `scripts/st2-checkout-matriz.mjs` +
+`git diff 8c7654b..HEAD`: as 7 migrations + `scripts/st2-checkout-matriz.mjs` +
 `docs/st-2/RELATORIO.md`. (A troca de `staff_write_row_lock`/`agenda_lock_protocol`
-na lista `FILES` do matriz é comentário — ver §6.)
+na lista `FILES` do matriz é comentário — ver §6.) Diff só desta fatia
+(`6fe5ef3..HEAD`): `supabase/migrations/20260831001600_checkout_input_guards.sql`
+(novo) + F23 em `scripts/st2-checkout-matriz.mjs` + este relatório; no
+`prime-next`: +18 casos malformados em `scripts/staff-st2-lab-test.mjs`.
 
 ---
 
@@ -317,3 +322,93 @@ real — as colunas aditivas eram nullable e o legado nunca as escreveu.
   `package-lock.json`) **não** entram no commit (pathspec).
 - Hardening pendente da ST-1b.5 §6 (`cancel_appointment` do cliente sem
   `FOR UPDATE`) **não** foi tocado nesta fatia.
+
+---
+
+## 9. ST-2.7 — hardening de entrada do checkout (pré-merge, 2026-09-01)
+
+### Achado
+
+Payload REST **malformado** vazava SQLSTATE cru (`22P02` invalid_text_representation
+/ `22007`–`22008` invalid/out-of-range datetime) em vez de `P0001` + código da
+allow-list, porque três funções faziam cast direto de valor vindo do cliente:
+
+| função | cast cru | payload que quebrava |
+|---|---|---|
+| `_resolve_discount` | `(p_discount ->> 'price')::numeric`, `(p_discount ->> 'pct')::numeric` | `price`/`pct` = `"abc"`, `{…}`, `[…]` → **`22P02` cru**. `"NaN"`/`"Infinity"` só eram barrados **por acidente** (`NaN > teto`, e `NaN` compara "maior" no `numeric` do PG). |
+| `staff_checkout` (produtos, balcão) | `(v_el ->> 'product_id')::bigint`, `(v_el ->> 'qty')::int` | `product_id`/`qty` = texto/objeto → **`22P02` cru**. |
+| `staff_checkout` (pagamentos) | `(v_el ->> 'value')::numeric`, `(v_el ->> 'due_date')::date`, `(v_el ->> 'parcelas')::int` | `value` = `"abc"` → **`22P02`**; `value` = `"NaN"` em `dinheiro` → passava e **gravava `sale_payments.value = NaN`**; `due_date` = `"2026-13-40"` → **`22007`/`22008` cru**; `parcelas` = `"abc"` → **`22P02`**. |
+
+Além disso `p_products` **não-null e não-array** (`{…}`, `"x"`, `5`) era
+**silenciosamente ignorado** em vez de falhar.
+
+### Correção
+
+`20260831001600_checkout_input_guards.sql` — **incremental**, não altera as 6
+migrations ST-2 já aplicadas; `create or replace` só nas 2 funções afetadas +
+3 helpers puros novos.
+
+- **`_checkout_num(jsonb, code) → numeric`** — aceita **número JSON** ou
+  **string decimal limpa** (`^-?\d+(\.\d+)?$`); rejeita ausente/null, objeto,
+  array, boolean, `"NaN"`, `"Infinity"`, `"1e5"`, e (defensivo) `NaN`/`±Infinity`
+  já materializados. Erro → `raise using errcode='P0001'` com o código recebido.
+- **`_checkout_int(jsonb, code, min, max) → bigint`** — inteiro na faixa;
+  rejeita não-inteiro (`1.5`, `"1.5"`), texto, objeto, fora de faixa. Cobre o
+  antigo `qty <= 0` (min = 1).
+- **`_checkout_date(jsonb, code) → date`** — string ISO estrita `YYYY-MM-DD`;
+  o bloco `exception` traduz o `22007`/`22008` de data fora de faixa.
+- **`_resolve_discount`** — corpo idêntico ao de `..001200` exceto: (1)
+  `p_discount` não-objeto quando não-null → `DISCOUNT_NOT_ALLOWED`; (2)
+  `price`/`pct` via `_checkout_num(…, 'DISCOUNT_NOT_ALLOWED')`; (3) `service_ids`
+  do modo cupom só é iterado se for array JSON.
+- **`staff_checkout`** — corpo idêntico ao de `..001400` exceto: (A) `p_products`
+  / `p_payments` não-null e não-array → `BAD_INPUT` **antes de qualquer lock**;
+  (B) item de `p_products` precisa ser objeto → `BAD_INPUT`; `product_id` via
+  `_checkout_int(…, 'PRODUCT_INVALID', 1, …)`; `qty` via `_checkout_int(…,
+  'BAD_QTY', 1, …)`; (C) item de `p_payments` precisa ser objeto →
+  `BAD_PAYMENT_METHOD`; `value` via `_checkout_num(…, 'BAD_PAYMENT_METHOD')` nos
+  **dois** laços; `due_date` via `_checkout_date(…, 'FIADO_DUE_REQUIRED')`;
+  `parcelas` via `_checkout_int(…, 'BAD_PAYMENT_METHOD', 1, 99)`; (D) balcão sem
+  serviço com `p_discount` não-objeto → `DISCOUNT_NOT_ALLOWED`.
+
+Assinatura, retorno e grants das 2 RPCs **inalterados** (`create or replace`
+preserva os grants; re-assertados por idempotência). Todos os códigos usados
+(`BAD_INPUT`, `BAD_QTY`, `PRODUCT_INVALID`, `BAD_PAYMENT_METHOD`,
+`FIADO_DUE_REQUIRED`, `DISCOUNT_NOT_ALLOWED`) já estão na allow-list de
+`traduzErroStaffVenda` (`prime-next/domain/staff.ts`) → **UI intocada**.
+
+### Contratos válidos preservados
+
+A UI (`descontoParaRpc` / `finalizarCheckout`) manda `price`/`pct`/`value`/
+`parcelas` como **número JSON** e `due_date` como **string ISO** — todos
+aceitos sem mudança (provado por F23h/F23z na matriz e pelo caso "contrato
+válido" no `test:staff-st2-lab`, além das regressões V/F1–F22/E2E verdes).
+
+### Fora do alcance (registrado)
+
+Parâmetros **escalares/array tipados** da assinatura (`p_service_ids bigint[]`,
+`p_idempotency_key uuid`): um valor malformado é recusado pelo **PostgREST na
+coerção de argumento, ANTES do corpo rodar** (HTTP 400, sem escrita parcial,
+sem lock). Blindá-los exigiria trocar o contrato (receber `jsonb` e fazer parse
+interno) — mudança de escopo, fora desta fatia. Não é risco de venda parcial.
+
+### Matriz
+
+`scripts/st2-checkout-matriz.mjs` ganhou o bloco **F23** (23 asserções):
+`price`/`pct` texto/objeto/array/boolean/`"NaN"`/`"Infinity"`; `product_id`/`qty`
+texto/objeto/`1.5`/ausente; item não-objeto; container não-array; `value`
+texto/`"NaN"`/objeto; `p_payments` objeto; `due_date` não-ISO/`"2026-13-40"`/objeto;
+`parcelas` `"abc"`/`2.5` — **cada caso: `!ok` + código da allow-list + ZERO
+`22P0x`/`2200x`/texto cru**, mais 2 casos de contrato válido. Total **103 OK / 0
+FAIL** (era 76). `prime-next/scripts/staff-st2-lab-test.mjs` ganhou **18 casos**
+pelo caminho REST provando `{ code:'P0001', message ∈ allow-list }` em todos.
+
+### E18 (ST-1b) — flake de relógio, sem relação
+
+`st1b-lab-matriz` `E18 encaixe hoje-passado` FALHA **apenas** quando o relógio do
+lab está entre ~09:31 e 10:00 num dia útil: o harness monta um slot "passado" =
+`agora − 60min`, que nessa janela cai **antes** da abertura da loja (09:00), e
+`staff_book_encaixe` devolve `BAD_SLOT` (fora do expediente) em vez de `PAST_DAY`.
+O harness ST-1b **não carrega nenhuma migration ST-2** e não referencia
+`staff_checkout`/`_resolve_discount`/`_checkout_*` — a falha independe desta
+fatia. Verde fora dessa janela (85/0).

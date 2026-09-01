@@ -2,17 +2,19 @@
  * ST-2 · matriz de checkout (atendimento + carrinho + venda) contra o LAB
  * (localhost:8100 / supabase-db).
  *
- * Cobre as 6 migrations `20260831001000..1500`:
+ * Cobre as 7 migrations `20260831001000..1600`:
  *   sales_nota_seq · schema (snapshot + tetos de desconto) · helpers
  *   (_validate_services_priced, _apply_coupon, _resolve_discount, _lock_checkout,
  *   _staff_insert_completed_walkin_appt, decrement_product_stock reescrito) ·
- *   staff_cart_* · staff_checkout (+ staff_checkout_log) · higiene de grants.
+ *   staff_cart_* · staff_checkout (+ staff_checkout_log) · higiene de grants ·
+ *   guardas de entrada (_checkout_num/_int/_date — payload REST malformado).
  *
  * - V : matriz por papel (barbeiro / vendas / admin / cliente / anon / híbrido)
  * - AB: isolamento A/B
  * - C : corridas reais — idempotência ATÔMICA (C1a–g), ALREADY_CHECKED_OUT,
  *       checkout ‖ reschedule/cancel, estoque do último item, 0 40P01
- * - F : adulteração / regras (F1–F22) incl. tetos de desconto por papel
+ * - F : adulteração / regras (F1–F22) incl. tetos de desconto por papel;
+ *       F23 payload REST malformado → P0001 allowlisted, 0 vazamento 22P02/22007
  * - A : atomicidade (falha em cada passo → estado zero)
  * - EV: evidências (secdef / search_path / grants / sequence)
  *
@@ -41,6 +43,7 @@ const FILES = [
   '20260831001300_staff_cart_rpcs.sql',
   '20260831001400_staff_checkout.sql',
   '20260831001500_checkout_grants_hygiene.sql',
+  '20260831001600_checkout_input_guards.sql',
 ]
 const AK = readFileSync('/home/gabrielparcel/projetos/prime-next/.env.local', 'utf8')
   .split('\n').find((l) => l.startsWith('NEXT_PUBLIC_SUPABASE_ANON_KEY=')).split('=')[1].trim()
@@ -565,6 +568,103 @@ async function main() {
     r = tryCallAs(BARBA.uid, `select public.staff_checkout(p_appt_id => ${a}, p_payments => '[{"method":"dinheiro","value":45}]'::jsonb);`)
     ok('F22 staff_checkout sem p_idempotency_key → BAD_INPUT', !r.ok && /BAD_INPUT/.test(r.err), errOf(r.err))
     clearAppt(BARBA.uid)
+
+    // ── F23 — payload REST malformado: cast cru vindo do cliente ──────────
+    // (guardas de 20260831001600) — cada caso: !ok, código da allow-list,
+    // e ZERO vazamento de 22P02 / 22007 / 22008 / texto cru do Postgres.
+    console.log('\n── F23 — payload malformado (nunca 22P02/22007) ──')
+    const noLeak = (m) => !/22P0[12]|2200[78]|invalid input syntax|numeric field overflow|date\/time field value out of range/i.test(String(m))
+    const F23ALLOW = /^(BAD_INPUT|BAD_QTY|PRODUCT_INVALID|BAD_PAYMENT_METHOD|FIADO_DUE_REQUIRED|DISCOUNT_NOT_ALLOWED)$/
+    const mal = (n, res, code) =>
+      ok(n, !res.ok && errOf(res.err) === code && F23ALLOW.test(errOf(res.err)) && noLeak(res.err),
+        `${errOf(res.err)} :: ${ERR(res.err)}`)
+    const balcao = (o) => tryCallAs(BARBA.uid, CO({ barber: BARBA.uid, client_ref: { mode: 'account', id: CLI.uid }, ...o }))
+
+    clearAppt(BARBA.uid); resetStock()
+    const svcAppt = () => { const id = seedAppt({ barber: BARBA.uid, client: CLI.uid, name: `${PFX} f23`, email: CLI.email }); return id }
+
+    // desconto: price/pct malformado → _resolve_discount → DISCOUNT_NOT_ALLOWED
+    mal('F23a manual price texto "abc" → DISCOUNT_NOT_ALLOWED',
+      tryCallAs(BARBA.uid, cartSetSvc(svcAppt(), [SVC45], { mode: 'manual', price: 'abc' })), 'DISCOUNT_NOT_ALLOWED')
+    mal('F23b manual price objeto {} → DISCOUNT_NOT_ALLOWED',
+      tryCallAs(BARBA.uid, cartSetSvc(svcAppt(), [SVC45], { mode: 'manual', price: { x: 1 } })), 'DISCOUNT_NOT_ALLOWED')
+    mal('F23c pct string "NaN" → DISCOUNT_NOT_ALLOWED',
+      tryCallAs(ADM.uid, cartSetSvc(svcAppt(), [SVC45], { mode: 'pct', pct: 'NaN' })), 'DISCOUNT_NOT_ALLOWED')
+    mal('F23d pct string "Infinity" → DISCOUNT_NOT_ALLOWED',
+      tryCallAs(ADM.uid, cartSetSvc(svcAppt(), [SVC45], { mode: 'pct', pct: 'Infinity' })), 'DISCOUNT_NOT_ALLOWED')
+    mal('F23e pct array [10] → DISCOUNT_NOT_ALLOWED',
+      tryCallAs(ADM.uid, cartSetSvc(svcAppt(), [SVC45], { mode: 'pct', pct: [10] })), 'DISCOUNT_NOT_ALLOWED')
+    mal('F23f pct boolean true → DISCOUNT_NOT_ALLOWED',
+      tryCallAs(ADM.uid, cartSetSvc(svcAppt(), [SVC45], { mode: 'pct', pct: true })), 'DISCOUNT_NOT_ALLOWED')
+    mal('F23g p_discount texto cru "manual" → DISCOUNT_NOT_ALLOWED',
+      tryCallAs(BARBA.uid, cartSetSvc(svcAppt(), [SVC45], 'manual')), 'DISCOUNT_NOT_ALLOWED')
+    // contrato válido: pct como string decimal limpa ainda passa
+    {
+      const a2 = svcAppt()
+      const r2 = tryCallAs(BARBA.uid, cartSetSvc(a2, [SVC45], { mode: 'pct', pct: '10' }))
+      ok('F23h contrato válido: pct "10" (string decimal) → ok, discount_price 40.50',
+        r2.ok && apptCol(a2, 'discount_price') === '40.50', r2.ok ? 'ok' : ERR(r2.err))
+    }
+    clearAppt(BARBA.uid)
+
+    // produtos (balcão): product_id / qty malformado; container não-array
+    mal('F23i balcão product_id "abc" → PRODUCT_INVALID',
+      balcao({ products: [{ product_id: 'abc', qty: 1 }], payments: [{ method: 'dinheiro', value: 10 }] }), 'PRODUCT_INVALID')
+    mal('F23j balcão product_id objeto → PRODUCT_INVALID',
+      balcao({ products: [{ product_id: { id: 1 }, qty: 1 }], payments: [{ method: 'dinheiro', value: 10 }] }), 'PRODUCT_INVALID')
+    mal('F23k balcão qty "x" → BAD_QTY',
+      balcao({ products: [{ product_id: PROD_A, qty: 'x' }], payments: [{ method: 'dinheiro', value: 10 }] }), 'BAD_QTY')
+    mal('F23l balcão qty 1.5 (não-inteiro) → BAD_QTY',
+      balcao({ products: [{ product_id: PROD_A, qty: 1.5 }], payments: [{ method: 'dinheiro', value: 10 }] }), 'BAD_QTY')
+    mal('F23m balcão qty ausente → BAD_QTY',
+      balcao({ products: [{ product_id: PROD_A }], payments: [{ method: 'dinheiro', value: 10 }] }), 'BAD_QTY')
+    mal('F23n balcão item de p_products não-objeto [1,2] → BAD_INPUT',
+      balcao({ products: [1, 2], payments: [{ method: 'dinheiro', value: 10 }] }), 'BAD_INPUT')
+    mal('F23o balcão p_products objeto {} (não-array) → BAD_INPUT',
+      balcao({ products: {}, payments: [{ method: 'dinheiro', value: 10 }] }), 'BAD_INPUT')
+    clearAppt(BARBA.uid); resetStock()
+
+    // pagamentos (agenda): value / due_date / parcelas malformado; container
+    mal('F23p value texto "abc" → BAD_PAYMENT_METHOD',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'dinheiro', value: 'abc' }] })), 'BAD_PAYMENT_METHOD')
+    clearAppt(BARBA.uid)
+    mal('F23q value string "NaN" em dinheiro → BAD_PAYMENT_METHOD (não grava venda com NaN)',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'dinheiro', value: 'NaN' }] })), 'BAD_PAYMENT_METHOD')
+    clearAppt(BARBA.uid)
+    mal('F23r value objeto {} → BAD_PAYMENT_METHOD',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'dinheiro', value: {} }] })), 'BAD_PAYMENT_METHOD')
+    clearAppt(BARBA.uid)
+    mal('F23s item de p_payments não-objeto [1] → BAD_PAYMENT_METHOD',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [[1]] })), 'BAD_PAYMENT_METHOD')
+    clearAppt(BARBA.uid)
+    mal('F23t p_payments objeto {} (não-array) → BAD_INPUT',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: {} })), 'BAD_INPUT')
+    clearAppt(BARBA.uid)
+    mal('F23u a_prazo due_date "not-a-date" → FIADO_DUE_REQUIRED',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'a_prazo', value: 45, due_date: 'not-a-date' }] })), 'FIADO_DUE_REQUIRED')
+    clearAppt(BARBA.uid)
+    mal('F23v a_prazo due_date "2026-13-40" (fora de faixa) → FIADO_DUE_REQUIRED',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'a_prazo', value: 45, due_date: '2026-13-40' }] })), 'FIADO_DUE_REQUIRED')
+    clearAppt(BARBA.uid)
+    mal('F23w a_prazo due_date objeto → FIADO_DUE_REQUIRED',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'a_prazo', value: 45, due_date: { d: 1 } }] })), 'FIADO_DUE_REQUIRED')
+    clearAppt(BARBA.uid)
+    mal('F23x credito parcelas "abc" → BAD_PAYMENT_METHOD',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'credito', value: 45, parcelas: 'abc', bandeira: 'Visa' }] })), 'BAD_PAYMENT_METHOD')
+    clearAppt(BARBA.uid)
+    mal('F23y credito parcelas 2.5 (não-inteiro) → BAD_PAYMENT_METHOD',
+      tryCallAs(BARBA.uid, CO({ appt: svcAppt(), payments: [{ method: 'credito', value: 45, parcelas: 2.5, bandeira: 'Visa' }] })), 'BAD_PAYMENT_METHOD')
+    clearAppt(BARBA.uid)
+    // contrato válido: parcelas inteiro + due_date ISO ainda passam
+    {
+      const a4 = svcAppt()
+      const r4 = tryCallAs(BARBA.uid, CO({ appt: a4, payments: [{ method: 'credito', value: 45, parcelas: 3, bandeira: 'Visa' }] }))
+      const n4 = notaOf(r4)
+      ok('F23z contrato válido: credito parcelas 3 → ok, sale_payments.parcelas = 3',
+        r4.ok && n4 && psql(`select parcelas from public.sale_payments where nota_id=${n4};`) === '3', r4.ok ? 'ok' : ERR(r4.err))
+      clearAppt(BARBA.uid)
+    }
+    clearAppt(BARBA.uid); resetStock()
   }
 
   // ════════════ A — atomicidade ════════════
@@ -615,7 +715,8 @@ async function main() {
     from pg_proc p where p.pronamespace='public'::regnamespace
       and p.proname in ('staff_checkout','staff_checkout_get','staff_cart_add_item','staff_cart_set_qty','staff_cart_set_services',
                         '_validate_services_priced','_apply_coupon','_resolve_discount','_lock_checkout','_staff_resolve_client_ref',
-                        '_staff_insert_completed_walkin_appt','decrement_product_stock','validate_coupon')
+                        '_staff_insert_completed_walkin_appt','decrement_product_stock','validate_coupon',
+                        '_checkout_num','_checkout_int','_checkout_date')
     order by p.proname;`)
   console.log(ev.split('\n').map((l) => '  ' + l).join('\n'))
   ok('EV RPCs públicas: secdef + search_path="" + grant authenticated',
@@ -624,6 +725,8 @@ async function main() {
     && (ev.match(/staff_cart_\w+\|secdef=true\|sp=search_path=""\|exec=authenticated/g) || []).length === 3)
   ok('EV helpers internos: secdef + search_path="" + só owner',
     (ev.match(/(_validate_services_priced|_apply_coupon|_resolve_discount|_lock_checkout|_staff_resolve_client_ref|_staff_insert_completed_walkin_appt)\|secdef=true\|sp=search_path=""\|exec=owner/g) || []).length === 6)
+  ok('EV guardas de entrada (_checkout_num/_int/_date): secdef + search_path="" + só owner',
+    (ev.match(/_checkout_(num|int|date)\|secdef=true\|sp=search_path=""\|exec=owner/g) || []).length === 3)
   ok('EV decrement_product_stock: search_path="" + grant authenticated (revoke anon)',
     /decrement_product_stock\|secdef=true\|sp=search_path=""\|exec=authenticated/.test(ev))
   ok('EV validate_coupon: revoke anon (exec sem anon)', /validate_coupon\|secdef=true\|.*\|exec=(authenticated|authenticated,service_role)/.test(ev) && !/validate_coupon\|.*exec=[^|]*anon/.test(ev))
