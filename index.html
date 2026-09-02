@@ -1150,6 +1150,27 @@ async function primeEnsureBarberRoster(){
     await baLoadRoster();
   }
 }
+// bloqueios de agenda do dia — só barber_id + intervalo, nunca motivo (RPC pública
+// agenda_blocked_ranges, ver migration 20260901000000_agenda_blocks.sql)
+async function primeFetchDayBlocks(day){
+  const { data, error } = await sb.rpc('agenda_blocked_ranges', { p_day: day });
+  if(error){ console.error('primeFetchDayBlocks', error); return []; }
+  return data || [];
+}
+function primeHhmmToMin(s){
+  const [hh,mm] = s.split(':').map(Number);
+  return hh*60+mm;
+}
+// quais barbeiros têm bloqueio cruzando [slotStart, slotEnd) — sobreposição real de
+// intervalo, não "bloqueio começa exatamente nesse horário"
+function primeBlockedBarberIdsAt(blocks, slotStart, slotEnd){
+  const ids = new Set();
+  blocks.forEach(b=>{
+    const bs = primeHhmmToMin(b.start_time), be = primeHhmmToMin(b.end_time);
+    if(bs < slotEnd && slotStart < be) ids.add(b.barber_id);
+  });
+  return ids;
+}
 async function buildTimes(){
   const box=document.getElementById('wTime'); box.innerHTML='';
   if(!state.day) return;
@@ -1159,17 +1180,26 @@ async function buildTimes(){
   const [oH,oM]=h[0].split(':').map(Number), [cH,cM]=h[1].split(':').map(Number);
   const now=new Date(); const isToday = state.day===primeLocalDate(now);
   const dayAppts = await primeFetchDayAppointments(state.day);
+  const dayBlocks = await primeFetchDayBlocks(state.day);
   const weekday = d.getDay();
-  const bookedCountByTime = {};
-  dayAppts.forEach(a=>{ bookedCountByTime[a.time] = (bookedCountByTime[a.time]||0) + 1; });
+  const bookedIdsByTime = {};
+  dayAppts.forEach(a=>{
+    if(!a.barberId) return;
+    if(!bookedIdsByTime[a.time]) bookedIdsByTime[a.time] = new Set();
+    bookedIdsByTime[a.time].add(a.barberId);
+  });
   let slotCount = 0, takenCount = 0;
   for(let t=oH*60+oM; t+SLOT_MIN<=cH*60+cM; t+=SLOT_MIN){
     if(isToday && t <= now.getHours()*60+now.getMinutes()+30) continue;
     const hh=String(Math.floor(t/60)).padStart(2,'0'), mm=String(t%60).padStart(2,'0');
     const timeStr=`${hh}:${mm}`;
-    // só bloqueia o horário se NENHUM barbeiro estiver escalado, ou se todos os escalados já estiverem ocupados
-    const scheduledCount = barbersScheduledAt(weekday, timeStr).length;
-    const isTaken = scheduledCount===0 || (bookedCountByTime[timeStr]||0) >= scheduledCount;
+    // indisponível = união de quem está ocupado (agendamento nesse horário) com quem
+    // está bloqueado (bloqueio cruzando o intervalo do slot) — mesmo barbeiro contando
+    // nos dois não dobra a conta, é união de conjunto, não soma
+    const scheduled = barbersScheduledAt(weekday, timeStr);
+    const bookedIds = bookedIdsByTime[timeStr] || new Set();
+    const blockedIds = primeBlockedBarberIdsAt(dayBlocks, t, t+SLOT_MIN);
+    const isTaken = scheduled.length===0 || scheduled.every(b => bookedIds.has(b.id) || blockedIds.has(b.id));
     slotCount++; if(isTaken) takenCount++;
     const btn=document.createElement('button');
     btn.className='chip'+(isTaken?' taken':''); btn.dataset.v=timeStr; btn.textContent=timeStr;
@@ -2020,18 +2050,29 @@ function primeApplyCoupon(coupon, services){
   if(coupon.type==='percentual') return Math.round(total*(1-coupon.value/100)*100)/100;
   return null;
 }
+// guarda o motivo do último erro de criação/atualização de agendamento — sem quebrar o
+// contrato existente (as duas funções continuam retornando null em erro pra quem já chama
+// assim); só quem quer distinguir "horário bloqueado" de qualquer outra falha confere isto.
+let primeLastApptErrorCode = null;
 async function primeCreateAppointment(appt){
+  primeLastApptErrorCode = null;
   const row = primeApptToRow(appt);
   if(!('status' in row)) row.status = 'pendente';
   const { data, error } = await sb.from('appointments').insert(row).select().single();
-  if(error){ console.error('primeCreateAppointment', error); return null; }
+  if(error){ console.error('primeCreateAppointment', error); primeLastApptErrorCode = error.message; return null; }
   return primeApptFromRow(data);
 }
 async function primeUpdateAppointment(id, patch){
+  primeLastApptErrorCode = null;
   const row = primeApptToRow(patch);
   const { data, error } = await sb.from('appointments').update(row).eq('id', id).select().single();
-  if(error){ console.error('primeUpdateAppointment', error); return null; }
+  if(error){ console.error('primeUpdateAppointment', error); primeLastApptErrorCode = error.message; return null; }
   return primeApptFromRow(data);
+}
+function primeApptErrorMessage(){
+  return primeLastApptErrorCode === 'SLOT_BLOCKED'
+    ? 'Esse horário não está disponível. Escolha outro.'
+    : 'Não foi possível salvar. Tente de novo.';
 }
 async function primeFetchAppointmentById(id){
   const { data, error } = await sb.from('appointments').select('*').eq('id', id).maybeSingle();
@@ -3794,10 +3835,15 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <div id="ba-waitlist-wrap"></div>
         <div class="ba-slabel" style="margin-top:.4rem">Escolha o dia</div>
         <div class="chips" id="ba-agenda-days"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;gap:.4rem;flex-wrap:wrap">
           <div class="ba-slabel" style="margin:0">Agenda do dia</div>
-          <button class="ba-btn" style="width:auto;max-width:none;padding:.35rem .9rem;margin:0;font-size:.7rem" onclick="baToggleEncaixe()">＋ Encaixe</button>
+          <div style="display:flex;gap:.4rem">
+            <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.35rem .9rem;margin:0;font-size:.7rem" onclick="baToggleBloqueio()">🚫 Bloquear horário</button>
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.35rem .9rem;margin:0;font-size:.7rem" onclick="baToggleEncaixe()">＋ Encaixe</button>
+          </div>
         </div>
+        <div id="ba-bloqueio-form" style="display:none"></div>
+        <div id="ba-blocks-list"></div>
         <div id="ba-encaixe-form" style="display:none"></div>
         <div id="ba-agenda-timeline"></div>
       </div>
@@ -7777,7 +7823,11 @@ async function baRenderPending(){
 
 async function baAcceptAppt(id){
   const ap = await primeUpdateAppointment(id, {status:'confirmado'});
-  if(ap && ap.clientId){
+  // defesa, não deveria disparar por bloqueio de agenda: aceitar sem mudar dia/hora/
+  // barbeiro/duração é liberado mesmo com bloqueio criado depois (ver agenda_blocks).
+  // outras causas de falha (rede, RLS) ainda existem, por isso a checagem continua.
+  if(!ap){ alert(primeApptErrorMessage()); return; }
+  if(ap.clientId){
     await primeAddNotif({forRole:'client', recipientClientId:ap.clientId, type:'confirmado', apptId:id,
       text:`${apBarberName(ap)} confirmou seu horário de ${ap.dayLabel} às ${ap.time}. Te espero!`});
   }
@@ -8381,6 +8431,7 @@ function baBuildAgendaDays(){
 
 async function baBuildAgendaTimes(){
   await baAutoStartDueAppointments();
+  baRenderBlocksList();
   const tlBox = document.getElementById('ba-agenda-timeline');
   if(!tlBox) return;
   tlBox.innerHTML = '';
@@ -8604,7 +8655,12 @@ document.getElementById('baRemarcarConfirm').addEventListener('click', async ()=
   const btn = document.getElementById('baRemarcarConfirm');
   btn.disabled = true; btn.classList.add('btn-loading');
   const id = baRemarcarApptId, clientId = baRemarcarAppt.clientId, clientName = baRemarcarAppt.name;
-  await primeUpdateAppointment(id, {day, dayLabel, time});
+  const updated = await primeUpdateAppointment(id, {day, dayLabel, time});
+  btn.disabled = false; btn.classList.remove('btn-loading');
+  // sem isso, um remarcamento que falha (ex: horário caiu num bloqueio criado depois de
+  // abrir o modal) ainda mandava WhatsApp de "remarcado com sucesso" pro cliente e fechava
+  // o modal como se tivesse dado certo — o agendamento continuava intocado no banco.
+  if(!updated){ errEl.textContent = primeApptErrorMessage(); errEl.style.display = 'block'; return; }
   let phone = null;
   if(clientId){
     await primeAddNotif({forRole:'client', recipientClientId:clientId, type:'remarcado', apptId:id,
@@ -8615,10 +8671,86 @@ document.getElementById('baRemarcarConfirm').addEventListener('click', async ()=
   const msg = `Oi ${clientName||''}! Seu horário na Prime Barbearia que era ${oldLabel} foi remarcado para ${dayLabel} às ${time}. Qualquer coisa é só chamar 🙏`;
   const waNum = phone ? phone.replace(/\D/g,'') : '';
   window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
-  btn.disabled = false; btn.classList.remove('btn-loading');
   baCloseRemarcar();
   baBuildAgendaTimes();
 });
+
+// ══ Bloqueio de agenda (agenda_blocks) — barbeiro bloqueia a própria agenda sem
+// aprovação de admin (D1); admin bloqueia qualquer barbeiro; vendas não tem acesso
+// (fecha por RLS, sem policy). Motivo é opcional, curto, nunca aparece pro cliente. ══
+function baToggleBloqueio(){
+  const form = document.getElementById('ba-bloqueio-form');
+  if(form.style.display !== 'none'){ form.style.display='none'; form.innerHTML=''; return; }
+  if(!baActingBarberId){ alert('Escolha um barbeiro em "Atendendo em nome de" antes de bloquear um horário.'); return; }
+  form.innerHTML = `<div class="ba-encaixe">
+    <div class="ba-slabel" style="margin-top:0">Bloquear horário — ${baAgendaDay ? baFormatDate(baAgendaDay) : ''}</div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <div class="ba-field" style="flex:1;min-width:100px"><label>Início</label><input type="time" id="ba-bloqueio-start"></div>
+      <div class="ba-field" style="flex:1;min-width:100px"><label>Fim</label><input type="time" id="ba-bloqueio-end"></div>
+    </div>
+    <div class="ba-field"><label>Motivo (opcional, só a equipe vê)</label><input type="text" id="ba-bloqueio-motivo" maxlength="140" placeholder="Ex: dentista, folga, reunião"></div>
+    <p id="ba-bloqueio-aviso" style="display:none;color:var(--dourado);font-size:.78rem;margin:.3rem 0 0"></p>
+    <p class="ba-err" id="ba-bloqueio-err" style="display:none;margin-top:.4rem"></p>
+    <div style="display:flex;gap:.5rem;margin-top:.6rem">
+      <button class="ba-btn" style="flex:1;margin:0" id="ba-bloqueio-confirm-btn" onclick="baSaveBloqueio()">Confirmar bloqueio</button>
+      <button class="ba-btn ghost" style="flex:1;margin:0" onclick="baToggleBloqueio()">Cancelar</button>
+    </div>
+  </div>`;
+  form.style.display = 'block';
+}
+async function baSaveBloqueio(){
+  const errEl = document.getElementById('ba-bloqueio-err');
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  errEl.style.display = 'none';
+  const day = baAgendaDay;
+  const start = document.getElementById('ba-bloqueio-start').value;
+  const end = document.getElementById('ba-bloqueio-end').value;
+  const reason = document.getElementById('ba-bloqueio-motivo').value.trim();
+  if(!day) return fail('Escolha um dia na agenda antes de bloquear.');
+  if(!start || !end) return fail('Preencha início e fim.');
+  if(end <= start) return fail('O fim precisa ser depois do início.');
+  const btn = document.getElementById('ba-bloqueio-confirm-btn');
+  if(btn.disabled) return;
+  btn.disabled = true; btn.classList.add('btn-loading');
+  try{
+    // aviso, não trava (D3) — só informa; não cancela nem remarca nada automaticamente
+    const { data: existentes } = await sb.from('appointments').select('id,time')
+      .eq('barber_id', baActingBarberId).eq('day', day).in('status', ['pendente','confirmado']);
+    const dentroDoIntervalo = (existentes||[]).filter(a=>a.time >= start && a.time < end);
+    if(dentroDoIntervalo.length){
+      const aviso = document.getElementById('ba-bloqueio-aviso');
+      if(aviso){ aviso.textContent = `⚠ Existem ${dentroDoIntervalo.length} horário(s) já marcado(s) nesse intervalo — eles não serão cancelados nem remarcados.`; aviso.style.display='block'; }
+    }
+    const { error } = await sb.from('agenda_blocks').insert({
+      barber_id: baActingBarberId, day, start_time: start, end_time: end, reason: reason || null
+    });
+    if(error){ console.error('baSaveBloqueio', error); return fail('Não foi possível bloquear esse horário. Tente de novo.'); }
+    baToggleBloqueio();
+    await baRenderBlocksList();
+  } finally {
+    btn.disabled = false; btn.classList.remove('btn-loading');
+  }
+}
+async function baRenderBlocksList(){
+  const wrap = document.getElementById('ba-blocks-list');
+  if(!wrap || !baAgendaDay || !baActingBarberId) { if(wrap) wrap.innerHTML=''; return; }
+  const { data, error } = await sb.from('agenda_blocks').select('id,start_time,end_time,reason')
+    .eq('barber_id', baActingBarberId).eq('day', baAgendaDay).order('start_time');
+  if(error){ console.error('baRenderBlocksList', error); wrap.innerHTML=''; return; }
+  if(!data || !data.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = data.map(b=>
+    `<div class="ba-card" style="padding:.5rem .8rem;margin:.3rem 0;display:flex;align-items:center;justify-content:space-between;border-color:#E5574B">
+      <div><strong style="color:var(--prata)">🚫 ${b.start_time}–${b.end_time}</strong>${b.reason ? ` <span style="color:var(--prata-dim);font-size:.82rem">· ${primeEsc(b.reason)}</span>` : ''}</div>
+      <span class="cad-remove" onclick="baRemoveBlock(${b.id})">remover</span>
+    </div>`
+  ).join('');
+}
+async function baRemoveBlock(id){
+  if(!confirm('Remover esse bloqueio? O horário volta a ficar disponível pra agendamento.')) return;
+  const { error } = await sb.from('agenda_blocks').delete().eq('id', id);
+  if(error){ console.error('baRemoveBlock', error); alert('Não foi possível remover. Tente de novo.'); return; }
+  await baRenderBlocksList();
+}
 
 function baToggleEncaixe(){
   const form = document.getElementById('ba-encaixe-form');
