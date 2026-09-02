@@ -8679,13 +8679,30 @@ document.getElementById('baRemarcarConfirm').addEventListener('click', async ()=
 // aprovação de admin (D1); admin bloqueia qualquer barbeiro; vendas não tem acesso
 // (fecha por RLS, sem policy). Motivo é opcional, curto, nunca aparece pro cliente. ══
 let baBloqueioPendingConfirm = false;
+// alvo do formulário de bloqueio — barbeiro comum trava no próprio baActingBarberId;
+// admin ganha um seletor LOCAL só deste formulário (não mexe no seletor global
+// "Atendendo em nome de", que é infraestrutura compartilhada com Encaixe/
+// Atendimento/Remarcar e não deve mudar nesta fatia).
+let baBloqueioTargetBarberId = null;
 function baToggleBloqueio(){
   const form = document.getElementById('ba-bloqueio-form');
   if(form.style.display !== 'none'){ form.style.display='none'; form.innerHTML=''; return; }
   if(!baActingBarberId){ alert('Escolha um barbeiro em "Atendendo em nome de" antes de bloquear um horário.'); return; }
   baBloqueioPendingConfirm = false;
+  if(!baBloqueioTargetBarberId) baBloqueioTargetBarberId = baActingBarberId;
+  const isAdmin = baCurrentRole === 'admin';
+  // "profissional atendente" = is_barber true (mesmo critério que já filtra quem
+  // aparece pro cliente escolher no wizard) — inclui o próprio admin se ele também
+  // atender (admin atendente aparece normalmente na lista, sem tratamento especial).
+  const profissionais = isAdmin ? baGetRoster().filter(b=>b.isBarber) : [];
+  const seletorHtml = isAdmin ? `<div class="ba-field"><label>Agenda de</label>
+      <select id="ba-bloqueio-barbeiro" onchange="baBloqueioBarbeiroChanged()">
+        ${profissionais.map(b=>`<option value="${b.id}" ${b.id===baBloqueioTargetBarberId?'selected':''}>${b.name.replace(/"/g,'&quot;')}</option>`).join('')}
+      </select>
+    </div>` : '';
   form.innerHTML = `<div class="ba-encaixe">
     <div class="ba-slabel" style="margin-top:0">Bloquear horário — ${baAgendaDay ? baFormatDate(baAgendaDay) : ''}</div>
+    ${seletorHtml}
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
       <div class="ba-field" style="flex:1;min-width:100px"><label>Início</label><input type="time" id="ba-bloqueio-start"></div>
       <div class="ba-field" style="flex:1;min-width:100px"><label>Fim</label><input type="time" id="ba-bloqueio-end"></div>
@@ -8699,11 +8716,20 @@ function baToggleBloqueio(){
     </div>
   </div>`;
   form.style.display = 'block';
+  baRenderBlocksList();
   // mudou o intervalo depois de ver o aviso -- a confirmação pendente era pra OUTRO
   // intervalo, não vale mais; volta a exigir a checagem de novo
   ['ba-bloqueio-start','ba-bloqueio-end'].forEach(id=>{
     document.getElementById(id).addEventListener('input', baBloqueioResetConfirm);
   });
+}
+// só existe pro admin (o <select> só é renderizado pra isAdmin) — troca de profissional
+// dentro do formulário de bloqueio; o aviso D3, a lista de bloqueios e o INSERT passam
+// a usar o profissional escolhido, sem tocar em baActingBarberId (seletor global)
+function baBloqueioBarbeiroChanged(){
+  baBloqueioTargetBarberId = document.getElementById('ba-bloqueio-barbeiro').value;
+  baBloqueioResetConfirm();
+  baRenderBlocksList();
 }
 function baBloqueioResetConfirm(){
   if(!baBloqueioPendingConfirm) return;
@@ -8730,12 +8756,13 @@ async function baSaveBloqueio(){
   // primeiro clique: só checa conflito e avisa — nunca grava na mesma ação que
   // descobre o conflito. Só grava direto se não achar nenhum. O segundo clique
   // (com o texto do botão trocado) é quem de fato confirma "mesmo assim".
+  const targetBarberId = baBloqueioTargetBarberId || baActingBarberId;
   if(!baBloqueioPendingConfirm){
     btn.disabled = true; btn.classList.add('btn-loading');
     let cruzam;
     try{
       const { data: existentes, error } = await sb.from('appointments').select('id,time,duration')
-        .eq('barber_id', baActingBarberId).eq('day', day).in('status', ['pendente','confirmado']);
+        .eq('barber_id', targetBarberId).eq('day', day).in('status', ['pendente','confirmado']);
       if(error){ console.error('baSaveBloqueio (checagem)', error); fail('Não foi possível checar agendamentos existentes. Tente de novo.'); return; }
       // sobreposição REAL de intervalo — inclui um agendamento que começou antes do
       // bloqueio e atravessa o início dele, não só quem começa dentro do intervalo digitado
@@ -8759,8 +8786,12 @@ async function baSaveBloqueio(){
 
   btn.disabled = true; btn.classList.add('btn-loading');
   try{
+    // created_by NÃO vem daqui — a trigger agenda_blocks_set_audit força
+    // auth.uid() no servidor, então mesmo o admin criando pra outro profissional
+    // (barber_id = targetBarberId) o registro de quem criou continua sendo o
+    // próprio admin, nunca o barbeiro selecionado.
     const { error } = await sb.from('agenda_blocks').insert({
-      barber_id: baActingBarberId, day, start_time: start, end_time: end, reason: reason || null
+      barber_id: targetBarberId, day, start_time: start, end_time: end, reason: reason || null
     });
     if(error){ console.error('baSaveBloqueio', error); return fail('Não foi possível bloquear esse horário. Tente de novo.'); }
     baBloqueioPendingConfirm = false;
@@ -8772,9 +8803,10 @@ async function baSaveBloqueio(){
 }
 async function baRenderBlocksList(){
   const wrap = document.getElementById('ba-blocks-list');
-  if(!wrap || !baAgendaDay || !baActingBarberId) { if(wrap) wrap.innerHTML=''; return; }
+  const targetBarberId = baBloqueioTargetBarberId || baActingBarberId;
+  if(!wrap || !baAgendaDay || !targetBarberId) { if(wrap) wrap.innerHTML=''; return; }
   const { data, error } = await sb.from('agenda_blocks').select('id,start_time,end_time,reason')
-    .eq('barber_id', baActingBarberId).eq('day', baAgendaDay).order('start_time');
+    .eq('barber_id', targetBarberId).eq('day', baAgendaDay).order('start_time');
   if(error){ console.error('baRenderBlocksList', error); wrap.innerHTML=''; return; }
   if(!data || !data.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML = data.map(b=>
@@ -9269,6 +9301,7 @@ function baEnter(barber){
   const isAdmin = barber.role==='admin';
   const isVendas = barber.role==='vendas';
   baActingBarberId = isVendas ? null : baCurrentBarberId;
+  baBloqueioTargetBarberId = null; // reseta pra cair na própria agenda no próximo login/troca de conta
   document.getElementById('ba-link-gestao').style.display = isAdmin ? '' : 'none';
   document.getElementById('ba-tabicon-gestao').style.display = isAdmin ? '' : 'none';
   document.querySelectorAll('#barberApp [data-tab="dashboard"],#barberApp [data-tab="clientes"],#barberApp [data-tab="vendas"]').forEach(el=>{
