@@ -8691,13 +8691,15 @@ function baToggleBloqueio(){
   baBloqueioPendingConfirm = false;
   if(!baBloqueioTargetBarberId) baBloqueioTargetBarberId = baActingBarberId;
   const isAdmin = baCurrentRole === 'admin';
-  // "profissional atendente" = is_barber true (mesmo critério que já filtra quem
-  // aparece pro cliente escolher no wizard) — inclui o próprio admin se ele também
-  // atender (admin atendente aparece normalmente na lista, sem tratamento especial).
-  const profissionais = isAdmin ? baGetRoster().filter(b=>b.isBarber) : [];
+  // "profissional atendente" = isBarber !== false, o MESMO critério já usado em
+  // todo o resto do legado (linhas 2425/6402/9775) — is_barber null/ausente ainda
+  // conta como atendente. `isBarber===true` (o que estava aqui antes) excluiria
+  // profissional antigo sem esse campo preenchido, mesmo o resto do sistema
+  // tratando ele como atendente normalmente.
+  const profissionais = isAdmin ? baGetRoster().filter(b=>b.isBarber!==false) : [];
   const seletorHtml = isAdmin ? `<div class="ba-field"><label>Agenda de</label>
       <select id="ba-bloqueio-barbeiro" onchange="baBloqueioBarbeiroChanged()">
-        ${profissionais.map(b=>`<option value="${b.id}" ${b.id===baBloqueioTargetBarberId?'selected':''}>${b.name.replace(/"/g,'&quot;')}</option>`).join('')}
+        ${profissionais.map(b=>`<option value="${b.id}" ${b.id===baBloqueioTargetBarberId?'selected':''}>${primeEsc(b.name)}</option>`).join('')}
       </select>
     </div>` : '';
   form.innerHTML = `<div class="ba-encaixe">
@@ -8731,9 +8733,14 @@ function baBloqueioBarbeiroChanged(){
   baBloqueioResetConfirm();
   baRenderBlocksList();
 }
+let baBloqueioPendingSignature = null;
+function baBloqueioSignature(barberId, day, start, end){
+  return `${barberId}|${day}|${start}|${end}`;
+}
 function baBloqueioResetConfirm(){
   if(!baBloqueioPendingConfirm) return;
   baBloqueioPendingConfirm = false;
+  baBloqueioPendingSignature = null;
   const btn = document.getElementById('ba-bloqueio-confirm-btn');
   if(btn) btn.textContent = 'Confirmar bloqueio';
   const aviso = document.getElementById('ba-bloqueio-aviso');
@@ -8753,10 +8760,20 @@ async function baSaveBloqueio(){
   const btn = document.getElementById('ba-bloqueio-confirm-btn');
   if(btn.disabled) return;
 
-  // primeiro clique: só checa conflito e avisa — nunca grava na mesma ação que
-  // descobre o conflito. Só grava direto se não achar nenhum. O segundo clique
-  // (com o texto do botão trocado) é quem de fato confirma "mesmo assim".
   const targetBarberId = baBloqueioTargetBarberId || baActingBarberId;
+  const sig = baBloqueioSignature(targetBarberId, day, start, end);
+  // se o formulário mudou (barbeiro/dia/início/fim) desde que o aviso foi calculado —
+  // inclusive uma mudança feita ENQUANTO a consulta assíncrona da checagem anterior
+  // ainda estava em voo — a confirmação pendente não vale mais pra esses valores
+  // novos. Sem isso, dava pra ver o aviso pro intervalo A e o segundo clique salvar
+  // o intervalo B sem checar nada.
+  if(baBloqueioPendingConfirm && sig !== baBloqueioPendingSignature){
+    baBloqueioResetConfirm();
+  }
+
+  // primeiro clique (ou confirmação invalidada acima): só checa conflito e avisa —
+  // nunca grava na mesma ação que descobre o conflito. Só grava direto se não achar
+  // nenhum. O segundo clique, com a MESMA assinatura, é quem de fato confirma.
   if(!baBloqueioPendingConfirm){
     btn.disabled = true; btn.classList.add('btn-loading');
     let cruzam;
@@ -8775,10 +8792,20 @@ async function baSaveBloqueio(){
     } finally {
       btn.disabled = false; btn.classList.remove('btn-loading');
     }
+    // o usuário pode ter mudado o formulário DURANTE o await acima -- confere nos
+    // valores atuais do DOM antes de decidir o que fazer com o resultado da consulta
+    const sigAgora = baBloqueioSignature(
+      baBloqueioTargetBarberId || baActingBarberId,
+      baAgendaDay,
+      document.getElementById('ba-bloqueio-start').value,
+      document.getElementById('ba-bloqueio-end').value
+    );
+    if(sigAgora !== sig) return; // mudou enquanto consultava — descarta este resultado silenciosamente, sem gravar
     if(cruzam.length){
       const aviso = document.getElementById('ba-bloqueio-aviso');
       if(aviso){ aviso.textContent = `⚠ Existem ${cruzam.length} horário(s) já marcado(s) cruzando esse intervalo — eles não serão cancelados nem remarcados. Clique em "Bloquear mesmo assim" pra confirmar.`; aviso.style.display='block'; }
       baBloqueioPendingConfirm = true;
+      baBloqueioPendingSignature = sig;
       btn.textContent = 'Bloquear mesmo assim';
       return;
     }
