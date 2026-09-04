@@ -7079,17 +7079,39 @@ function primeGenProductCode(){
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
   return Array.from({length:5}, ()=> chars[Math.floor(Math.random()*chars.length)]).join('');
 }
+// decodifica a imagem com fallback: createImageBitmap não abre HEIC/HEIF (padrão do
+// iPhone) na maioria dos browsers, mas a tag <img> abre nos que têm suporte nativo.
+async function primeDecodeImage(file){
+  try{
+    return await createImageBitmap(file);
+  }catch(e){
+    return await new Promise((res, rej)=>{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload  = ()=>{ URL.revokeObjectURL(url); res(img); };
+      img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('PRIME_IMG_DECODE')); };
+      img.src = url;
+    });
+  }
+}
 async function primeCompressImage(file, maxWidth=800, quality=0.8){
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxWidth / bitmap.width);
+  const bitmap = await primeDecodeImage(file);
+  const w0 = bitmap.width || bitmap.naturalWidth, h0 = bitmap.height || bitmap.naturalHeight;
+  if(!w0 || !h0) throw new Error('PRIME_IMG_DECODE');
+  const scale = Math.min(1, maxWidth / w0);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
+  canvas.width = Math.round(w0 * scale);
+  canvas.height = Math.round(h0 * scale);
   canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+  if(!blob) throw new Error('PRIME_IMG_ENCODE');
+  return blob;
 }
 async function primeUploadProductImage(productCode, file){
-  const blob = await primeCompressImage(file);
+  let blob;
+  try{
+    blob = await primeCompressImage(file);
+  }catch(e){ console.error('primeUploadProductImage/decode', e); return null; }
   const path = `${productCode}.jpg`;
   const { error } = await sb.storage.from('product-images').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
   if(error){ console.error('primeUploadProductImage', error); return null; }
@@ -9246,12 +9268,28 @@ function baEditRemoveFoto(i){
   document.getElementById('ba-edit-foto-'+i).value = '';
   document.getElementById('ba-edit-photo-preview-'+i).innerHTML = BARBER_PHOTO_PLACEHOLDER_SVG;
 }
+// devolve { url } no sucesso ou { erro } com mensagem pronta pra tela.
+// Nunca devolve só null: falha de foto tem que aparecer pro admin, senão ele
+// salva achando que trocou e a foto antiga continua no ar.
 async function baUploadBarberPhoto(barberId, file){
-  const blob = await primeCompressImage(file);
+  let blob;
+  try{
+    blob = await primeCompressImage(file);
+  }catch(e){
+    console.error('baUploadBarberPhoto/decode', e);
+    return { erro: 'Não foi possível ler essa imagem. Se ela veio do iPhone, pode estar em HEIC — abra a foto, toque em compartilhar e salve como JPEG, ou tire um print dela e envie o print.' };
+  }
   const path = `${barberId}.jpg`;
   const { error } = await sb.storage.from('barber-photos').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
-  if(error){ console.error('baUploadBarberPhoto', error); return null; }
-  return sb.storage.from('barber-photos').getPublicUrl(path).data.publicUrl + '?t=' + Date.now();
+  if(error){
+    console.error('baUploadBarberPhoto/upload', error);
+    const msg = String(error.message||'').toLowerCase();
+    if(msg.includes('bucket') && msg.includes('not found')) return { erro: 'O armazenamento de fotos (bucket "barber-photos") não existe no Supabase. Crie o bucket como público antes de subir fotos.' };
+    if(msg.includes('policy') || msg.includes('unauthorized') || msg.includes('row-level')) return { erro: 'Sua conta não tem permissão para subir foto. Falta a policy de upload no bucket "barber-photos".' };
+    if(msg.includes('maximum') || msg.includes('too large') || msg.includes('size')) return { erro: 'A imagem ficou grande demais pro limite do armazenamento. Use uma foto menor.' };
+    return { erro: 'Não foi possível enviar a foto. Verifique a conexão e tente de novo.' };
+  }
+  return { url: sb.storage.from('barber-photos').getPublicUrl(path).data.publicUrl + '?t=' + Date.now() };
 }
 
 function baBuildEditForm(b, i){
@@ -9388,10 +9426,14 @@ async function baSaveEditBarber(i){
 
   let photoUrl = b.photoUrl;
   if(baEditFotoFile){
-    const url = await baUploadBarberPhoto(b.id, baEditFotoFile);
-    if(url) photoUrl = url;
+    // falha de foto ABORTA o salvamento: salvar o resto em silêncio faria o admin
+    // achar que trocou a foto quando a antiga continua valendo.
+    const r = await baUploadBarberPhoto(b.id, baEditFotoFile);
+    if(r.erro) return fail(r.erro);
+    photoUrl = r.url;
   } else if(baEditFotoRemoved){
-    await sb.storage.from('barber-photos').remove([`${b.id}.jpg`]);
+    const { error: rmErr } = await sb.storage.from('barber-photos').remove([`${b.id}.jpg`]);
+    if(rmErr) console.error('baSaveEditBarber/removeFoto', rmErr);  // arquivo órfão não impede limpar photo_url
     photoUrl = null;
   }
 
