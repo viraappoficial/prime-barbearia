@@ -4102,6 +4102,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <div class="screen" id="ba-screen-clientes">
       <div class="ba-head"><div><div class="hi">Sua carteira</div><div class="name">Clientes</div></div></div>
       <div class="ba-body">
+        <div id="ba-clientes-picker"></div>
         <div class="ba-field" style="max-width:100%;margin-bottom:.6rem"><input type="text" id="ba-cli-search" placeholder="🔍 Buscar cliente por nome, @ ou e-mail" oninput="baRenderClientes()"></div>
         <div class="period-chips" id="ba-cli-filter" style="margin-bottom:.8rem">
           <button class="period-chip active" data-filter="todos" onclick="baSetCliFilter('todos')">Todos</button>
@@ -4621,6 +4622,12 @@ let baCurrentBarberId = null; // uuid em barbers — usado nas queries de appoin
 // barbeiro "em ação" nas telas de agenda/atendimento: pra barbeiro comum é sempre o próprio (= baCurrentBarberId);
 // pra conta role='vendas' é setado dinamicamente pelo seletor de barbeiro (baRenderVendasPicker)
 let baActingBarberId = null;
+// admin vendo a carteira de OUTRO profissional na aba Clientes — seletor LOCAL desta
+// tela, igual ao padrão já usado no Bloqueio de agenda (baBloqueioTargetBarberId):
+// não toca em baActingBarberId (infraestrutura compartilhada com Agenda/Encaixe/
+// Atendimento/Remarcar). Barbeiro comum nunca seta isso, então cai sempre no próprio.
+let baClientesTargetBarberId = null;
+function baClientesActiveBarberId(){ return baClientesTargetBarberId || baActingBarberId; }
 let baRosterCache = []; // mirror em memória da tabela `barbers` do Supabase
 let baProductsCache = []; // mirror em memória da tabela `products` — refresh em pontos de entrada, leitura síncrona no resto
 
@@ -4684,13 +4691,16 @@ async function baFetchShopSales(from, to){ // admin-only na prática — RLS lib
   return (data||[]).map(baSaleFromRow);
 }
 function baSaleBarberName(s){ return apBarberName({barberId: s.barberId}); }
-async function baFetchAllMySales(){
-  const { data, error } = await sb.from('sales').select('*').eq('barber_id', baCurrentBarberId);
+// barberId default = baActingBarberId (comportamento de sempre pra Encaixe/Atendimento/
+// Remarcar, que chamam sem argumento) — a aba Clientes passa baClientesActiveBarberId()
+// explicitamente quando o admin está vendo a carteira de outro profissional.
+async function baFetchAllMySales(barberId = baActingBarberId){
+  const { data, error } = await sb.from('sales').select('*').eq('barber_id', barberId);
   if(error){ console.error('baFetchAllMySales', error); return []; }
   return (data||[]).map(baSaleFromRow);
 }
-async function baFetchClientSales(clientName){
-  const { data, error } = await sb.from('sales').select('*').eq('barber_id', baCurrentBarberId).eq('client_name', clientName);
+async function baFetchClientSales(clientName, barberId = baActingBarberId){
+  const { data, error } = await sb.from('sales').select('*').eq('barber_id', barberId).eq('client_name', clientName);
   if(error){ console.error('baFetchClientSales', error); return []; }
   return (data||[]).map(baSaleFromRow);
 }
@@ -4701,9 +4711,9 @@ function baCrmFromRow(r){
   return { id:r.id, barberId:r.barber_id, clientId:r.client_id, name:r.name, phone:r.phone,
     email:r.email, age:r.age, instagram:r.instagram, plan:r.plan };
 }
-async function baFetchMyCrmClients(){
-  if(!baActingBarberId) return [];
-  const { data, error } = await sb.from('crm_clients').select('*').eq('barber_id', baActingBarberId);
+async function baFetchMyCrmClients(barberId = baActingBarberId){
+  if(!barberId) return [];
+  const { data, error } = await sb.from('crm_clients').select('*').eq('barber_id', barberId);
   if(error){ console.error('baFetchMyCrmClients', error); return []; }
   return (data||[]).map(baCrmFromRow);
 }
@@ -4765,6 +4775,33 @@ function baRenderVendasPicker(containerId, headSelector){
     const b = barbers.find(x=>x.id===baActingBarberId);
     headNameEl.textContent = b ? b.name : 'Escolha um barbeiro';
   }
+}
+// seletor de barbeiro na aba Clientes — só aparece pra admin. Deixa ver a carteira de
+// qualquer profissional (mesmas infos: histórico, avaliações, brinde, indicação),
+// sem mexer no seletor global "Atendendo em nome de" (baActingBarberId), que é
+// infraestrutura compartilhada com Agenda/Encaixe/Atendimento/Remarcar.
+function baRenderClientesPicker(){
+  const el = document.getElementById('ba-clientes-picker');
+  if(!el) return;
+  if(baCurrentRole!=='admin'){ el.style.display='none'; return; }
+  el.style.display='block';
+  const barbers = primeGetBarberRoster();
+  const targetId = baClientesActiveBarberId();
+  el.innerHTML = `
+    <div class="ba-field" style="max-width:100%;margin-bottom:.8rem"><label>Ver clientes de</label>
+      <select id="ba-clientes-barbeiro" onchange="baClientesBarbeiroChanged()">
+        ${barbers.map(b=>`<option value="${b.id}" ${b.id===targetId?'selected':''}>${primeEsc(b.name)}</option>`).join('')}
+      </select>
+    </div>`;
+  const nameEl = document.querySelector('#ba-screen-clientes .ba-head .name');
+  const hiEl = document.querySelector('#ba-screen-clientes .ba-head .hi');
+  const b = barbers.find(x=>x.id===targetId);
+  if(nameEl) nameEl.textContent = 'Clientes';
+  if(hiEl) hiEl.textContent = (b && b.id!==baCurrentBarberId) ? `Carteira de ${b.name}` : 'Sua carteira';
+}
+function baClientesBarbeiroChanged(){
+  baClientesTargetBarberId = document.getElementById('ba-clientes-barbeiro').value;
+  baRenderClientes();
 }
 function baSetActingBarber(id){
   baActingBarberId = id;
@@ -5909,8 +5946,8 @@ function baDaysSince(dateStr){
 // ══ Clientes sem corte há 15+ dias (substitui o antigo "Sumidos") ══
 // a tabela haircut_followups é mantida por uma rotina agendada no banco (roda sozinha todo dia),
 // que já resolve o barbeiro responsável (favorito do cliente, ou quem mais atendeu se não tiver favorito)
-async function baFetchMyFollowups(){
-  const { data, error } = await sb.from('haircut_followups').select('*').eq('barber_id', baCurrentBarberId).order('last_cut_date');
+async function baFetchMyFollowups(barberId = baClientesActiveBarberId()){
+  const { data, error } = await sb.from('haircut_followups').select('*').eq('barber_id', barberId).order('last_cut_date');
   if(error){ console.error('baFetchMyFollowups', error); return []; }
   return data||[];
 }
@@ -5919,7 +5956,7 @@ function baFollowupWhatsAppMsg(name){
   return `Opa, ${first}! Aqui é da Prime Barbearia 💈 Faz um tempinho que você não vem dar um trato no visual — bora marcar um horário? Responde aqui que já te ajudo a encaixar!`;
 }
 async function baMarkFollowupContacted(clientName){
-  const { error } = await sb.from('haircut_followups').update({ contacted_at: new Date().toISOString() }).eq('client_name', clientName).eq('barber_id', baCurrentBarberId);
+  const { error } = await sb.from('haircut_followups').update({ contacted_at: new Date().toISOString() }).eq('client_name', clientName).eq('barber_id', baClientesActiveBarberId());
   if(error) console.error('baMarkFollowupContacted', error);
   baRenderClientes();
 }
@@ -5967,10 +6004,12 @@ function baGetCliFilterRange(){
 }
 const SEM_CORTE_DAYS = 15;
 async function baRenderClientes(){
-  const { count: followupCount } = await sb.from('haircut_followups').select('id', {count:'exact', head:true}).eq('barber_id', baCurrentBarberId);
+  baRenderClientesPicker();
+  const targetId = baClientesActiveBarberId();
+  const { count: followupCount } = await sb.from('haircut_followups').select('id', {count:'exact', head:true}).eq('barber_id', targetId);
   document.getElementById('ba-cli-sumidos-count').textContent = followupCount||0;
   if(baCliFilter==='sumidos'){ await baRenderSemCorteList(); return; }
-  const sales = await baFetchAllMySales();
+  const sales = await baFetchAllMySales(targetId);
   const last = {}, count = {};
   sales.forEach(s=>{
     count[s.client] = (count[s.client]||0) + 1;
@@ -5979,7 +6018,7 @@ async function baRenderClientes(){
   // só entram na lista clientes que são deste barbeiro E que ele já atendeu de fato
   const searchEl = document.getElementById('ba-cli-search');
   const q = (searchEl ? searchEl.value : '').trim().toLowerCase();
-  const clients = await baFetchMyCrmClients();
+  const clients = await baFetchMyCrmClients(targetId);
   let names = clients.map(c=>c.name).filter(name=>last[name]);
   if(q){
     names = names.filter(name=>{
@@ -6020,14 +6059,15 @@ async function baRenderClientes(){
 }
 
 async function baOpenClientDetail(name){
-  const client = (await baFetchMyCrmClients()).find(c=>c.name===name);
-  if(!client) return; // proteção: barbeiro não pode abrir cliente que não é dele
-  const sales = (await baFetchClientSales(name)).sort((a,b)=> b.date.localeCompare(a.date));
+  const targetId = baClientesActiveBarberId();
+  const client = (await baFetchMyCrmClients(targetId)).find(c=>c.name===name);
+  if(!client) return; // proteção: barbeiro não pode abrir cliente que não é dele (nem admin, de um profissional que não escolheu)
+  const sales = (await baFetchClientSales(name, targetId)).sort((a,b)=> b.date.localeCompare(a.date));
   const lastSale = sales[0];
   // observações ficam em `appointments` (wizard/encaixe/atendimento avulso já linkado) — busca à parte
   // porque `sales` não carrega esse campo, e junta pelo appointment_id de cada venda
   const { data: apptNotesRows } = await sb.from('appointments').select('id,notes')
-    .eq('barber_id', baActingBarberId).eq('client_name', name).not('notes','is',null);
+    .eq('barber_id', targetId).eq('client_name', name).not('notes','is',null);
   const notesByApptId = {};
   (apptNotesRows||[]).forEach(r=>{ notesByApptId[r.id] = r.notes; });
   document.getElementById('ba-cli-nome').textContent = client.name;
@@ -6076,7 +6116,7 @@ async function baRenderBrinde(client){
   const el = document.getElementById('ba-cli-brinde');
   if(!el) return;
   if(!client.clientId){ el.innerHTML = ''; return; } // sem conta vinculada, não dá pra rastrear brinde
-  const bSales = (await baFetchClientSales(client.name)).length;
+  const bSales = (await baFetchClientSales(client.name, baClientesActiveBarberId())).length;
   if(!bSales || !(await primeIsBrindeEligible(client.clientId, bSales))){ el.innerHTML = ''; return; }
   const info = await primeBrindeCutsInfo(client.clientId, bSales);
   const choice = await primeGetBrindeChoice(client.clientId);
@@ -6095,9 +6135,10 @@ async function baRenderBrinde(client){
     </div>`;
 }
 async function baMarkBrindeGiven(clientId){
-  const client = (await baFetchMyCrmClients()).find(c=>c.clientId===clientId);
+  const targetId = baClientesActiveBarberId();
+  const client = (await baFetchMyCrmClients(targetId)).find(c=>c.clientId===clientId);
   if(!client) return;
-  const salesCount = (await baFetchClientSales(client.name)).length;
+  const salesCount = (await baFetchClientSales(client.name, targetId)).length;
   await primeMarkBrindeGiven(clientId, salesCount);
   await baRenderBrinde(client);
   baRenderClientes();
@@ -6159,7 +6200,7 @@ async function baMarkReferralGiftGiven(referralId, side){
   const { error } = await sb.from('referrals').update({[field]: true}).eq('id', referralId);
   if(error){ console.error('baMarkReferralGiftGiven', error); return; }
   const name = document.getElementById('ba-cli-nome').textContent;
-  const client = (await baFetchMyCrmClients()).find(c=>c.name===name);
+  const client = (await baFetchMyCrmClients(baClientesActiveBarberId())).find(c=>c.name===name);
   if(client) await baRenderReferralSection(client);
   baRenderClientes();
 }
@@ -6167,13 +6208,13 @@ async function baRefSearchClient(referredName){
   const q = document.getElementById('ba-ref-search').value.trim().toLowerCase();
   const box = document.getElementById('ba-ref-results');
   if(!q || q.length<2){ box.innerHTML=''; return; }
-  const matches = (await baFetchMyCrmClients()).filter(c=>c.name!==referredName && c.name.toLowerCase().includes(q)).slice(0,5);
+  const matches = (await baFetchMyCrmClients(baClientesActiveBarberId())).filter(c=>c.name!==referredName && c.name.toLowerCase().includes(q)).slice(0,5);
   box.innerHTML = matches.length ? matches.map(c=>
     `<div class="ba-enc-result" onclick="baLinkReferral('${c.name.replace(/'/g,"\\'")}','${referredName.replace(/'/g,"\\'")}')">${c.name} <span class="enc-sub">${c.instagram||''}</span></div>`
   ).join('') : '<div style="padding:.4rem .6rem;color:var(--prata-dim);font-size:.82rem">Nenhum cliente encontrado</div>';
 }
 async function baLinkReferral(referrerName, referredName){
-  const clients = await baFetchMyCrmClients();
+  const clients = await baFetchMyCrmClients(baClientesActiveBarberId());
   const referrer = clients.find(c=>c.name===referrerName);
   const referred = clients.find(c=>c.name===referredName);
   if(!referrer || !referred) return;
@@ -9364,6 +9405,7 @@ function baEnter(barber){
   const isVendas = barber.role==='vendas';
   baActingBarberId = isVendas ? null : baCurrentBarberId;
   baBloqueioTargetBarberId = null; // reseta pra cair na própria agenda no próximo login/troca de conta
+  baClientesTargetBarberId = null; // reseta pra cair na própria carteira no próximo login/troca de conta
   document.getElementById('ba-link-gestao').style.display = isAdmin ? '' : 'none';
   document.getElementById('ba-tabicon-gestao').style.display = isAdmin ? '' : 'none';
   document.querySelectorAll('#barberApp [data-tab="dashboard"],#barberApp [data-tab="clientes"],#barberApp [data-tab="vendas"]').forEach(el=>{
