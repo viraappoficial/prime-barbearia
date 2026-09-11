@@ -8724,9 +8724,14 @@ function baToggleBloqueio(){
         ${profissionais.map(b=>`<option value="${b.id}" ${b.id===baBloqueioTargetBarberId?'selected':''}>${primeEsc(b.name)}</option>`).join('')}
       </select>
     </div>` : '';
+  // dia do bloqueio é um campo PRÓPRIO do formulário, independente do dia aberto na
+  // tela de Agenda (baAgendaDay só serve de valor inicial) — dá pra bloquear um dia
+  // futuro sem precisar navegar a agenda até lá. Não deixa escolher dia passado.
+  const hojeIso = primeLocalDate(new Date());
   form.innerHTML = `<div class="ba-encaixe">
-    <div class="ba-slabel" style="margin-top:0">Bloquear horário — ${baAgendaDay ? baFormatDate(baAgendaDay) : ''}</div>
+    <div class="ba-slabel" style="margin-top:0">Bloquear horário</div>
     ${seletorHtml}
+    <div class="ba-field"><label>Dia</label><input type="date" id="ba-bloqueio-dia" min="${hojeIso}" value="${baAgendaDay || hojeIso}"></div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
       <div class="ba-field" style="flex:1;min-width:100px"><label>Início</label><input type="time" id="ba-bloqueio-start"></div>
       <div class="ba-field" style="flex:1;min-width:100px"><label>Fim</label><input type="time" id="ba-bloqueio-end"></div>
@@ -8741,11 +8746,17 @@ function baToggleBloqueio(){
   </div>`;
   form.style.display = 'block';
   baRenderBlocksList();
-  // mudou o intervalo depois de ver o aviso -- a confirmação pendente era pra OUTRO
-  // intervalo, não vale mais; volta a exigir a checagem de novo
-  ['ba-bloqueio-start','ba-bloqueio-end'].forEach(id=>{
-    document.getElementById(id).addEventListener('input', baBloqueioResetConfirm);
+  // mudou dia/intervalo depois de ver o aviso -- a confirmação pendente era pra OUTRO
+  // dia/intervalo, não vale mais; volta a exigir a checagem de novo
+  ['ba-bloqueio-dia','ba-bloqueio-start','ba-bloqueio-end'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', ()=>{ baBloqueioResetConfirm(); baRenderBlocksList(); });
   });
+}
+// dia escolhido no formulário -- cai pro dia aberto na Agenda só se o campo ainda
+// não existe (formulário fechado)
+function baBloqueioDay(){
+  const el = document.getElementById('ba-bloqueio-dia');
+  return el ? el.value : baAgendaDay;
 }
 // só existe pro admin (o <select> só é renderizado pra isAdmin) — troca de profissional
 // dentro do formulário de bloqueio; o aviso D3, a lista de bloqueios e o INSERT passam
@@ -8772,11 +8783,12 @@ async function baSaveBloqueio(){
   const errEl = document.getElementById('ba-bloqueio-err');
   const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
   errEl.style.display = 'none';
-  const day = baAgendaDay;
+  const day = baBloqueioDay();
   const start = document.getElementById('ba-bloqueio-start').value;
   const end = document.getElementById('ba-bloqueio-end').value;
   const reason = document.getElementById('ba-bloqueio-motivo').value.trim();
-  if(!day) return fail('Escolha um dia na agenda antes de bloquear.');
+  if(!day) return fail('Escolha um dia pra bloquear.');
+  if(day < primeLocalDate(new Date())) return fail('Não dá pra bloquear um dia que já passou.');
   if(!start || !end) return fail('Preencha início e fim.');
   if(end <= start) return fail('O fim precisa ser depois do início.');
   const btn = document.getElementById('ba-bloqueio-confirm-btn');
@@ -8818,7 +8830,7 @@ async function baSaveBloqueio(){
     // valores atuais do DOM antes de decidir o que fazer com o resultado da consulta
     const sigAgora = baBloqueioSignature(
       baBloqueioTargetBarberId || baActingBarberId,
-      baAgendaDay,
+      baBloqueioDay(),
       document.getElementById('ba-bloqueio-start').value,
       document.getElementById('ba-bloqueio-end').value
     );
@@ -8853,9 +8865,10 @@ async function baSaveBloqueio(){
 async function baRenderBlocksList(){
   const wrap = document.getElementById('ba-blocks-list');
   const targetBarberId = baBloqueioTargetBarberId || baActingBarberId;
-  if(!wrap || !baAgendaDay || !targetBarberId) { if(wrap) wrap.innerHTML=''; return; }
+  const day = baBloqueioDay();
+  if(!wrap || !day || !targetBarberId) { if(wrap) wrap.innerHTML=''; return; }
   const { data, error } = await sb.from('agenda_blocks').select('id,start_time,end_time,reason')
-    .eq('barber_id', targetBarberId).eq('day', baAgendaDay).order('start_time');
+    .eq('barber_id', targetBarberId).eq('day', day).order('start_time');
   if(error){ console.error('baRenderBlocksList', error); wrap.innerHTML=''; return; }
   if(!data || !data.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML = data.map(b=>
