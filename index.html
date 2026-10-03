@@ -3661,6 +3661,12 @@ addEventListener('resize', caApplyMode, {passive:true});
 .cs-hist{display:flex;justify-content:space-between;gap:.8rem;padding:.7rem .9rem;border:1px solid rgba(237,237,232,.08);margin-bottom:.4rem;cursor:pointer;font-size:.86rem}
 .cs-nota{padding:.5rem 0;border-bottom:1px solid rgba(237,237,232,.07);font-size:.82rem}
 .cs-nota:last-child{border-bottom:none}
+.cs-venda{border:1px solid rgba(237,237,232,.08);padding:.6rem .8rem;margin-bottom:.5rem;font-size:.84rem}
+.cs-venda-h{display:flex;justify-content:space-between;gap:.6rem;margin-bottom:.3rem}
+.cs-venda-h>span{min-width:0;overflow-wrap:anywhere}
+.cs-venda-h>b,.cs-item>b{white-space:nowrap}
+.cs-item{display:flex;justify-content:space-between;gap:.6rem;padding:.15rem 0}
+.cs-pays{margin-top:.35rem;border-top:1px dashed rgba(237,237,232,.12);padding-top:.35rem}
 .cs-field{margin-bottom:.9rem;text-align:left}
 .cs-field label{display:block;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--prata-dim);margin-bottom:.35rem}
 .cs-field input,.cs-field select{width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.8rem .9rem;font-family:var(--font-body);font-size:.95rem;box-sizing:border-box}
@@ -6851,6 +6857,51 @@ async function csRenderGestaoSessions(){
   box.innerHTML = (data && data.length) ? data.map(csHistRowHtml).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum caixa aberto ainda.</p>';
 }
 
+// ── relatório completo de vendas (usa os campos novos de cash_session_report; sem eles, cai no formato antigo) ──
+function csRowHtml(l,v,cls){ return `<div class="cs-row${cls?' '+cls:''}"><span>${l}</span><b>${v}</b></div>`; }
+function csPayText(p){
+  let t = csMethodLabel(p.method);
+  if(p.method==='credito' && p.parcelas) t += ` ${Number(p.parcelas)}x`;
+  if(p.bandeira) t += ` ${p.bandeira}`;
+  if(p.nsu) t += ` · NSU ${p.nsu}`;
+  return `${t} ${csMoney(p.value)}`;
+}
+function csItemText(i){
+  return `${i.service}${Number(i.qty)>1 ? ' ×'+Number(i.qty) : ''} ${csMoney(i.value)}${i.barber ? ' ('+i.barber+')' : ''}`;
+}
+function csVendaCardHtml(v){
+  const items = (v.items||[]).map(i=>`<div class="cs-item"><span>${primeEsc(i.service)}${Number(i.qty)>1 ? ` ×${Number(i.qty)}` : ''}${i.barber ? ` <span class="cs-muted">· ${primeEsc(i.barber)}</span>` : ''}</span><b>${csMoney(i.value)}</b></div>`).join('');
+  const pays = (v.payments||[]).map(p=>`<div class="cs-muted">${primeEsc(csPayText(p))}</div>`).join('');
+  const sub = v.late ? ` · vendida em ${csFmtDate(v.sold_at)}` : '';
+  return `<div class="cs-venda"><div class="cs-venda-h"><span><b>${primeEsc(v.client||'Cliente')}</b> <span class="cs-muted">· ${csFmtTime(v.at)}${sub}</span></span><b>${csMoney(v.late ? v.paid : v.items_total)}</b></div>${items}<div class="cs-pays">${pays}</div></div>`;
+}
+function csVendasHtml(rep){
+  if(!rep.totais) return csNotasHtml(rep);
+  const t = rep.totais;
+  const nv = Number(t.qtd_vendas)||0;
+  let h = '<div class="cs-slabel">Vendas do turno</div><div class="cs-block">'
+    + csRowHtml(`Serviços (${Number(t.qtd_servicos)||0})`, csMoney(t.servicos))
+    + csRowHtml(`Produtos (${Number(t.qtd_produtos)||0} un.)`, csMoney(t.produtos))
+    + csRowHtml(`Total vendido (${nv} venda${nv===1?'':'s'})`, csMoney(t.total), 'cs-total') + '</div>';
+  if((rep.por_barbeiro_vendas||[]).length){
+    h += '<div class="cs-slabel">Por barbeiro</div><div class="cs-block">' + rep.por_barbeiro_vendas.map(b=>
+      csRowHtml(`${primeEsc(b.name||'—')}<br><span class="cs-muted">serviços ${csMoney(b.servicos)} · produtos ${csMoney(b.produtos)}</span>`, csMoney(b.total))).join('') + '</div>';
+  }
+  if((rep.produtos||[]).length){
+    h += '<div class="cs-slabel">Produtos vendidos</div><div class="cs-block">' + rep.produtos.map(p=>
+      csRowHtml(`${primeEsc(p.name)} <span class="cs-muted">× ${Number(p.qty)}</span>`, csMoney(p.total))).join('') + '</div>';
+  }
+  if((rep.cartoes||[]).length){
+    h += '<div class="cs-slabel">Conferir com a maquininha</div><div class="cs-block">' + rep.cartoes.map(c=>
+      csRowHtml(`${primeEsc(csMethodLabel(c.method))}${c.bandeira ? ' '+primeEsc(c.bandeira) : ''} <span class="cs-muted">· ${Number(c.qtd)} transaç${Number(c.qtd)===1?'ão':'ões'}</span>`, csMoney(c.total))).join('') + '</div>';
+  }
+  const vendas = (rep.vendas||[]).filter(v=>!v.late), antigas = (rep.vendas||[]).filter(v=>v.late);
+  h += `<div class="cs-slabel">Detalhe das vendas (${vendas.length})</div>`
+    + (vendas.length ? vendas.slice(0,60).map(csVendaCardHtml).join('') + (vendas.length>60 ? `<p class="cs-muted">+ ${vendas.length-60} vendas no relatório impresso.</p>` : '') : '<p class="cs-muted">Nenhuma venda neste caixa.</p>');
+  if(antigas.length) h += `<div class="cs-slabel">Recebimentos de vendas anteriores (${antigas.length})</div>` + antigas.map(csVendaCardHtml).join('');
+  return h;
+}
+
 // ── tela do Caixa ──
 async function csRenderScreen(){
   const body = document.getElementById('ba-caixa-body');
@@ -7092,7 +7143,7 @@ async function csShowReport(id){
     <h3>Caixa #${Number(s.id)}</h3>
     <p class="cs-sub">${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ` → ${csFmtTime(s.closed_at)}` : ' · ainda aberto'}</p>
     ${csSummaryHtml(rep)}
-    ${csNotasHtml(rep)}
+    ${csVendasHtml(rep)}
     <div class="cs-field" style="margin-top:1.1rem"><label>Mandar resumo no WhatsApp (número com DDD)</label><input type="tel" id="cs-wa-fone" inputmode="tel" placeholder="(44) 99999-9999" value="${primeEsc(lastWa)}"></div>
     <p class="cs-err" id="cs-err" style="display:none"></p>
     <div class="cs-btns"><button class="btn btn-primary" onclick="csShareReport()">Enviar no WhatsApp</button><button class="btn btn-ghost" onclick="csPrintReport()">Imprimir / salvar PDF</button><button class="btn btn-ghost" onclick="csModalClose()">Fechar</button></div>`);
@@ -7118,14 +7169,28 @@ function csReportText(rep){
     L.push(`Ficou no caixa: ${csMoney(s.carry_amount)}`);
     if(Number(s.withdrawn_amount)>0) L.push(`Retirado pro ${s.close_destino==='banco' ? 'banco' : 'cofre'}: ${csMoney(s.withdrawn_amount)}`);
   }
+  if(rep.totais){
+    const t = rep.totais, nv = Number(t.qtd_vendas)||0;
+    L.push(''); L.push('*Vendas do turno*');
+    L.push(`Serviços (${Number(t.qtd_servicos)||0}): ${csMoney(t.servicos)}`);
+    L.push(`Produtos (${Number(t.qtd_produtos)||0} un.): ${csMoney(t.produtos)}`);
+    L.push(`*Total vendido: ${csMoney(t.total)}* (${nv} venda${nv===1?'':'s'})`);
+  }
   const methods = Object.keys(bm);
   if(methods.length){
     L.push(''); L.push('*Formas de pagamento*');
     methods.forEach(m=>L.push(`${csMethodLabel(m)}: ${csMoney(bm[m])}`));
   }
-  if((rep.by_barber||[]).length){
+  if((rep.por_barbeiro_vendas||[]).length){
+    L.push(''); L.push('*Por barbeiro*');
+    rep.por_barbeiro_vendas.forEach(b=>L.push(`${b.name||'—'}: ${csMoney(b.total)} (serviços ${csMoney(b.servicos)} · produtos ${csMoney(b.produtos)})`));
+  } else if((rep.by_barber||[]).length){
     L.push(''); L.push('*Por barbeiro*');
     rep.by_barber.forEach(b=>L.push(`${b.name||'—'}: ${csMoney(b.total)}`));
+  }
+  if((rep.produtos||[]).length){
+    L.push(''); L.push('*Produtos vendidos*');
+    rep.produtos.forEach(p=>L.push(`${p.name} × ${Number(p.qty)}: ${csMoney(p.total)}`));
   }
   return L.join('\n');
 }
@@ -7157,31 +7222,53 @@ function csPrintReport(){
       + stat('Ficou no caixa', csMoney(s.carry_amount))
       + stat(`Retirado → ${s.close_destino==='banco' ? 'banco' : 'cofre'}`, csMoney(s.withdrawn_amount));
   }
-  const simpleTable = (title, rows, total)=> rows.length ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">${title}</div>${total!=null ? `<div class="rp-section-total">Total <b>${csMoney(total)}</b></div>` : ''}</div>
+  const table = (title, head, rows, extraHead)=> rows.length ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">${title}</div>${extraHead||''}</div>
+    <table class="rp-table"><thead><tr>${head.map((h,i)=>`<th${i===head.length-1 && /valor|total|R\$/i.test(h) ? ' class="num"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '';
+  const simple = (title, rows)=> rows.length ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">${title}</div></div>
     <table class="rp-table"><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table></div>` : '';
   const methodRows = Object.keys(bm).map(m=>[primeEsc(csMethodLabel(m)), csMoney(bm[m])]);
-  const barberRows = (rep.by_barber||[]).map(b=>[primeEsc(b.name||'—'), csMoney(b.total)]);
   const operRows = (rep.by_operator||[]).map(b=>[primeEsc(b.name||'—'), csMoney(b.total)]);
-  const notaRows = (rep.notas||[]).map(n=>{
-    const meths = String(n.methods||'').split(', ').filter(Boolean).map(csMethodLabel).join(', ');
-    return `<tr><td>${csFmtTime(n.at)}</td><td>${primeEsc(n.client||'Cliente')}</td><td class="muted">${primeEsc(n.items||'—')}</td><td class="muted">${primeEsc(meths)}</td><td class="num">${csMoney(n.paid)}</td></tr>`;
-  }).join('');
   const movRows = [
     ...(rep.suprimentos||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>Suprimento (${primeEsc(x.origem)})</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">+ ${csMoney(x.value)}</td></tr>`),
     ...(rep.sangrias||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>${x.is_closing ? 'Retirada do fechamento' : 'Sangria'} → ${primeEsc(x.destino)}</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">− ${csMoney(x.value)}</td></tr>`)
-  ].join('');
+  ];
+  let vendasHtml = '';
+  if(rep.totais){
+    const t = rep.totais, nv = Number(t.qtd_vendas)||0;
+    const totaisStats = stat(`Serviços (${Number(t.qtd_servicos)||0})`, csMoney(t.servicos))
+      + stat(`Produtos (${Number(t.qtd_produtos)||0} un.)`, csMoney(t.produtos))
+      + stat(`Total vendido (${nv} venda${nv===1?'':'s'})`, csMoney(t.total), true);
+    vendasHtml += `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Vendas do turno</div></div><div class="rp-grid">${totaisStats}</div></div>`;
+    vendasHtml += table('Por barbeiro', ['Barbeiro','Serviços','Produtos','Total'],
+      (rep.por_barbeiro_vendas||[]).map(b=>`<tr><td>${primeEsc(b.name||'—')}</td><td class="num">${csMoney(b.servicos)}</td><td class="num">${csMoney(b.produtos)}</td><td class="num">${csMoney(b.total)}</td></tr>`));
+    vendasHtml += table('Produtos vendidos', ['Produto','Qtd','Total'],
+      (rep.produtos||[]).map(p=>`<tr><td>${primeEsc(p.name)}</td><td class="num">${Number(p.qty)}</td><td class="num">${csMoney(p.total)}</td></tr>`));
+    vendasHtml += table('Conferir com a maquininha', ['Forma','Bandeira','Transações','Total'],
+      (rep.cartoes||[]).map(c=>`<tr><td>${primeEsc(csMethodLabel(c.method))}</td><td>${primeEsc(c.bandeira||'—')}</td><td class="num">${Number(c.qtd)}</td><td class="num">${csMoney(c.total)}</td></tr>`));
+    const linha = v=>`<tr><td>${csFmtTime(v.at)}</td><td>${primeEsc(v.client||'Cliente')}${v.late ? `<div class="muted">vendida em ${csFmtDate(v.sold_at)}</div>` : ''}</td>
+      <td class="muted">${(v.items||[]).map(i=>primeEsc(csItemText(i))).join('<br>')}</td>
+      <td class="muted">${(v.payments||[]).map(p=>primeEsc(csPayText(p))).join('<br>')}</td><td class="num">${csMoney(v.late ? v.paid : v.items_total)}</td></tr>`;
+    const vendas = (rep.vendas||[]).filter(v=>!v.late), antigas = (rep.vendas||[]).filter(v=>v.late);
+    vendasHtml += table(`Detalhe das vendas (${vendas.length})`, ['Hora','Cliente','Itens','Pagamento','Valor'], vendas.map(linha));
+    vendasHtml += table(`Recebimentos de vendas anteriores (${antigas.length})`, ['Hora','Cliente','Itens','Pagamento','Valor'], antigas.map(linha));
+  } else {
+    const notaRows = (rep.notas||[]).map(n=>{
+      const meths = String(n.methods||'').split(', ').filter(Boolean).map(csMethodLabel).join(', ');
+      return `<tr><td>${csFmtTime(n.at)}</td><td>${primeEsc(n.client||'Cliente')}</td><td class="muted">${primeEsc(n.items||'—')}</td><td class="muted">${primeEsc(meths)}</td><td class="num">${csMoney(n.paid)}</td></tr>`;
+    });
+    vendasHtml += table(`Vendas do turno (${(rep.notas||[]).length})`, ['Hora','Cliente','Itens','Forma','Valor'], notaRows);
+  }
   document.getElementById('ba-report-print').innerHTML = `
     <div class="rp-head">
       <div class="rp-logo-badge">${logo}</div>
       <div><div class="rp-brand">PRIME BARBEARIA</div><div class="sub">fechamento de caixa</div></div>
       <div class="rp-meta"><b>Caixa #${Number(s.id)}</b>${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ' → '+csFmtTime(s.closed_at) : ' (aberto)'}<br>Gerado em ${geradoEm}</div>
     </div>
-    <div class="rp-section"><div class="rp-grid">${stats}</div></div>
-    ${simpleTable('Formas de pagamento', methodRows)}
-    ${simpleTable('Por barbeiro (serviço)', barberRows)}
-    ${simpleTable('Por operador (quem registrou)', operRows)}
-    ${movRows ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Suprimentos e sangrias</div></div><table class="rp-table"><tbody>${movRows}</tbody></table></div>` : ''}
-    ${notaRows ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Vendas do turno (${(rep.notas||[]).length})</div></div><table class="rp-table"><thead><tr><th>Hora</th><th>Cliente</th><th>Itens</th><th>Forma</th><th class="num">Valor</th></tr></thead><tbody>${notaRows}</tbody></table></div>` : ''}
+    <div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Conferência do dinheiro</div></div><div class="rp-grid">${stats}</div></div>
+    ${vendasHtml}
+    ${simple('Formas de pagamento', methodRows)}
+    ${simple('Por operador (quem registrou)', operRows)}
+    ${table('Suprimentos e sangrias', ['Hora','Tipo','Obs.','Valor'], movRows)}
     <div class="rp-foot">PRIME BARBEARIA · Av. Pedro Taques, 2824 — Maringá · PR<br>Relatório gerado automaticamente pelo sistema Prime</div>`;
   window.print();
 }
