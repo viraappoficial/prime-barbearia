@@ -1855,6 +1855,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
   </div>
 </div>
 
+<!-- MODAL: caixa por sessão (abrir / sangria / suprimento / fechar / relatório) — abaixo da porta de admin (z 1200) -->
+<div class="modal-backdrop" id="csModal" role="dialog" aria-modal="true" style="z-index:1150" onclick="if(event.target===this)csModalClose()">
+  <div class="modal" id="csModalBox" style="max-width:480px;max-height:90vh;overflow-y:auto"></div>
+</div>
+
 <!-- MODAL: feedback com estrelas -->
 <div class="modal-backdrop" id="feedbackModal" role="dialog" aria-modal="true" style="z-index:1200">
   <div class="modal" style="max-width:420px;text-align:center">
@@ -3631,6 +3636,44 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .bar-labels span{flex:1;text-align:center;font-size:.58rem;color:var(--prata-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #barberApp .bar-day-wrap{flex:1;display:flex;justify-content:center;width:100%;align-items:flex-end}
 
+/* ── Caixa por sessão ── */
+.cs-card{border:1px solid var(--dourado-dim);background:var(--grafite-card);padding:1.1rem 1.1rem 1.2rem;margin-bottom:1rem}
+.cs-card-closed{border-color:rgba(229,138,107,.55)}
+.cs-card-open{border-color:var(--verde-neon)}
+.cs-title{font-family:var(--font-display);font-size:1.25rem;letter-spacing:.04em;margin-bottom:.2rem}
+.cs-sub{color:var(--prata-dim);font-size:.85rem;margin:.3rem 0 .9rem;line-height:1.45}
+.cs-muted{color:var(--prata-dim);font-size:.8rem}
+.cs-big{font-family:var(--font-display);font-size:2rem;color:var(--dourado);line-height:1.1}
+.cs-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.cs-actions .ba-btn{flex:1;min-width:110px;margin:0}
+.cs-note{background:rgba(217,164,65,.1);border:1px solid rgba(217,164,65,.35);color:var(--alerta);font-size:.8rem;padding:.6rem .8rem;margin-bottom:1rem;line-height:1.4}
+.cs-warn{background:rgba(229,138,107,.12);border:1px solid rgba(229,138,107,.45);color:var(--erro);font-size:.85rem;padding:.65rem .85rem;margin-bottom:.9rem;line-height:1.4}
+.cs-warn a{color:var(--dourado);text-decoration:underline}
+.cs-block{background:rgba(237,237,232,.04);border:1px solid rgba(237,237,232,.08);padding:.3rem .9rem}
+.cs-row{display:flex;justify-content:space-between;gap:.8rem;padding:.45rem 0;font-size:.88rem;border-bottom:1px solid rgba(237,237,232,.07)}
+.cs-row:last-child{border-bottom:none}
+.cs-row b{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.cs-total{border-top:1px solid var(--dourado-dim);color:var(--dourado)}
+.cs-total b{font-weight:600}
+.cs-neg,.cs-neg b{color:var(--erro)}
+.cs-pos,.cs-pos b{color:var(--verde-neon)}
+.cs-slabel{font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dourado);margin:1.2rem 0 .5rem}
+.cs-hist{display:flex;justify-content:space-between;gap:.8rem;padding:.7rem .9rem;border:1px solid rgba(237,237,232,.08);margin-bottom:.4rem;cursor:pointer;font-size:.86rem}
+.cs-nota{padding:.5rem 0;border-bottom:1px solid rgba(237,237,232,.07);font-size:.82rem}
+.cs-nota:last-child{border-bottom:none}
+.cs-field{margin-bottom:.9rem;text-align:left}
+.cs-field label{display:block;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--prata-dim);margin-bottom:.35rem}
+.cs-field input,.cs-field select{width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.8rem .9rem;font-family:var(--font-body);font-size:.95rem;box-sizing:border-box}
+.cs-err{color:var(--erro);font-size:.82rem;margin:.4rem 0 .8rem}
+.cs-btns{display:flex;flex-direction:column;gap:.7rem;margin-top:.6rem}
+#barberApp .ba-tab.cs-open,#barberApp .ba-tab.cs-closed{position:relative}
+#barberApp .ba-tab.cs-open::after,#barberApp .ba-tab.cs-closed::after{content:"";position:absolute;top:.55rem;left:calc(50% + 8px);width:7px;height:7px;border-radius:50%}
+#barberApp .ba-tab.cs-open::after{background:var(--verde-neon)}
+#barberApp .ba-tab.cs-closed::after{background:var(--erro)}
+#barberApp .ba-topbar .ba-links button.cs-open::after,#barberApp .ba-topbar .ba-links button.cs-closed::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:.45rem;vertical-align:middle}
+#barberApp .ba-topbar .ba-links button.cs-open::after{background:var(--verde-neon)}
+#barberApp .ba-topbar .ba-links button.cs-closed::after{background:var(--erro)}
+
 /* ── ranking da equipe (admin) ── */
 #barberApp .rank-list{display:flex;flex-direction:column;gap:.5rem}
 #barberApp .rank-row{background:var(--grafite-card);border:1px solid rgba(198,167,94,.12);border-radius:10px;padding:.8rem .9rem;display:flex;align-items:center;gap:.7rem;position:relative;overflow:hidden}
@@ -3740,6 +3783,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <button data-tab="vendas" onclick="baTab('vendas')">Minhas vendas</button>
         <button data-tab="dashboard" onclick="baTab('dashboard')">Dashboard</button>
         <button data-tab="clientes" onclick="baTab('clientes')">Clientes</button>
+        <button data-tab="caixa" onclick="baTab('caixa')" id="ba-link-caixa" style="display:none">Caixa</button>
         <button data-tab="gestao" onclick="baTab('gestao')" id="ba-link-gestao" style="display:none">Gestão</button>
         <button data-tab="perfil" onclick="baTab('perfil')">Perfil</button>
       </div>
@@ -3854,6 +3898,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       <div class="ba-head"><div><div class="hi">Registrar</div><div class="name">Atendimento</div></div></div>
       <div class="ba-body">
         <div id="ba-vendas-picker-at" style="display:none"></div>
+        <div id="ba-at-caixa-banner" style="display:none"></div>
         <div class="ba-slabel" style="margin-top:0">Cliente</div>
         <div class="seg" id="at-client-seg">
           <div class="seg-btn active" data-mode="buscar">Buscar existente</div>
@@ -4096,6 +4141,12 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         </div>
 
       </div>
+    </div>
+
+    <!-- CAIXA (sessão: abrir, vender, fechar) -->
+    <div class="screen" id="ba-screen-caixa">
+      <div class="ba-head"><div><div class="hi">Abrir, vender e fechar</div><div class="name">Caixa</div></div></div>
+      <div class="ba-body"><div id="ba-caixa-body"></div></div>
     </div>
 
     <!-- CLIENTES -->
@@ -4588,6 +4639,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       <button class="ba-tab" data-tab="vendas" onclick="baTab('vendas')"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/></svg><span>Vendas</span></button>
       <button class="ba-tab" data-tab="dashboard" onclick="baTab('dashboard')"><svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg><span>Painel</span></button>
       <button class="ba-tab" data-tab="clientes" onclick="baTab('clientes')"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-5 7-5s7 1.7 7 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15 13.2c2.7.3 5 1.7 5 4.3v1.5"/></svg><span>Clientes</span></button>
+      <button class="ba-tab" data-tab="caixa" onclick="baTab('caixa')" id="ba-tabicon-caixa" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="1"/><circle cx="12" cy="13" r="2.5"/><path d="M6 10h.01M18 16h.01"/></svg><span>Caixa</span></button>
       <button class="ba-tab" data-tab="gestao" onclick="baTab('gestao')" id="ba-tabicon-gestao" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 13.5a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1.04 1.56V19.6a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1.04-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87A1.7 1.7 0 004.4 12.46H4.3a2 2 0 110-4h.09a1.7 1.7 0 001.56-1.04 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H10.4A1.7 1.7 0 0011.46 1.3V1.2a2 2 0 114 0v.09a1.7 1.7 0 001.04 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87v.09c.24.68.85 1.16 1.56 1.16h.09a2 2 0 110 4h-.09a1.7 1.7 0 00-1.56 1.04z"/></svg><span>Gestão</span></button>
       <button class="ba-tab" data-tab="perfil" onclick="baTab('perfil')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg><span>Perfil</span></button>
     </nav>
@@ -4811,11 +4863,13 @@ function baSetActingBarber(id){
 function baTab(tab){
   if(tab==='gestao' && baCurrentRole!=='admin') tab='perfil';
   if((tab==='dashboard'||tab==='clientes'||tab==='vendas') && baCurrentRole==='vendas') tab='agenda';
-  const m={agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao'};
+  if(tab==='caixa' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
+  const m={agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',caixa:'ba-screen-caixa',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao'};
   baShow(m[tab]);
   document.querySelectorAll('#barberApp .ba-tab,#barberApp .ba-links button').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   if(tab==='vendas') baRenderVendas();
   if(tab==='clientes') primeSkeletonThen(['ba-clientes-list'], [[5,58]], baRenderClientes);
+  if(tab==='caixa') csRenderScreen();
   if(tab==='agenda') baRenderAgenda();
   if(tab==='perfil') baRenderPerfil();
   if(tab==='dashboard') baRenderDashboard();
@@ -6653,6 +6707,484 @@ function baPopulateContaBancariaSelect(){
   if(current && [...sel.options].some(o=>o.value===current)) sel.value = current;
 }
 
+// ══ Caixa por sessão (cash_sessions + RPCs cash_session_*) ══
+// A confirmação de admin é garantida no BANCO: as RPCs de abrir/fechar/sangria/suprimento só rodam
+// com a sessão do próprio admin. Por isso a porta de admin entrega o client dele ao callback e a
+// chamada é feita por ele; quem está operando o caixa vai em p_operator.
+let csState = null;        // último retorno de cash_session_current
+let csBanksCache = null;   // [{id,name}] — vendas não lê bank_accounts direto, usa a RPC
+let csLastReport = null;   // relatório aberto no modal (pra imprimir / mandar no WhatsApp)
+let csCloseCtx = null;
+let csCarryTouched = false;
+let csBusy = false;
+const CS_ERR = {
+  NOT_ADMIN: 'Essa ação precisa da confirmação de um admin.',
+  BAD_OPERATOR: 'Só a conta de vendas ou um admin podem operar o caixa.',
+  NOT_SESSION_OWNER: 'Só quem abriu o caixa (ou um admin) pode fazer isso.',
+  SESSION_ALREADY_OPEN: 'Já existe um caixa aberto.',
+  NO_OPEN_SESSION: 'Não há caixa aberto.',
+  NO_OPEN_CASH_SESSION: 'Caixa fechado. Peça pra abrir o caixa antes de registrar a venda.',
+  CASH_SESSION_STALE: 'O caixa aberto é de um dia anterior. Feche o caixa e abra um novo antes de vender.',
+  BAD_AMOUNT: 'Informe um valor válido.',
+  BAD_CARRY: 'O que fica no caixa não pode ser maior que o dinheiro contado.',
+  BAD_DESTINO: 'Escolha pra onde vai o dinheiro retirado.',
+  BAD_BANK: 'Escolha uma conta bancária.',
+  BAD_ORIGEM: 'Escolha de onde vem o suprimento.',
+  NOT_ALLOWED: 'Você não tem permissão pra isso.',
+  NOT_STAFF: 'Sua sessão expirou. Entre de novo.'
+};
+function csErrMsg(err){
+  const m = String((err && err.message) || '');
+  for(const k of Object.keys(CS_ERR)){ if(m.startsWith(k)) return CS_ERR[k]; }
+  return 'Não foi possível concluir. Tente de novo.';
+}
+function csMoney(v){ return baFormatMoney(Number(v)||0); }
+function csFmtTime(iso){ return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function csFmtDate(iso){ const d=new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+function csFmtInput(v){ return (Number(v)||0).toFixed(2).replace('.',','); }
+function csCents(v){ return Math.round((Number(v)||0)*100); }
+function csMethodLabel(m){ const x = BA_PGTO_METODOS.find(i=>i.v===m); return x ? x.l : m; }
+function csCanOperate(){ return baCurrentRole==='admin' || baCurrentRole==='vendas'; }
+// quem pode movimentar/fechar a sessão aberta: quem abriu ou qualquer admin (o banco confere de novo)
+function csIsOwnerOrAdmin(st){ return baCurrentRole==='admin' || !!(st && st.session && st.session.opened_by === baCurrentBarberId); }
+
+async function csFetchState(){
+  const { data, error } = await sb.rpc('cash_session_current');
+  if(error){ console.error('csFetchState', error); csState = null; csUpdateChip(); return null; }
+  csState = data; csUpdateChip();
+  return data;
+}
+function csUpdateChip(){
+  ['ba-link-caixa','ba-tabicon-caixa'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.classList.toggle('cs-open', !!(csState && csState.open && !csState.stale));
+    el.classList.toggle('cs-closed', !!(csState && (!csState.open || csState.stale)));
+  });
+}
+async function csFetchReport(id){
+  const { data, error } = await sb.rpc('cash_session_report', { p_session: id });
+  if(error){ console.error('csFetchReport', error); return null; }
+  return data;
+}
+async function csFetchBanks(){
+  if(csBanksCache) return csBanksCache;
+  const { data, error } = await sb.rpc('cash_session_bank_accounts');
+  if(error){ console.error('csFetchBanks', error); return []; }
+  csBanksCache = data || [];
+  return csBanksCache;
+}
+
+// Checagem de UX ANTES de qualquer efeito colateral de uma venda (cliente, agendamento, estoque).
+// O banco é quem barra de verdade; isto só evita a pessoa preencher tudo pra ser barrada no fim.
+// Se não conseguir consultar, deixa passar e o servidor decide.
+async function csGateForSale(){
+  const st = await csFetchState();
+  if(!st || !st.enforced) return { ok:true };
+  if(!st.open) return { ok:false, msg: CS_ERR.NO_OPEN_CASH_SESSION };
+  if(st.stale) return { ok:false, msg: CS_ERR.CASH_SESSION_STALE };
+  return { ok:true };
+}
+async function csRenderSaleBanner(){
+  const el = document.getElementById('ba-at-caixa-banner');
+  if(!el) return;
+  const g = await csGateForSale();
+  if(g.ok){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display = 'block';
+  el.innerHTML = `<div class="cs-warn">${primeEsc(g.msg)}${csCanOperate() ? ` <a href="#" onclick="baTab('caixa');return false">Ir pro Caixa</a>` : ''}</div>`;
+}
+
+// ── blocos de relatório (tela e modal) ──
+function csSumSangrias(rep){ return (rep.sangrias||[]).filter(x=>!x.is_closing).reduce((a,x)=>a+Number(x.value||0),0); }
+function csSumSuprimentos(rep){ return (rep.suprimentos||[]).reduce((a,x)=>a+Number(x.value||0),0); }
+function csDiffText(d){ return Math.abs(d)<0.005 ? 'Confere' : (d<0 ? 'Falta' : 'Sobra'); }
+function csSummaryHtml(rep){
+  const s = rep.session, bm = rep.by_method || {};
+  const row = (l,v,cls)=>`<div class="cs-row${cls?' '+cls:''}"><span>${l}</span><b>${v}</b></div>`;
+  let h = '<div class="cs-block">';
+  h += row('Abertura (contado)', csMoney(s.opening_amount));
+  const od = s.opening_difference!=null ? Number(s.opening_difference) : 0;
+  if(Math.abs(od)>=0.005) h += row(od<0 ? 'Falta na abertura' : 'Sobra na abertura', csMoney(Math.abs(od)), od<0 ? 'cs-neg' : 'cs-pos');
+  h += row('+ Vendas em dinheiro', csMoney(bm.dinheiro||0));
+  h += row('+ Suprimentos', csMoney(csSumSuprimentos(rep)));
+  h += row('− Sangrias', csMoney(csSumSangrias(rep)));
+  h += row('= Esperado em dinheiro', csMoney(rep.expected_cash), 'cs-total');
+  if(s.closed_at){
+    const d = Number(s.difference);
+    h += row('Contado', csMoney(s.counted_cash));
+    h += row(csDiffText(d), Math.abs(d)<0.005 ? '—' : csMoney(Math.abs(d)), Math.abs(d)<0.005 || d>0 ? 'cs-pos' : 'cs-neg');
+    h += row('Ficou no caixa (próximo dia)', csMoney(s.carry_amount));
+    if(Number(s.withdrawn_amount)>0) h += row(`Retirado → ${s.close_destino==='banco' ? 'banco' : 'cofre'}`, csMoney(s.withdrawn_amount));
+  }
+  h += '</div>';
+  const others = Object.keys(bm).filter(k=>k!=='dinheiro');
+  if(others.length){
+    h += '<div class="cs-slabel">Outras formas de pagamento</div><div class="cs-block">'
+      + others.map(m=>row(primeEsc(csMethodLabel(m)), csMoney(bm[m]))).join('') + '</div>';
+  }
+  if((rep.by_barber||[]).length){
+    h += '<div class="cs-slabel">Por barbeiro (serviço)</div><div class="cs-block">'
+      + rep.by_barber.map(b=>row(primeEsc(b.name||'—'), csMoney(b.total))).join('') + '</div>';
+  }
+  if((rep.by_operator||[]).length){
+    h += '<div class="cs-slabel">Por operador (quem registrou)</div><div class="cs-block">'
+      + rep.by_operator.map(b=>row(primeEsc(b.name||'—'), csMoney(b.total))).join('') + '</div>';
+  }
+  return h;
+}
+function csNotasHtml(rep){
+  const notas = rep.notas || [];
+  if(!notas.length) return '<p class="cs-muted" style="margin-top:.9rem">Nenhuma venda neste caixa.</p>';
+  const lines = notas.slice(0,60).map(n=>{
+    const meths = String(n.methods||'').split(', ').filter(Boolean).map(csMethodLabel).join(', ');
+    return `<div class="cs-nota"><div><b>${primeEsc(n.client||'Cliente')}</b> <span class="cs-muted">· ${primeEsc(n.items||'—')}</span></div>
+      <div class="cs-muted">${csFmtTime(n.at)} · ${primeEsc(meths)} · <b>${csMoney(n.paid)}</b></div></div>`;
+  }).join('');
+  return `<div class="cs-slabel">Vendas do turno (${notas.length})</div><div class="cs-block">${lines}${notas.length>60 ? `<p class="cs-muted" style="padding:.5rem 0">+ ${notas.length-60} vendas no relatório impresso.</p>` : ''}</div>`;
+}
+
+// ── tela do Caixa ──
+async function csRenderScreen(){
+  const body = document.getElementById('ba-caixa-body');
+  if(!body) return;
+  body.innerHTML = '<p class="cs-muted">Carregando…</p>';
+  const st = await csFetchState();
+  if(!st){ body.innerHTML = '<p class="cs-muted">Não foi possível carregar o caixa. Tente de novo.</p>'; return; }
+  let html = '';
+  if(!st.enforced) html += '<div class="cs-note">Modo de teste: o sistema ainda não exige caixa aberto pra registrar vendas.</div>';
+  if(!st.open){
+    html += `<div class="cs-card cs-card-closed"><div class="cs-title">Caixa fechado</div>
+      <p class="cs-sub">${st.suggested_opening!=null ? `No último fechamento ficaram ${csMoney(st.suggested_opening)} no caixa.` : 'Ainda não há fechamento anterior.'}</p>
+      <button class="ba-btn" style="margin:0" onclick="csOpenOpenModal()">Abrir caixa</button></div>`;
+  } else {
+    const s = st.session;
+    const rep = await csFetchReport(s.id);
+    html += `<div class="cs-card cs-card-open"><div class="cs-title">Caixa aberto</div>
+      <p class="cs-sub">${primeEsc(s.opened_by_name||'—')} · desde ${csFmtTime(s.opened_at)} de ${csFmtDate(s.opened_at)}</p>
+      ${st.stale ? '<div class="cs-warn">Esse caixa é de um dia anterior. Feche e abra um novo antes de vender.</div>' : ''}
+      ${rep ? `<div class="cs-big">${csMoney(rep.expected_cash)}</div><div class="cs-muted" style="margin-bottom:.9rem">esperado em dinheiro agora</div>` : ''}
+      ${csIsOwnerOrAdmin(st) ? `<div class="cs-actions">
+        <button class="ba-btn ghost" onclick="csOpenSangriaModal()">Sangria</button>
+        <button class="ba-btn ghost" onclick="csOpenSuprimentoModal()">Suprimento</button>
+        <button class="ba-btn" onclick="csOpenCloseModal()">Fechar caixa</button>
+      </div>` : `<div class="cs-note" style="margin:0">Esse caixa foi aberto por ${primeEsc(s.opened_by_name||'outra pessoa')}. Só quem abriu (ou um admin) pode movimentar e fechar. As vendas continuam entrando normalmente.</div>`}</div>`;
+    if(rep) html += '<div class="cs-slabel">Resumo do turno</div>' + csSummaryHtml(rep)
+      + `<button class="ba-btn ghost" style="margin-top:.8rem" onclick="csShowReport(${Number(s.id)})">Ver relatório completo</button>`;
+  }
+  const { data: list, error: listErr } = await sb.rpc('cash_session_list', { p_limit: 10 });
+  if(listErr) console.error('csRenderScreen/list', listErr);
+  if(list && list.length){
+    html += '<div class="cs-slabel" style="margin-top:1.6rem">Últimos caixas</div>' + list.map(x=>{
+      const d = x.closed_at ? Number(x.difference) : null;
+      const label = d===null ? 'Aberto' : (Math.abs(d)<0.005 ? 'Confere' : `${csDiffText(d)} ${csMoney(Math.abs(d))}`);
+      const color = d===null ? 'var(--dourado)' : (d<-0.005 ? 'var(--erro)' : 'var(--verde-neon)');
+      return `<div class="cs-hist" onclick="csShowReport(${Number(x.id)})"><div><b>#${Number(x.id)}</b> · ${csFmtDate(x.opened_at)} · ${primeEsc(x.opened_by_name||'—')}</div><div style="color:${color}">${label}</div></div>`;
+    }).join('');
+  }
+  body.innerHTML = html;
+}
+
+// ── modal genérico + porta de admin ──
+function csModalOpen(html){
+  const box = document.getElementById('csModalBox');
+  box.innerHTML = html;
+  box.scrollTop = 0;   // senão o conteúdo novo (ex.: relatório) abre já rolado, herdando a posição do modal anterior
+  document.getElementById('csModal').classList.add('open');
+}
+function csModalClose(){
+  document.getElementById('csModal').classList.remove('open');
+  csCloseCtx = null;
+}
+function csModalErr(msg){
+  const el = document.getElementById('cs-err');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+}
+function csToggleBank(selId, wrapId){
+  document.getElementById(wrapId).style.display = document.getElementById(selId).value==='banco' ? 'block' : 'none';
+}
+function csBankSelectHtml(banks, id){
+  return banks.length ? `<select id="${id}">${banks.map(b=>`<option value="${Number(b.id)}">${primeEsc(b.name)}</option>`).join('')}</select>` : '';
+}
+// abre a porta de admin e executa a RPC COM A SESSÃO DO ADMIN que confirmou
+function csRunWithAdmin(opts, call, onOk){
+  baOpenAdminGate(async (adminId, adminClient)=>{
+    if(csBusy) return;
+    csBusy = true;
+    try{
+      const { data, error } = await call(adminClient);
+      if(error){ console.error('csRunWithAdmin', error); csModalErr(csErrMsg(error)); return; }
+      await onOk(data);
+    } finally { csBusy = false; }
+  }, opts);
+}
+
+// ── abrir ──
+async function csOpenOpenModal(){
+  const st = csState || await csFetchState();
+  const sug = st && st.suggested_opening!=null ? Number(st.suggested_opening) : null;
+  csModalOpen(`
+    <button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
+    <h3>Abrir caixa</h3>
+    <p class="cs-sub">${sug!=null ? `Ficaram ${csMoney(sug)} no último fechamento. Conte o dinheiro da gaveta e informe abaixo.` : 'Primeira abertura. Conte o dinheiro da gaveta (fundo de troco) e informe abaixo.'}</p>
+    <div class="cs-field"><label>Dinheiro contado na gaveta (R$)</label><input type="text" inputmode="decimal" id="cs-open-valor" value="${sug!=null ? csFmtInput(sug) : ''}" placeholder="0,00"></div>
+    <div class="cs-field"><label>Observação (opcional)</label><input type="text" id="cs-open-nota" maxlength="300"></div>
+    <p class="cs-err" id="cs-err" style="display:none"></p>
+    <div class="cs-btns"><button class="btn btn-primary" onclick="csDoOpen()">Confirmar com o admin</button><button class="btn btn-ghost" onclick="csModalClose()">Voltar</button></div>`);
+}
+function csDoOpen(){
+  const raw = document.getElementById('cs-open-valor').value;
+  if(!raw.trim()) return csModalErr('Informe o dinheiro contado (pode ser 0).');
+  const amount = baAtParseMoney(raw);
+  const note = document.getElementById('cs-open-nota').value.trim() || null;
+  csRunWithAdmin({subtitle:'Abrir o caixa precisa da confirmação de um admin.', confirmLabel:'Abrir caixa'},
+    c => c.rpc('cash_session_open', { p_operator: baCurrentBarberId, p_amount: amount, p_note: note }),
+    async ()=>{ csModalClose(); await csRenderScreen(); });
+}
+
+// ── sangria ──
+async function csOpenSangriaModal(){
+  if(!csIsOwnerOrAdmin(csState)){ alert(CS_ERR.NOT_SESSION_OWNER); return; }
+  const banks = await csFetchBanks();
+  csModalOpen(`
+    <button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
+    <h3>Sangria</h3>
+    <p class="cs-sub">Retirar dinheiro do caixa durante o turno.</p>
+    <div class="cs-field"><label>Valor (R$)</label><input type="text" inputmode="decimal" id="cs-sg-valor" placeholder="0,00"></div>
+    <div class="cs-field"><label>Pra onde vai</label>
+      <select id="cs-sg-destino" onchange="csToggleBank('cs-sg-destino','cs-sg-bank-wrap')"><option value="cofre">Cofre</option>${banks.length ? '<option value="banco">Banco</option>' : ''}</select></div>
+    <div class="cs-field" id="cs-sg-bank-wrap" style="display:none"><label>Conta bancária</label>${csBankSelectHtml(banks,'cs-sg-bank')}</div>
+    <div class="cs-field"><label>Observação (opcional)</label><input type="text" id="cs-sg-nota" maxlength="300"></div>
+    <p class="cs-err" id="cs-err" style="display:none"></p>
+    <div class="cs-btns"><button class="btn btn-primary" onclick="csDoSangria()">Confirmar com o admin</button><button class="btn btn-ghost" onclick="csModalClose()">Voltar</button></div>`);
+}
+function csDoSangria(){
+  const value = baAtParseMoney(document.getElementById('cs-sg-valor').value);
+  const destino = document.getElementById('cs-sg-destino').value;
+  const bankId = destino==='banco' ? (Number(document.getElementById('cs-sg-bank').value)||null) : null;
+  const note = document.getElementById('cs-sg-nota').value.trim() || null;
+  if(!(csCents(value) > 0)) return csModalErr('Informe um valor maior que zero.');
+  if(destino==='banco' && !bankId) return csModalErr('Escolha a conta bancária.');
+  csRunWithAdmin({subtitle:'Toda sangria precisa da confirmação de um admin.', confirmLabel:'Confirmar sangria'},
+    c => c.rpc('cash_session_sangria', { p_operator: baCurrentBarberId, p_value: value, p_destino: destino, p_bank_account_id: bankId, p_note: note }),
+    async ()=>{ csModalClose(); await csRenderScreen(); });
+}
+
+// ── suprimento ──
+async function csOpenSuprimentoModal(){
+  if(!csIsOwnerOrAdmin(csState)){ alert(CS_ERR.NOT_SESSION_OWNER); return; }
+  const banks = await csFetchBanks();
+  csModalOpen(`
+    <button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
+    <h3>Suprimento</h3>
+    <p class="cs-sub">Colocar dinheiro no caixa durante o turno (ex.: troco).</p>
+    <div class="cs-field"><label>Valor (R$)</label><input type="text" inputmode="decimal" id="cs-sp-valor" placeholder="0,00"></div>
+    <div class="cs-field"><label>De onde vem</label>
+      <select id="cs-sp-origem" onchange="csToggleBank('cs-sp-origem','cs-sp-bank-wrap')"><option value="cofre">Cofre</option>${banks.length ? '<option value="banco">Banco</option>' : ''}<option value="outro">Outro</option></select></div>
+    <div class="cs-field" id="cs-sp-bank-wrap" style="display:none"><label>Conta bancária</label>${csBankSelectHtml(banks,'cs-sp-bank')}</div>
+    <div class="cs-field"><label>Observação (opcional)</label><input type="text" id="cs-sp-nota" maxlength="300"></div>
+    <p class="cs-err" id="cs-err" style="display:none"></p>
+    <div class="cs-btns"><button class="btn btn-primary" onclick="csDoSuprimento()">Confirmar com o admin</button><button class="btn btn-ghost" onclick="csModalClose()">Voltar</button></div>`);
+}
+function csDoSuprimento(){
+  const value = baAtParseMoney(document.getElementById('cs-sp-valor').value);
+  const origem = document.getElementById('cs-sp-origem').value;
+  const bankId = origem==='banco' ? (Number(document.getElementById('cs-sp-bank').value)||null) : null;
+  const note = document.getElementById('cs-sp-nota').value.trim() || null;
+  if(!(csCents(value) > 0)) return csModalErr('Informe um valor maior que zero.');
+  if(origem==='banco' && !bankId) return csModalErr('Escolha a conta bancária.');
+  csRunWithAdmin({subtitle:'Todo suprimento precisa da confirmação de um admin.', confirmLabel:'Confirmar suprimento'},
+    c => c.rpc('cash_session_suprimento', { p_operator: baCurrentBarberId, p_value: value, p_origem: origem, p_bank_account_id: bankId, p_note: note }),
+    async ()=>{ csModalClose(); await csRenderScreen(); });
+}
+
+// ── fechar ──
+async function csOpenCloseModal(){
+  const st = csState || await csFetchState();
+  if(!st || !st.open){ alert(CS_ERR.NO_OPEN_SESSION); return; }
+  if(!csIsOwnerOrAdmin(st)){ alert(CS_ERR.NOT_SESSION_OWNER); return; }
+  const rep = await csFetchReport(st.session.id);
+  if(!rep){ alert('Não foi possível carregar o caixa. Tente de novo.'); return; }
+  const banks = await csFetchBanks();
+  csCloseCtx = { id: st.session.id, expected: Number(rep.expected_cash), opening: Number(rep.session.opening_amount) };
+  csCarryTouched = false;
+  csModalOpen(`
+    <button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
+    <h3>Fechar caixa</h3>
+    <div class="cs-block" style="margin:.7rem 0 1rem"><div class="cs-row"><span>Esperado em dinheiro</span><b>${csMoney(csCloseCtx.expected)}</b></div></div>
+    <div class="cs-field"><label>Dinheiro contado na gaveta (R$)</label><input type="text" inputmode="decimal" id="cs-close-contado" oninput="csCloseRecalc()" placeholder="0,00"></div>
+    <div class="cs-row"><span>Resultado</span><b id="cs-close-diff">—</b></div>
+    <div class="cs-field" style="margin-top:.9rem"><label>Fica no caixa pro próximo dia (R$)</label><input type="text" inputmode="decimal" id="cs-close-fica" oninput="csCarryTouched=true;csCloseRecalc()" placeholder="0,00"></div>
+    <div id="cs-close-rem" style="display:none">
+      <p class="cs-sub" id="cs-close-rem-txt"></p>
+      <div class="cs-field"><label>Pra onde vai o que sai do caixa</label>
+        <select id="cs-close-destino" onchange="csToggleBank('cs-close-destino','cs-close-bank-wrap')"><option value="cofre">Cofre</option>${banks.length ? '<option value="banco">Banco</option>' : ''}</select></div>
+      <div class="cs-field" id="cs-close-bank-wrap" style="display:none"><label>Conta bancária</label>${csBankSelectHtml(banks,'cs-close-bank')}</div>
+    </div>
+    <div class="cs-field"><label>Observação (opcional)</label><input type="text" id="cs-close-nota" maxlength="300"></div>
+    <p class="cs-err" id="cs-err" style="display:none"></p>
+    <div class="cs-btns"><button class="btn btn-primary" onclick="csDoClose()">Confirmar com o admin</button><button class="btn btn-ghost" onclick="csModalClose()">Voltar</button></div>`);
+}
+function csCloseRecalc(){
+  const ctx = csCloseCtx;
+  if(!ctx) return;
+  const cEl = document.getElementById('cs-close-contado'), kEl = document.getElementById('cs-close-fica');
+  const hasCounted = cEl.value.trim() !== '';
+  const counted = baAtParseMoney(cEl.value);
+  if(!csCarryTouched) kEl.value = hasCounted ? csFmtInput(Math.min(ctx.opening, counted)) : '';
+  const carry = baAtParseMoney(kEl.value);
+  const diffEl = document.getElementById('cs-close-diff');
+  if(!hasCounted){
+    diffEl.textContent = '—'; diffEl.style.color = '';
+  } else {
+    const diff = (csCents(counted) - csCents(ctx.expected)) / 100;
+    if(Math.abs(diff) < 0.005){ diffEl.textContent = 'Confere'; diffEl.style.color = 'var(--verde-neon)'; }
+    else if(diff < 0){ diffEl.textContent = `Falta de ${csMoney(Math.abs(diff))}`; diffEl.style.color = 'var(--erro)'; }
+    else { diffEl.textContent = `Sobra de ${csMoney(diff)}`; diffEl.style.color = 'var(--verde-neon)'; }
+  }
+  const remCents = csCents(counted) - csCents(carry);
+  const remBox = document.getElementById('cs-close-rem');
+  if(hasCounted && remCents > 0){
+    remBox.style.display = 'block';
+    document.getElementById('cs-close-rem-txt').textContent = `Saem do caixa ${csMoney(remCents/100)}.`;
+  } else { remBox.style.display = 'none'; }
+}
+function csDoClose(){
+  const cEl = document.getElementById('cs-close-contado'), kEl = document.getElementById('cs-close-fica');
+  if(!cEl.value.trim()) return csModalErr('Informe o dinheiro contado (pode ser 0).');
+  if(!kEl.value.trim()) return csModalErr('Informe quanto fica no caixa pro próximo dia (pode ser 0).');
+  const counted = baAtParseMoney(cEl.value), carry = baAtParseMoney(kEl.value);
+  if(csCents(carry) > csCents(counted)) return csModalErr(CS_ERR.BAD_CARRY);
+  const remCents = csCents(counted) - csCents(carry);
+  let destino = null, bankId = null;
+  if(remCents > 0){
+    destino = document.getElementById('cs-close-destino').value;
+    if(destino==='banco'){
+      bankId = Number(document.getElementById('cs-close-bank').value) || null;
+      if(!bankId) return csModalErr('Escolha a conta bancária.');
+    }
+  }
+  const note = document.getElementById('cs-close-nota').value.trim() || null;
+  csRunWithAdmin({subtitle:'Fechar o caixa precisa da confirmação de um admin.', confirmLabel:'Fechar caixa'},
+    c => c.rpc('cash_session_close', { p_operator: baCurrentBarberId, p_counted: counted, p_carry: carry, p_destino: destino, p_bank_account_id: bankId, p_note: note }),
+    async (res)=>{
+      const id = res && res.id;
+      csModalClose();
+      await csRenderScreen();
+      if(id) csShowReport(id);
+    });
+}
+
+// ── relatório: tela, WhatsApp e PDF (impressão) ──
+async function csShowReport(id){
+  csModalOpen('<p class="cs-muted" style="padding:1.4rem 0;text-align:center">Carregando relatório…</p>');
+  const rep = await csFetchReport(id);
+  if(!rep){
+    csModalOpen('<button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button><p class="cs-err" style="display:block;margin-top:1.4rem">Não foi possível carregar o relatório.</p>');
+    return;
+  }
+  csLastReport = rep;
+  const s = rep.session;
+  let lastWa = '';
+  try{ lastWa = localStorage.getItem('prime_cs_wa') || ''; }catch(e){}
+  csModalOpen(`
+    <button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
+    <h3>Caixa #${Number(s.id)}</h3>
+    <p class="cs-sub">${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ` → ${csFmtTime(s.closed_at)}` : ' · ainda aberto'}</p>
+    ${csSummaryHtml(rep)}
+    ${csNotasHtml(rep)}
+    <div class="cs-field" style="margin-top:1.1rem"><label>Mandar resumo no WhatsApp (número com DDD)</label><input type="tel" id="cs-wa-fone" inputmode="tel" placeholder="(44) 99999-9999" value="${primeEsc(lastWa)}"></div>
+    <p class="cs-err" id="cs-err" style="display:none"></p>
+    <div class="cs-btns"><button class="btn btn-primary" onclick="csShareReport()">Enviar no WhatsApp</button><button class="btn btn-ghost" onclick="csPrintReport()">Imprimir / salvar PDF</button><button class="btn btn-ghost" onclick="csModalClose()">Fechar</button></div>`);
+}
+function csReportText(rep){
+  const s = rep.session, bm = rep.by_method || {};
+  const sup = csSumSuprimentos(rep), sang = csSumSangrias(rep);
+  const L = [];
+  L.push(`*Caixa #${Number(s.id)} — Prime Barbearia*`);
+  L.push(`${csFmtDate(s.opened_at)} · ${s.opened_by_name||'—'} · ${csFmtTime(s.opened_at)}${s.closed_at ? '–'+csFmtTime(s.closed_at) : ' (aberto)'}`);
+  L.push('');
+  L.push(`Abertura: ${csMoney(s.opening_amount)}`);
+  const od = s.opening_difference!=null ? Number(s.opening_difference) : 0;
+  if(Math.abs(od)>=0.005) L.push(`${od<0 ? 'Falta' : 'Sobra'} na abertura: ${csMoney(Math.abs(od))}`);
+  L.push(`Vendas em dinheiro: ${csMoney(bm.dinheiro||0)}`);
+  if(sup) L.push(`Suprimentos: ${csMoney(sup)}`);
+  if(sang) L.push(`Sangrias: ${csMoney(sang)}`);
+  L.push(`*Esperado em dinheiro: ${csMoney(rep.expected_cash)}*`);
+  if(s.closed_at){
+    const d = Number(s.difference);
+    L.push(`Contado: ${csMoney(s.counted_cash)}`);
+    L.push(Math.abs(d)<0.005 ? '*Confere (sem falta nem sobra)*' : `*${d<0 ? 'Falta' : 'Sobra'} de ${csMoney(Math.abs(d))}*`);
+    L.push(`Ficou no caixa: ${csMoney(s.carry_amount)}`);
+    if(Number(s.withdrawn_amount)>0) L.push(`Retirado pro ${s.close_destino==='banco' ? 'banco' : 'cofre'}: ${csMoney(s.withdrawn_amount)}`);
+  }
+  const methods = Object.keys(bm);
+  if(methods.length){
+    L.push(''); L.push('*Formas de pagamento*');
+    methods.forEach(m=>L.push(`${csMethodLabel(m)}: ${csMoney(bm[m])}`));
+  }
+  if((rep.by_barber||[]).length){
+    L.push(''); L.push('*Por barbeiro*');
+    rep.by_barber.forEach(b=>L.push(`${b.name||'—'}: ${csMoney(b.total)}`));
+  }
+  return L.join('\n');
+}
+function csShareReport(){
+  const rep = csLastReport;
+  if(!rep) return;
+  const raw = (document.getElementById('cs-wa-fone').value||'').replace(/\D/g,'');
+  if(raw.length < 10) return csModalErr('Digite o número com DDD.');
+  const num = raw.length <= 11 ? '55'+raw : raw;
+  try{ localStorage.setItem('prime_cs_wa', raw); }catch(e){}
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(csReportText(rep))}`, '_blank');
+}
+function csPrintReport(){
+  const rep = csLastReport;
+  if(!rep) return;
+  const s = rep.session, bm = rep.by_method || {};
+  const logo = baReportLogoSrc();
+  const geradoEm = baFormatDate(primeLocalDate());
+  const d = s.closed_at ? Number(s.difference) : null;
+  const stat = (lbl,val,hl)=>`<div class="rp-stat${hl?' highlight':''}"><div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
+  let stats = stat('Abertura (contado)', csMoney(s.opening_amount))
+    + stat('Vendas em dinheiro', csMoney(bm.dinheiro||0))
+    + stat('Suprimentos', csMoney(csSumSuprimentos(rep)))
+    + stat('Sangrias', csMoney(csSumSangrias(rep)))
+    + stat('Esperado em dinheiro', csMoney(rep.expected_cash), true);
+  if(s.closed_at){
+    stats += stat('Contado', csMoney(s.counted_cash))
+      + stat(d===null||Math.abs(d)<0.005 ? 'Resultado' : (d<0 ? 'Falta' : 'Sobra'), Math.abs(d)<0.005 ? 'Confere' : csMoney(Math.abs(d)), true)
+      + stat('Ficou no caixa', csMoney(s.carry_amount))
+      + stat(`Retirado → ${s.close_destino==='banco' ? 'banco' : 'cofre'}`, csMoney(s.withdrawn_amount));
+  }
+  const simpleTable = (title, rows, total)=> rows.length ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">${title}</div>${total!=null ? `<div class="rp-section-total">Total <b>${csMoney(total)}</b></div>` : ''}</div>
+    <table class="rp-table"><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table></div>` : '';
+  const methodRows = Object.keys(bm).map(m=>[primeEsc(csMethodLabel(m)), csMoney(bm[m])]);
+  const barberRows = (rep.by_barber||[]).map(b=>[primeEsc(b.name||'—'), csMoney(b.total)]);
+  const operRows = (rep.by_operator||[]).map(b=>[primeEsc(b.name||'—'), csMoney(b.total)]);
+  const notaRows = (rep.notas||[]).map(n=>{
+    const meths = String(n.methods||'').split(', ').filter(Boolean).map(csMethodLabel).join(', ');
+    return `<tr><td>${csFmtTime(n.at)}</td><td>${primeEsc(n.client||'Cliente')}</td><td class="muted">${primeEsc(n.items||'—')}</td><td class="muted">${primeEsc(meths)}</td><td class="num">${csMoney(n.paid)}</td></tr>`;
+  }).join('');
+  const movRows = [
+    ...(rep.suprimentos||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>Suprimento (${primeEsc(x.origem)})</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">+ ${csMoney(x.value)}</td></tr>`),
+    ...(rep.sangrias||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>${x.is_closing ? 'Retirada do fechamento' : 'Sangria'} → ${primeEsc(x.destino)}</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">− ${csMoney(x.value)}</td></tr>`)
+  ].join('');
+  document.getElementById('ba-report-print').innerHTML = `
+    <div class="rp-head">
+      <div class="rp-logo-badge">${logo}</div>
+      <div><div class="rp-brand">PRIME BARBEARIA</div><div class="sub">fechamento de caixa</div></div>
+      <div class="rp-meta"><b>Caixa #${Number(s.id)}</b>${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ' → '+csFmtTime(s.closed_at) : ' (aberto)'}<br>Gerado em ${geradoEm}</div>
+    </div>
+    <div class="rp-section"><div class="rp-grid">${stats}</div></div>
+    ${simpleTable('Formas de pagamento', methodRows)}
+    ${simpleTable('Por barbeiro (serviço)', barberRows)}
+    ${simpleTable('Por operador (quem registrou)', operRows)}
+    ${movRows ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Suprimentos e sangrias</div></div><table class="rp-table"><tbody>${movRows}</tbody></table></div>` : ''}
+    ${notaRows ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Vendas do turno (${(rep.notas||[]).length})</div></div><table class="rp-table"><thead><tr><th>Hora</th><th>Cliente</th><th>Itens</th><th>Forma</th><th class="num">Valor</th></tr></thead><tbody>${notaRows}</tbody></table></div>` : ''}
+    <div class="rp-foot">PRIME BARBEARIA · Av. Pedro Taques, 2824 — Maringá · PR<br>Relatório gerado automaticamente pelo sistema Prime</div>`;
+  window.print();
+}
+
 // ══ Caixa: cofre, sangria e fechamento (Supabase, admin-only) ══
 // cofre é um valor computado, não um saldo guardado à parte. Despesas pagas em "dinheiro" saem do cofre,
 // não do caixa — o caixa é só o troco/giro do dia a dia (suprimento + vendas − sangrias saídas dele)
@@ -6752,7 +7284,7 @@ function baStartSuprimento(){
       value, origem, bank_account_id: bankAccountId, note,
       admin_id: adminId, barber_id: baActingBarberId || baCurrentBarberId
     });
-    if(error){ console.error('baInsertSuprimento', error); return; }
+    if(error){ console.error('baInsertSuprimento', error); alert(csErrMsg(error)); return; }
     document.getElementById('ba-suprimento-valor').value = '';
     document.getElementById('ba-suprimento-nota').value = '';
     document.getElementById('ba-caixa-saldo').textContent = baFormatMoney(await baCashRegisterBalance());
@@ -6803,7 +7335,7 @@ function baStartSangria(){
       value, origem, destino, bank_account_id: bankAccountId, note,
       admin_id: adminId, barber_id: baActingBarberId || baCurrentBarberId
     });
-    if(error){ console.error('baInsertSangria', error); return; }
+    if(error){ console.error('baInsertSangria', error); alert(csErrMsg(error)); return; }
     document.getElementById('ba-sangria-valor').value = '';
     document.getElementById('ba-sangria-nota').value = '';
     if(origem==='caixa') document.getElementById('ba-caixa-saldo').textContent = baFormatMoney(await baCashRegisterBalance());
@@ -7028,7 +7560,7 @@ async function baMarcarFaturaPaga(invoiceId){
     if(error || !charges){ console.error('baMarcarFaturaPaga fetch', error); return; }
     const paymentRows = charges.map(c=>({ nota_id: c.nota_id, barber_id: c.barber_id, method, value: c.value }));
     const { error: e1 } = await sb.from('sale_payments').insert(paymentRows);
-    if(e1) console.error('baMarcarFaturaPaga sale_payments', e1);
+    if(e1){ console.error('baMarcarFaturaPaga sale_payments', e1); alert(csErrMsg(e1)); return; }
     const ids = charges.map(c=>c.id);
     const { error: e2 } = await sb.from('fiado_charges').update({status:'pago', paid_at:hoje, paid_method:method}).in('id', ids);
     if(e2) console.error('baMarcarFaturaPaga charges', e2);
@@ -8328,7 +8860,8 @@ async function baInsertSalePayments(notaId, barberId, linhas){
     bandeira: l.bandeira || null
   }));
   const { error } = await sb.from('sale_payments').insert(rows);
-  if(error) console.error('baInsertSalePayments', error);
+  if(error){ console.error('baInsertSalePayments', error); return { ok:false, error }; }
+  return { ok:true };
 }
 async function baPgtoConfirmar(){
   const errEl = document.getElementById('ba-pgto-err');
@@ -8359,16 +8892,30 @@ async function baPgtoConfirmar(){
   }
   const btn = document.getElementById('ba-pgto-confirm');
   btn.disabled = true; btn.classList.add('btn-loading');
+  let concluido = false;
   try{
     const { notaId, onConfirm, clientName } = baPgtoState;
     const linhas = baPgtoLinhasParaSalvar();
+    // pagamentos PRIMEIRO: é o que o banco pode recusar (ex.: caixa fechado). Se recusar, nada mais foi feito
+    // (estoque, vendas e agendamento intactos) e o modal segue aberto pra confirmar de novo depois de abrir o caixa.
+    const pag = await baInsertSalePayments(notaId, baActingBarberId, linhas);
+    if(!pag.ok){
+      errEl.textContent = csErrMsg(pag.error);
+      errEl.style.display = 'block';
+      return;
+    }
+    concluido = true;
     document.getElementById('baPagamentoModal').classList.remove('open');
-    await onConfirm();
-    await baInsertSalePayments(notaId, baActingBarberId, linhas);
+    try{
+      await onConfirm();
+    } catch(e){
+      console.error('baPgtoConfirmar/onConfirm', e);
+      alert('Os pagamentos foram gravados, mas deu erro ao finalizar a venda. NÃO repita a venda — avise o admin.');
+    }
     await baInsertFiadoCharges(notaId, baActingBarberId, clientName, linhas);
   } finally {
     btn.disabled = false; btn.classList.remove('btn-loading');
-    baPgtoState = null;
+    if(concluido) baPgtoState = null;
   }
 }
 async function baInsertFiadoCharges(notaId, barberId, clientName, linhas){
@@ -8384,6 +8931,8 @@ async function baInsertFiadoCharges(notaId, barberId, clientName, linhas){
 }
 
 async function baFinalizarCarrinho(){
+  const gateCx = await csGateForSale();
+  if(!gateCx.ok){ alert(gateCx.msg); return; }
   const appt = await primeFetchAppointmentById(baCarrinhoApptId);
   if(!appt) return;
   const svcs = appt.services || (appt.service ? [appt.service] : []);
@@ -8616,9 +9165,10 @@ document.getElementById('baAdminGateConfirm').addEventListener('click', async ()
   if(!email || !pass){ errEl.textContent = 'Preencha e-mail e senha do admin.'; errEl.style.display = 'block'; return; }
   const btn = document.getElementById('baAdminGateConfirm');
   btn.disabled = true; btn.classList.add('btn-loading');
+  let sbCheck = null;
   try{
     // client à parte (persistSession:false) só pra validar a senha, sem derrubar a sessão do barbeiro logado
-    const sbCheck = window.supabase.createClient(
+    sbCheck = window.supabase.createClient(
       'https://yojvzwkvtedxqlohpuug.supabase.co',
       'sb_publishable_Sr6YB54aCIQVdvhdrNWlSA_PMjlAdMG',
       { auth: { persistSession: false } }
@@ -8626,16 +9176,19 @@ document.getElementById('baAdminGateConfirm').addEventListener('click', async ()
     const { data, error } = await sbCheck.auth.signInWithPassword({ email, password: pass });
     if(error || !data.user){ errEl.textContent = 'E-mail ou senha inválidos.'; errEl.style.display = 'block'; return; }
     const { data: barberRow } = await sb.from('barbers').select('role').eq('id', data.user.id).maybeSingle();
-    await sbCheck.auth.signOut();
     if(!barberRow || barberRow.role!=='admin'){ errEl.textContent = 'Essa conta não é de um admin.'; errEl.style.display = 'block'; return; }
     const cb = baAdminGateCallback;
     const adminId = data.user.id;
     baCloseAdminGate();
-    if(cb) await cb(adminId);
+    // o callback recebe também o client do admin: ações que o BANCO exige que sejam do admin (caixa) rodam por ele
+    if(cb) await cb(adminId, sbCheck);
   } catch(e){
     console.error('baAdminGateConfirm', e);
     errEl.textContent = 'Erro ao verificar. Tente de novo.'; errEl.style.display = 'block';
   } finally {
+    // scope 'local': o padrão ('global') revogaria TODAS as sessões desse admin, derrubando o login dele
+    // no celular/balcão toda vez que ele confirma uma ação
+    if(sbCheck){ try{ await sbCheck.auth.signOut({ scope: 'local' }); }catch(_){} }
     btn.disabled = false; btn.classList.remove('btn-loading');
   }
 });
@@ -9144,6 +9697,7 @@ function baAtResetFields(){
 }
 function baRenderAtendimento(){
   baRenderVendasPicker('ba-vendas-picker-at', '#ba-screen-atendimento .ba-head .name');
+  csRenderSaleBanner();
   baAtResetFields();
   document.getElementById('at-success').style.display = 'none';
 }
@@ -9301,6 +9855,8 @@ async function baAtRegistrar(){
   if(regBtn && regBtn.disabled) return;
   if(regBtn){ regBtn.disabled = true; regBtn.classList.add('btn-loading'); }
   try{
+  const gateCx = await csGateForSale();
+  if(!gateCx.ok) return fail(gateCx.msg);
 
   let clientName;
   if(baAtMode==='buscar'){
@@ -9406,6 +9962,10 @@ function baEnter(barber){
   baActingBarberId = isVendas ? null : baCurrentBarberId;
   baBloqueioTargetBarberId = null; // reseta pra cair na própria agenda no próximo login/troca de conta
   baClientesTargetBarberId = null; // reseta pra cair na própria carteira no próximo login/troca de conta
+  // aba Caixa: só admin e vendas operam o caixa (barbeiro só vê o aviso quando o caixa está fechado)
+  ['ba-link-caixa','ba-tabicon-caixa'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display = (isAdmin||isVendas) ? '' : 'none'; });
+  csModalClose(); csLastReport = null;
+  csState = null; csBanksCache = null; csFetchState();
   document.getElementById('ba-link-gestao').style.display = isAdmin ? '' : 'none';
   document.getElementById('ba-tabicon-gestao').style.display = isAdmin ? '' : 'none';
   document.querySelectorAll('#barberApp [data-tab="dashboard"],#barberApp [data-tab="clientes"],#barberApp [data-tab="vendas"]').forEach(el=>{
@@ -9420,6 +9980,9 @@ function baEnter(barber){
 }
 function baLogout(){
   sb.auth.signOut();
+  // dados financeiros do caixa não podem sobreviver ao logout (modal aberto, relatório no alvo de impressão)
+  csModalClose(); csState = null; csBanksCache = null; csLastReport = null; csUpdateChip();
+  const rpEl = document.getElementById('ba-report-print'); if(rpEl) rpEl.innerHTML = '';
   document.getElementById('barberApp').classList.remove('logged');
   baCurrentBarber = null;
   baCurrentRole = null;
