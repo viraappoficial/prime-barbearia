@@ -388,7 +388,7 @@ begin
     raise exception 'NO_OPEN_SESSION' using errcode = 'P0001';
   end if;
   perform public._cs_check_operator(p_operator, s.opened_by);
-  if p_value is null or p_value <= 0 then
+  if p_value is null or round(p_value, 2) <= 0 then
     raise exception 'BAD_AMOUNT' using errcode = 'P0001';
   end if;
   if p_destino is null or p_destino not in ('cofre', 'banco') then
@@ -428,7 +428,7 @@ begin
     raise exception 'NO_OPEN_SESSION' using errcode = 'P0001';
   end if;
   perform public._cs_check_operator(p_operator, s.opened_by);
-  if p_value is null or p_value <= 0 then
+  if p_value is null or round(p_value, 2) <= 0 then
     raise exception 'BAD_AMOUNT' using errcode = 'P0001';
   end if;
   if p_origem is null or p_origem not in ('cofre', 'banco', 'outro') then
