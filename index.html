@@ -4474,9 +4474,9 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           </div>
 
           <div id="ba-fin-caixa" style="display:none">
-            <div class="ba-slabel" style="margin-top:0">Saldo em caixa (dinheiro físico agora)</div>
+            <div class="ba-slabel" style="margin-top:0">Dinheiro esperado no caixa agora</div>
             <p style="font-size:1.3rem;color:var(--verde-neon);font-weight:600;margin-bottom:.3rem" id="ba-caixa-saldo">R$ 0,00</p>
-            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem">Suprimento + vendas em dinheiro − sangrias saídas do caixa, desde o último fechamento. Despesas pagas em dinheiro saem do cofre, não do caixa.</p>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:1rem" id="ba-caixa-status">Carregando…</p>
 
             <div class="ba-slabel">Cofre da empresa</div>
             <p style="font-size:1.3rem;color:var(--dourado);font-weight:600;margin-bottom:.3rem" id="ba-cofre-saldo">R$ 0,00</p>
@@ -4518,26 +4518,12 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div class="ba-slabel">Últimas sangrias</div>
             <div id="ba-sangrias-list"></div>
 
-            <div class="ba-slabel">Fechamento de caixa</div>
-            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Não precisa ser diário — feche quando fizer sentido pro fluxo de dinheiro da loja.</p>
-            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem;align-items:center">
-              <label style="font-size:.72rem;color:var(--prata-dim)">De<input type="date" id="ba-fech-from" class="add-input" style="margin-top:.2rem"></label>
-              <label style="font-size:.72rem;color:var(--prata-dim)">Até<input type="date" id="ba-fech-to" class="add-input" style="margin-top:.2rem"></label>
-              <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.9rem;font-size:.7rem" onclick="baCalcularFechamento()">Calcular</button>
-            </div>
-            <div id="ba-fech-resumo" style="display:none;font-size:.82rem;color:var(--prata-dim);margin-bottom:.6rem">
-              <div>Recebido em dinheiro: <b style="color:var(--prata)" id="ba-fech-recebido"></b></div>
-              <div>Suprido no período: <b style="color:var(--prata)" id="ba-fech-suprido"></b></div>
-              <div>Sangrias saídas do caixa no período: <b style="color:var(--prata)" id="ba-fech-sangrias"></b></div>
-              <div>Esperado no caixa: <b style="color:var(--dourado)" id="ba-fech-esperado"></b></div>
-              <div style="margin-top:.5rem"><label style="font-size:.72rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Valor contado</label>
-                <input type="text" inputmode="decimal" id="ba-fech-contado" class="add-input" placeholder="R$" oninput="baFechRecalcDiferenca()" style="width:100%;max-width:220px">
-              </div>
-              <div style="margin-top:.4rem">Diferença: <b id="ba-fech-diferenca">—</b></div>
-            </div>
-            <p class="ba-err" id="ba-fech-err" style="display:none"></p>
-            <button class="ba-btn" id="ba-fech-btn" style="max-width:100%;display:none" onclick="baFecharCaixa()">Fechar caixa</button>
-            <div class="ba-slabel">Fechamentos anteriores</div>
+            <div class="ba-slabel">Caixa por sessão</div>
+            <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Abrir, vender, sangria e fechar o caixa do dia é na aba <b>Caixa</b>. O admin também pode fechar o caixa de outra pessoa por lá. Aqui ficam o histórico e o relatório de cada caixa.</p>
+            <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.5rem .9rem;font-size:.7rem" onclick="baTab('caixa')">Ir pra aba Caixa</button>
+            <div class="ba-slabel">Caixas anteriores</div>
+            <div id="ba-caixa-sessoes"></div>
+            <div class="ba-slabel">Fechamentos antigos (por período, antes do caixa por sessão)</div>
             <div id="ba-fechamentos-list"></div>
           </div>
 
@@ -6843,6 +6829,28 @@ function csNotasHtml(rep){
   return `<div class="cs-slabel">Vendas do turno (${notas.length})</div><div class="cs-block">${lines}${notas.length>60 ? `<p class="cs-muted" style="padding:.5rem 0">+ ${notas.length-60} vendas no relatório impresso.</p>` : ''}</div>`;
 }
 
+function csHistRowHtml(x){
+  const d = x.closed_at ? Number(x.difference) : null;
+  const label = d===null ? 'Aberto' : (Math.abs(d)<0.005 ? 'Confere' : `${csDiffText(d)} ${csMoney(Math.abs(d))}`);
+  const color = d===null ? 'var(--dourado)' : (d<-0.005 ? 'var(--erro)' : 'var(--verde-neon)');
+  return `<div class="cs-hist" onclick="csShowReport(${Number(x.id)})"><div><b>#${Number(x.id)}</b> · ${csFmtDate(x.opened_at)} · ${primeEsc(x.opened_by_name||'—')}</div><div style="color:${color}">${label}</div></div>`;
+}
+// Gestão → Financeiro → Caixa: situação do caixa + histórico de sessões (relatório ao tocar)
+async function csRenderGestaoSessions(){
+  const st = await csFetchState();
+  const stEl = document.getElementById('ba-caixa-status');
+  if(stEl){
+    if(!st) stEl.textContent = 'Não foi possível consultar o caixa agora.';
+    else if(st.open) stEl.textContent = `Caixa aberto por ${st.session.opened_by_name||'—'} desde ${csFmtTime(st.session.opened_at)} de ${csFmtDate(st.session.opened_at)}. Esperado = abertura + vendas em dinheiro + suprimentos − sangrias.`;
+    else stEl.textContent = st.suggested_opening!=null ? 'Caixa fechado. Mostrando o que ficou no último fechamento.' : 'Caixa fechado e sem fechamento anterior.';
+  }
+  const box = document.getElementById('ba-caixa-sessoes');
+  if(!box) return;
+  const { data, error } = await sb.rpc('cash_session_list', { p_limit: 20 });
+  if(error){ console.error('csRenderGestaoSessions', error); box.innerHTML = '<p style="color:var(--prata-dim);font-size:.78rem">Não foi possível carregar os caixas.</p>'; return; }
+  box.innerHTML = (data && data.length) ? data.map(csHistRowHtml).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum caixa aberto ainda.</p>';
+}
+
 // ── tela do Caixa ──
 async function csRenderScreen(){
   const body = document.getElementById('ba-caixa-body');
@@ -6873,14 +6881,7 @@ async function csRenderScreen(){
   }
   const { data: list, error: listErr } = await sb.rpc('cash_session_list', { p_limit: 10 });
   if(listErr) console.error('csRenderScreen/list', listErr);
-  if(list && list.length){
-    html += '<div class="cs-slabel" style="margin-top:1.6rem">Últimos caixas</div>' + list.map(x=>{
-      const d = x.closed_at ? Number(x.difference) : null;
-      const label = d===null ? 'Aberto' : (Math.abs(d)<0.005 ? 'Confere' : `${csDiffText(d)} ${csMoney(Math.abs(d))}`);
-      const color = d===null ? 'var(--dourado)' : (d<-0.005 ? 'var(--erro)' : 'var(--verde-neon)');
-      return `<div class="cs-hist" onclick="csShowReport(${Number(x.id)})"><div><b>#${Number(x.id)}</b> · ${csFmtDate(x.opened_at)} · ${primeEsc(x.opened_by_name||'—')}</div><div style="color:${color}">${label}</div></div>`;
-    }).join('');
-  }
+  if(list && list.length) html += '<div class="cs-slabel" style="margin-top:1.6rem">Últimos caixas</div>' + list.map(csHistRowHtml).join('');
   body.innerHTML = html;
 }
 
@@ -7188,7 +7189,6 @@ function csPrintReport(){
 // ══ Caixa: cofre, sangria e fechamento (Supabase, admin-only) ══
 // cofre é um valor computado, não um saldo guardado à parte. Despesas pagas em "dinheiro" saem do cofre,
 // não do caixa — o caixa é só o troco/giro do dia a dia (suprimento + vendas − sangrias saídas dele)
-let baFechState = null; // {from, to, recebido, suprido, sangrias, esperado}
 async function baCashVaultBalance(){
   const [{ data: entradasRows, error: e1 }, { data: saidasSangria, error: e2 }, { data: supplies, error: e3 }, { data: despesas, error: e4 }] = await Promise.all([
     sb.from('cash_sangrias').select('value').eq('destino','cofre').eq('origem','caixa'),
@@ -7204,20 +7204,16 @@ async function baCashVaultBalance(){
 // saldo de dinheiro físico no caixa desde o último fechamento (ou desde sempre, se nunca fechou) —
 // suprimento + vendas em dinheiro (inclui fiado quitado em dinheiro, que já vira sale_payments) − sangrias saídas do caixa
 // (despesas pagas em "dinheiro" saem do cofre, não afetam o caixa)
+// dinheiro que deveria estar na gaveta AGORA: com caixa aberto, o esperado da sessão (abertura + vendas em
+// dinheiro + suprimentos − sangrias); sem caixa aberto, o que ficou no último fechamento.
 async function baCashRegisterBalance(){
-  const { data: lastClosure, error: e0 } = await sb.from('cash_closures').select('period_to').order('period_to',{ascending:false}).limit(1).maybeSingle();
-  if(e0) console.error('baCashRegisterBalance', e0);
-  const since = lastClosure ? lastClosure.period_to : '1900-01-01'; // período do fechamento é inclusivo, caixa reinicia no dia seguinte
-  const [{ data: pagamentos, error: e1 }, { data: sangrias, error: e2 }, { data: supplies, error: e3 }] = await Promise.all([
-    sb.from('sale_payments').select('value, created_at').eq('method','dinheiro'),
-    sb.from('cash_sangrias').select('value, created_at').eq('origem','caixa'),
-    sb.from('cash_supplies').select('value, created_at')
-  ]);
-  if(e1||e2||e3){ console.error('baCashRegisterBalance', e1||e2||e3); return 0; }
-  const recebido = (pagamentos||[]).filter(p=>p.created_at.slice(0,10) > since).reduce((s,p)=>s+p.value,0);
-  const sangriasVal = (sangrias||[]).filter(s=>s.created_at.slice(0,10) > since).reduce((s,r)=>s+r.value,0);
-  const supridoVal = (supplies||[]).filter(s=>s.created_at.slice(0,10) > since).reduce((s,r)=>s+r.value,0);
-  return recebido + supridoVal - sangriasVal;
+  const st = await csFetchState();
+  if(!st) return 0;
+  if(st.open){
+    const rep = await csFetchReport(st.session.id);
+    return rep ? Number(rep.expected_cash) || 0 : 0;
+  }
+  return Number(st.suggested_opening) || 0;
 }
 async function baFetchSangrias(){
   const { data, error } = await sb.from('cash_sangrias').select('*, bank_accounts(name)').order('created_at',{ascending:false}).limit(20);
@@ -7299,13 +7295,8 @@ async function baRenderCaixa(){
   baPopulateSuprimentoBancoSelect();
   await baRenderSangrias();
   await baRenderSuprimentos();
+  await csRenderGestaoSessions();
   await baRenderFechamentos();
-  document.getElementById('ba-fech-resumo').style.display = 'none';
-  document.getElementById('ba-fech-btn').style.display = 'none';
-  const hoje = primeLocalDate();
-  document.getElementById('ba-fech-from').value = hoje;
-  document.getElementById('ba-fech-to').value = hoje;
-  baFechState = null;
 }
 async function baRenderSangrias(){
   const listEl = document.getElementById('ba-sangrias-list');
@@ -7343,61 +7334,12 @@ function baStartSangria(){
     await baRenderSangrias();
   }, {subtitle:'Toda sangria precisa de confirmação de um admin.', confirmLabel:'Confirmar sangria'});
 }
-async function baCalcularFechamento(){
-  const errEl = document.getElementById('ba-fech-err');
-  errEl.style.display = 'none';
-  const from = document.getElementById('ba-fech-from').value;
-  const to = document.getElementById('ba-fech-to').value;
-  if(!from || !to || from>to){ errEl.textContent = 'Escolha um período válido.'; errEl.style.display = 'block'; return; }
-  const [{ data: pagamentos, error: e1 }, { data: sangrias, error: e3 }, { data: supplies, error: e4 }] = await Promise.all([
-    sb.from('sale_payments').select('value, created_at').eq('method','dinheiro'),
-    sb.from('cash_sangrias').select('value, created_at').eq('origem','caixa'),
-    sb.from('cash_supplies').select('value, created_at')
-  ]);
-  if(e1||e3||e4){ console.error('baCalcularFechamento', e1||e3||e4); errEl.textContent = 'Erro ao calcular. Tente de novo.'; errEl.style.display = 'block'; return; }
-  const recebido = (pagamentos||[]).filter(p=>{ const d=p.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,p)=>s+p.value,0);
-  const sangriasPeriodo = (sangrias||[]).filter(s=>{ const d=s.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,r)=>s+r.value,0);
-  const supridoPeriodo = (supplies||[]).filter(s=>{ const d=s.created_at.slice(0,10); return d>=from && d<=to; }).reduce((s,r)=>s+r.value,0);
-  const esperado = recebido + supridoPeriodo - sangriasPeriodo;
-  baFechState = { from, to, recebido, suprido: supridoPeriodo, sangrias: sangriasPeriodo, esperado };
-  document.getElementById('ba-fech-recebido').textContent = baFormatMoney(recebido);
-  document.getElementById('ba-fech-suprido').textContent = baFormatMoney(supridoPeriodo);
-  document.getElementById('ba-fech-sangrias').textContent = baFormatMoney(sangriasPeriodo);
-  document.getElementById('ba-fech-esperado').textContent = baFormatMoney(esperado);
-  document.getElementById('ba-fech-contado').value = '';
-  document.getElementById('ba-fech-diferenca').textContent = '—';
-  document.getElementById('ba-fech-diferenca').style.color = 'var(--prata)';
-  document.getElementById('ba-fech-resumo').style.display = 'block';
-  document.getElementById('ba-fech-btn').style.display = 'block';
-}
-function baFechRecalcDiferenca(){
-  if(!baFechState) return;
-  const contado = baAtParseMoney(document.getElementById('ba-fech-contado').value);
-  const diferenca = contado - baFechState.esperado;
-  const el = document.getElementById('ba-fech-diferenca');
-  el.textContent = (diferenca>=0?'+':'') + baFormatMoney(diferenca);
-  el.style.color = diferenca>=0 ? 'var(--verde-neon)' : 'var(--erro)';
-}
-function baFecharCaixa(){
-  const errEl = document.getElementById('ba-fech-err');
-  errEl.style.display = 'none';
-  if(!baFechState){ errEl.textContent = 'Calcule o esperado antes de fechar.'; errEl.style.display = 'block'; return; }
-  const contado = baAtParseMoney(document.getElementById('ba-fech-contado').value);
-  if(!document.getElementById('ba-fech-contado').value.trim()){ errEl.textContent = 'Informe o valor contado.'; errEl.style.display = 'block'; return; }
-  baOpenAdminGate(async (adminId)=>{
-    const { from, to, esperado } = baFechState;
-    const { error } = await sb.from('cash_closures').insert({
-      period_from: from, period_to: to, expected_value: esperado, counted_value: contado,
-      difference: contado - esperado, admin_id: adminId
-    });
-    if(error){ console.error('baFecharCaixa', error); return; }
-    await baRenderCaixa();
-  }, {subtitle:'Fechar o caixa trava edição de despesas em dinheiro desse período. Peça pra um admin confirmar.', confirmLabel:'Fechar caixa'});
-}
 async function baRenderFechamentos(){
   const listEl = document.getElementById('ba-fechamentos-list');
   if(!listEl) return;
-  const { data, error } = await sb.from('cash_closures').select('*').order('created_at',{ascending:false}).limit(20);
+  // só os fechamentos por período, de antes do caixa por sessão (cada sessão fechada também grava uma linha aqui,
+  // com cash_session_id, só pra manter o bloqueio de edição de despesas em dinheiro nos dias fechados)
+  const { data, error } = await sb.from('cash_closures').select('*').is('cash_session_id', null).order('created_at',{ascending:false}).limit(20);
   if(error){ console.error('baRenderFechamentos', error); return; }
   listEl.innerHTML = (data&&data.length) ? data.map(c=>{
     const diffColor = c.difference>=0 ? 'var(--verde-neon)' : 'var(--erro)';
@@ -7405,7 +7347,7 @@ async function baRenderFechamentos(){
       <div class="cap-row-tags">Esperado ${baFormatMoney(c.expected_value)} · Contado ${baFormatMoney(c.counted_value)}</div>
       <div class="cap-row-foot"><span class="cap-row-value" style="color:${diffColor}">${c.difference>=0?'+':''}${baFormatMoney(c.difference)}</span></div>
     </div>`;
-  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum fechamento registrado ainda.</p>';
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum fechamento antigo.</p>';
 }
 async function baIsDataEmPeriodoFechado(date){
   if(!date) return false;
