@@ -6754,9 +6754,14 @@ function csUpdateChip(){
     el.classList.toggle('cs-closed', !!(csState && (!csState.open || csState.stale)));
   });
 }
-async function csFetchReport(id){
+async function csFetchReport(id, full){
   const { data, error } = await sb.rpc('cash_session_report', { p_session: id });
   if(error){ console.error('csFetchReport', error); return null; }
+  if(full){
+    // recebido por colaborador x forma: função separada; se o banco ainda não a tem, segue sem esse bloco
+    const f = await sb.rpc('cash_session_report_formas', { p_session: id });
+    if(!f.error) data.por_barbeiro_formas = f.data;
+  }
   return data;
 }
 async function csFetchBanks(){
@@ -6874,6 +6879,29 @@ function csVendaCardHtml(v){
   const pays = (v.payments||[]).map(p=>`<div class="cs-muted">${primeEsc(csPayText(p))}</div>`).join('');
   const sub = v.late ? ` · vendida em ${csFmtDate(v.sold_at)}` : '';
   return `<div class="cs-venda"><div class="cs-venda-h"><span><b>${primeEsc(v.client||'Cliente')}</b> <span class="cs-muted">· ${csFmtTime(v.at)}${sub}</span></span><b>${csMoney(v.late ? v.paid : v.items_total)}</b></div>${items}<div class="cs-pays">${pays}</div></div>`;
+}
+// dinheiro / cartão (débito + crédito) / pix (maquininha + chave) / a prazo, a partir de by_method
+function csGroupMethods(bm){
+  const g = n => Number(bm[n]||0);
+  return { dinheiro: g('dinheiro'), cartao: g('debito')+g('credito'), pix: g('pix_qrs')+g('pix_direto'), a_prazo: g('a_prazo') };
+}
+function csFormasHtml(rep){
+  const g = csGroupMethods(rep.by_method||{});
+  let h = '<div class="cs-slabel">Recebido por forma</div><div class="cs-block">'
+    + csRowHtml('Dinheiro', csMoney(g.dinheiro))
+    + csRowHtml('Cartão (débito + crédito)', csMoney(g.cartao))
+    + csRowHtml('Pix', csMoney(g.pix))
+    + csRowHtml('Total recebido', csMoney(g.dinheiro+g.cartao+g.pix), 'cs-total')
+    + (g.a_prazo>0 ? csRowHtml('A prazo (ainda não recebido)', csMoney(g.a_prazo)) : '') + '</div>';
+  const pb = rep.por_barbeiro_formas || [];
+  if(pb.length){
+    h += '<div class="cs-slabel">Recebido por colaborador</div><div class="cs-block">' + pb.map(b=>{
+      const parts = [`dinheiro ${csMoney(b.dinheiro)}`, `cartão ${csMoney(b.cartao)}`, `pix ${csMoney(b.pix)}`];
+      if(Number(b.a_prazo)>0) parts.push(`a prazo ${csMoney(b.a_prazo)}`);
+      return csRowHtml(`${primeEsc(b.name||'—')}<br><span class="cs-muted">${parts.join(' · ')}</span>`, csMoney(b.total));
+    }).join('') + '</div>';
+  }
+  return h;
 }
 function csVendasHtml(rep){
   if(!rep.totais) return csNotasHtml(rep);
@@ -7129,7 +7157,7 @@ function csDoClose(){
 // ── relatório: tela, WhatsApp e PDF (impressão) ──
 async function csShowReport(id){
   csModalOpen('<p class="cs-muted" style="padding:1.4rem 0;text-align:center">Carregando relatório…</p>');
-  const rep = await csFetchReport(id);
+  const rep = await csFetchReport(id, true);
   if(!rep){
     csModalOpen('<button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button><p class="cs-err" style="display:block;margin-top:1.4rem">Não foi possível carregar o relatório.</p>');
     return;
@@ -7143,6 +7171,7 @@ async function csShowReport(id){
     <h3>Caixa #${Number(s.id)}</h3>
     <p class="cs-sub">${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ` → ${csFmtTime(s.closed_at)}` : ' · ainda aberto'}</p>
     ${csSummaryHtml(rep)}
+    ${csFormasHtml(rep)}
     ${csVendasHtml(rep)}
     <div class="cs-field" style="margin-top:1.1rem"><label>Mandar resumo no WhatsApp (número com DDD)</label><input type="tel" id="cs-wa-fone" inputmode="tel" placeholder="(44) 99999-9999" value="${primeEsc(lastWa)}"></div>
     <p class="cs-err" id="cs-err" style="display:none"></p>
@@ -7176,10 +7205,18 @@ function csReportText(rep){
     L.push(`Produtos (${Number(t.qtd_produtos)||0} un.): ${csMoney(t.produtos)}`);
     L.push(`*Total vendido: ${csMoney(t.total)}* (${nv} venda${nv===1?'':'s'})`);
   }
-  const methods = Object.keys(bm);
-  if(methods.length){
-    L.push(''); L.push('*Formas de pagamento*');
-    methods.forEach(m=>L.push(`${csMethodLabel(m)}: ${csMoney(bm[m])}`));
+  {
+    const g = csGroupMethods(bm);
+    L.push(''); L.push('*Recebido por forma*');
+    L.push(`Dinheiro: ${csMoney(g.dinheiro)}`);
+    L.push(`Cartão: ${csMoney(g.cartao)}`);
+    L.push(`Pix: ${csMoney(g.pix)}`);
+    L.push(`*Total recebido: ${csMoney(g.dinheiro+g.cartao+g.pix)}*`);
+    if(g.a_prazo>0) L.push(`A prazo (a receber): ${csMoney(g.a_prazo)}`);
+  }
+  if((rep.por_barbeiro_formas||[]).length){
+    L.push(''); L.push('*Recebido por colaborador*');
+    rep.por_barbeiro_formas.forEach(b=>L.push(`${b.name||'—'}: ${csMoney(b.total)} (dinheiro ${csMoney(b.dinheiro)} · cartão ${csMoney(b.cartao)} · pix ${csMoney(b.pix)}${Number(b.a_prazo)>0 ? ' · a prazo '+csMoney(b.a_prazo) : ''})`));
   }
   if((rep.por_barbeiro_vendas||[]).length){
     L.push(''); L.push('*Por barbeiro*');
@@ -7222,8 +7259,9 @@ function csPrintReport(){
       + stat('Ficou no caixa', csMoney(s.carry_amount))
       + stat(`Retirado → ${s.close_destino==='banco' ? 'banco' : 'cofre'}`, csMoney(s.withdrawn_amount));
   }
-  const table = (title, head, rows, extraHead)=> rows.length ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">${title}</div>${extraHead||''}</div>
-    <table class="rp-table"><thead><tr>${head.map((h,i)=>`<th${i===head.length-1 && /valor|total|R\$/i.test(h) ? ' class="num"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '';
+  // numFrom: a partir de qual coluna os cabeçalhos são numéricos (alinhados à direita, como as células); padrão = só a última
+  const table = (title, head, rows, numFrom)=> rows.length ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">${title}</div></div>
+    <table class="rp-table"><thead><tr>${head.map((h,i)=>`<th${i >= (numFrom==null ? head.length-1 : numFrom) ? ' class="num"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '';
   const simple = (title, rows)=> rows.length ? `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">${title}</div></div>
     <table class="rp-table"><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table></div>` : '';
   const methodRows = Object.keys(bm).map(m=>[primeEsc(csMethodLabel(m)), csMoney(bm[m])]);
@@ -7232,6 +7270,11 @@ function csPrintReport(){
     ...(rep.suprimentos||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>Suprimento (${primeEsc(x.origem)})</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">+ ${csMoney(x.value)}</td></tr>`),
     ...(rep.sangrias||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>${x.is_closing ? 'Retirada do fechamento' : 'Sangria'} → ${primeEsc(x.destino)}</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">− ${csMoney(x.value)}</td></tr>`)
   ];
+  const gm = csGroupMethods(bm);
+  const formasStats = stat('Dinheiro', csMoney(gm.dinheiro)) + stat('Cartão', csMoney(gm.cartao)) + stat('Pix', csMoney(gm.pix))
+    + stat('Total recebido', csMoney(gm.dinheiro+gm.cartao+gm.pix), true) + (gm.a_prazo>0 ? stat('A prazo (a receber)', csMoney(gm.a_prazo)) : '');
+  const colabTable = table('Recebido por colaborador', ['Colaborador','Dinheiro','Cartão','Pix','A prazo','Total'],
+    (rep.por_barbeiro_formas||[]).map(b=>`<tr><td>${primeEsc(b.name||'—')}</td><td class="num">${csMoney(b.dinheiro)}</td><td class="num">${csMoney(b.cartao)}</td><td class="num">${csMoney(b.pix)}</td><td class="num">${csMoney(b.a_prazo)}</td><td class="num">${csMoney(b.total)}</td></tr>`), 1);
   let vendasHtml = '';
   if(rep.totais){
     const t = rep.totais, nv = Number(t.qtd_vendas)||0;
@@ -7240,11 +7283,11 @@ function csPrintReport(){
       + stat(`Total vendido (${nv} venda${nv===1?'':'s'})`, csMoney(t.total), true);
     vendasHtml += `<div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Vendas do turno</div></div><div class="rp-grid">${totaisStats}</div></div>`;
     vendasHtml += table('Por barbeiro', ['Barbeiro','Serviços','Produtos','Total'],
-      (rep.por_barbeiro_vendas||[]).map(b=>`<tr><td>${primeEsc(b.name||'—')}</td><td class="num">${csMoney(b.servicos)}</td><td class="num">${csMoney(b.produtos)}</td><td class="num">${csMoney(b.total)}</td></tr>`));
+      (rep.por_barbeiro_vendas||[]).map(b=>`<tr><td>${primeEsc(b.name||'—')}</td><td class="num">${csMoney(b.servicos)}</td><td class="num">${csMoney(b.produtos)}</td><td class="num">${csMoney(b.total)}</td></tr>`), 1);
     vendasHtml += table('Produtos vendidos', ['Produto','Qtd','Total'],
-      (rep.produtos||[]).map(p=>`<tr><td>${primeEsc(p.name)}</td><td class="num">${Number(p.qty)}</td><td class="num">${csMoney(p.total)}</td></tr>`));
+      (rep.produtos||[]).map(p=>`<tr><td>${primeEsc(p.name)}</td><td class="num">${Number(p.qty)}</td><td class="num">${csMoney(p.total)}</td></tr>`), 1);
     vendasHtml += table('Conferir com a maquininha', ['Forma','Bandeira','Transações','Total'],
-      (rep.cartoes||[]).map(c=>`<tr><td>${primeEsc(csMethodLabel(c.method))}</td><td>${primeEsc(c.bandeira||'—')}</td><td class="num">${Number(c.qtd)}</td><td class="num">${csMoney(c.total)}</td></tr>`));
+      (rep.cartoes||[]).map(c=>`<tr><td>${primeEsc(csMethodLabel(c.method))}</td><td>${primeEsc(c.bandeira||'—')}</td><td class="num">${Number(c.qtd)}</td><td class="num">${csMoney(c.total)}</td></tr>`), 2);
     const linha = v=>`<tr><td>${csFmtTime(v.at)}</td><td>${primeEsc(v.client||'Cliente')}${v.late ? `<div class="muted">vendida em ${csFmtDate(v.sold_at)}</div>` : ''}</td>
       <td class="muted">${(v.items||[]).map(i=>primeEsc(csItemText(i))).join('<br>')}</td>
       <td class="muted">${(v.payments||[]).map(p=>primeEsc(csPayText(p))).join('<br>')}</td><td class="num">${csMoney(v.late ? v.paid : v.items_total)}</td></tr>`;
@@ -7265,6 +7308,8 @@ function csPrintReport(){
       <div class="rp-meta"><b>Caixa #${Number(s.id)}</b>${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ' → '+csFmtTime(s.closed_at) : ' (aberto)'}<br>Gerado em ${geradoEm}</div>
     </div>
     <div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Conferência do dinheiro</div></div><div class="rp-grid">${stats}</div></div>
+    <div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Recebido por forma de pagamento</div></div><div class="rp-grid">${formasStats}</div></div>
+    ${colabTable}
     ${vendasHtml}
     ${simple('Formas de pagamento', methodRows)}
     ${simple('Por operador (quem registrou)', operRows)}
