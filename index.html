@@ -7229,6 +7229,18 @@ function csReportText(rep){
     L.push(''); L.push('*Produtos vendidos*');
     rep.produtos.forEach(p=>L.push(`${p.name} × ${Number(p.qty)}: ${csMoney(p.total)}`));
   }
+  if((rep.vendas||[]).length){
+    const vs = rep.vendas, MAX = 60;
+    L.push(''); L.push(`*Detalhe das vendas (${vs.length})*`);
+    vs.slice(0, MAX).forEach(v=>{
+      const its = (v.items||[]).map(csItemText).join(' + ');
+      const pays = (v.payments||[]).map(csPayText).join(' + ');
+      L.push(`${csFmtTime(v.at)} · ${v.client||'Cliente'}${v.late ? ' (vendida em '+csFmtDate(v.sold_at)+')' : ''}`);
+      if(its) L.push(`   ${its}`);
+      if(pays) L.push(`   Pago: ${pays}`);
+    });
+    if(vs.length > MAX) L.push(`… e mais ${vs.length-MAX} vendas (veja o PDF)`);
+  }
   return L.join('\n');
 }
 function csShareReport(){
