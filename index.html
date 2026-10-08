@@ -3351,7 +3351,12 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-slabel:first-child{margin-top:.4rem}
 #barberApp .ba-card{background:var(--grafite-card);border:1px solid var(--dourado-dim);padding:1.3rem 1.4rem;margin-bottom:.9rem}
 /* ZAP (chat do WhatsApp) — layout de 3 colunas (Atendimento · conversa · Ficha), estilo inbox */
-#barberApp .ba-zap-screen{flex-direction:row;position:relative;overflow:hidden;height:100%}
+/* NUNCA 'position:relative' aqui — isso desliga o position:absolute;inset:0 da .screen base,
+   que é o que faz a tela ocupar a altura certa (achado real, medido com Playwright: sem o
+   absolute, a tela vira fluxo normal e cresce pelo conteúdo, empurrando a caixa de digitar
+   pra fora da área visível). Position não muda; só os filhos (.ba-zap-compose) precisam de
+   contexto de posicionamento, e já têm o próprio position:relative. */
+#barberApp .ba-zap-screen{flex-direction:row;overflow:hidden}
 #barberApp .ba-zap-col{display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;height:100%}
 #barberApp .ba-zap-col-list{width:300px;flex:none;border-right:1px solid var(--dourado-dim)}
 #barberApp .ba-zap-col-main{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
@@ -3420,7 +3425,6 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-ficha-note{width:100%;min-height:6rem;resize:vertical;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.84rem;padding:.7rem .8rem;border-radius:2px;margin-bottom:.7rem}
 #barberApp .ba-zap-ficha-note:focus{outline:none;border-color:var(--dourado)}
 /* mobile/tablet (abaixo do breakpoint "desktop" do app, 900px): uma coluna por vez, com botão "voltar" */
-#barberApp:not(.desktop) .ba-zap-screen{position:absolute}
 #barberApp:not(.desktop) .ba-zap-col{display:none;width:100%;position:absolute;top:0;left:0;right:0;bottom:0;border:none}
 #barberApp:not(.desktop) .ba-zap-screen[data-state="list"] .ba-zap-col-list{display:flex}
 #barberApp:not(.desktop) .ba-zap-screen[data-state="thread"] .ba-zap-col-main{display:grid}
