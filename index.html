@@ -3350,25 +3350,47 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-slabel{font-size:.66rem;letter-spacing:.26em;text-transform:uppercase;color:var(--dourado);margin:1.6rem 0 .9rem}
 #barberApp .ba-slabel:first-child{margin-top:.4rem}
 #barberApp .ba-card{background:var(--grafite-card);border:1px solid var(--dourado-dim);padding:1.3rem 1.4rem;margin-bottom:.9rem}
-/* ZAP (chat do WhatsApp) */
+/* ZAP (chat do WhatsApp) — layout de 3 colunas (Atendimento · conversa · Ficha), estilo inbox */
+#barberApp .ba-zap-screen{flex-direction:row;position:relative;overflow:hidden}
+#barberApp .ba-zap-col{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#barberApp .ba-zap-col-list{width:300px;flex:none;border-right:1px solid var(--dourado-dim)}
+#barberApp .ba-zap-col-main{flex:1}
+#barberApp .ba-zap-col-ficha{width:290px;flex:none;border-left:1px solid var(--dourado-dim);display:none}
+#barberApp .ba-zap-screen.ficha-open .ba-zap-col-ficha{display:flex}
+#barberApp .ba-zap-col-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:1rem 1.2rem;border-bottom:1px solid rgba(198,167,94,.12);flex-shrink:0}
+#barberApp .ba-zap-col-head .ba-zap-back{display:none}
+#barberApp .ba-zap-main-title{min-width:0;flex:1}
+#barberApp .ba-zap-main-title .nm{font-size:.92rem;color:var(--prata);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#barberApp .ba-zap-main-title .sub{font-size:.7rem;color:var(--prata-dim)}
+#barberApp .ba-zap-col-list>#ba-zap-list{flex:1;overflow-y:auto;padding:0 1.2rem}
+#barberApp .ba-zap-col-ficha>#ba-zap-ficha-body{flex:1;overflow-y:auto;padding:1rem 1.2rem}
 #barberApp .ba-zap-row{display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.9rem 0;border-bottom:1px solid rgba(198,167,94,.12);cursor:pointer;text-align:left;width:100%;background:none;border-left:none;border-right:none;border-top:none;color:inherit;font-family:inherit}
 #barberApp .ba-zap-row:last-child{border-bottom:none}
 #barberApp .ba-zap-row .nm{font-size:.92rem;color:var(--prata)}
-#barberApp .ba-zap-row .pv{font-size:.76rem;color:var(--prata-dim);margin-top:.15rem;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#barberApp .ba-zap-row .pv{font-size:.76rem;color:var(--prata-dim);margin-top:.15rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #barberApp .ba-zap-row .when{font-size:.68rem;color:var(--prata-dim);flex:none;text-align:right}
 #barberApp .ba-zap-row .when.pending{color:var(--alerta)}
 #barberApp .ba-zap-row .when.failed{color:var(--erro)}
-#barberApp .ba-zap-thread{display:flex;flex-direction:column;gap:.5rem;max-height:56vh;overflow-y:auto;padding:.4rem 0 1rem}
-#barberApp .ba-zap-bubble{max-width:78%;padding:.6rem .85rem;font-size:.86rem;line-height:1.45;border-radius:4px}
+#barberApp .ba-zap-thread{flex:1;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;padding:1rem 1.2rem}
+#barberApp .ba-zap-bubble{max-width:72%;padding:.6rem .85rem;font-size:.86rem;line-height:1.45;border-radius:4px}
 #barberApp .ba-zap-bubble.in{align-self:flex-start;background:var(--grafite-card);border:1px solid var(--hair)}
 #barberApp .ba-zap-bubble.out{align-self:flex-end;background:rgba(198,167,94,.16);border:1px solid var(--dourado-dim)}
 #barberApp .ba-zap-bubble .st{display:block;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--prata-dim);margin-top:.3rem}
 #barberApp .ba-zap-bubble .st.failed{color:var(--erro)}
-#barberApp .ba-zap-compose{display:flex;gap:.6rem;align-items:flex-end;border-top:1px solid var(--dourado-dim);padding-top:.9rem}
+#barberApp .ba-zap-compose{display:flex;gap:.6rem;align-items:flex-end;border-top:1px solid var(--dourado-dim);padding:.9rem 1.2rem;flex-shrink:0}
 #barberApp .ba-zap-compose textarea{flex:1;resize:none;max-height:6.5rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.86rem;padding:.7rem .8rem;border-radius:2px}
 #barberApp .ba-zap-compose textarea:focus{outline:none;border-color:var(--dourado)}
 #barberApp .ba-zap-compose .ba-btn{width:auto;max-width:none;padding:.8rem 1.3rem;margin:0}
 #barberApp .ba-zap-empty{color:var(--prata-dim);font-size:.82rem;padding:1.2rem 0;text-align:center}
+#barberApp .ba-zap-ficha-note{width:100%;min-height:6rem;resize:vertical;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.84rem;padding:.7rem .8rem;border-radius:2px;margin-bottom:.7rem}
+#barberApp .ba-zap-ficha-note:focus{outline:none;border-color:var(--dourado)}
+/* mobile/tablet (abaixo do breakpoint "desktop" do app, 900px): uma coluna por vez, com botão "voltar" */
+#barberApp:not(.desktop) .ba-zap-screen{position:absolute}
+#barberApp:not(.desktop) .ba-zap-col{display:none;width:100%;position:absolute;top:0;left:0;right:0;bottom:0;border:none}
+#barberApp:not(.desktop) .ba-zap-screen[data-state="list"] .ba-zap-col-list{display:flex}
+#barberApp:not(.desktop) .ba-zap-screen[data-state="thread"] .ba-zap-col-main{display:flex}
+#barberApp:not(.desktop) .ba-zap-screen.ficha-open[data-state="ficha"] .ba-zap-col-ficha{display:flex}
+#barberApp:not(.desktop) .ba-zap-col-head .ba-zap-back{display:inline-flex;width:auto;max-width:none;margin:0;padding:.4rem .7rem .4rem 0;font-size:.68rem;border:none;background:none}
 #barberApp .ba-cli-row{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;padding:.6rem 0;border-bottom:1px solid rgba(198,167,94,.12)}
 #barberApp .ba-cli-row:last-child{border-bottom:none}
 #barberApp .ba-cli-row .lbl{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--prata-dim);flex:none}
@@ -4223,22 +4245,42 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       </div>
     </div>
 
-    <!-- ZAP (chat do WhatsApp) -->
-    <div class="screen" id="ba-screen-zap">
-      <div class="ba-head"><div><div class="hi">Atendimento</div><div class="name">WhatsApp</div></div></div>
-      <div class="ba-body">
-        <div id="ba-zap-list-view">
-          <div id="ba-zap-list"><div class="ba-zap-empty">Carregando…</div></div>
+    <!-- ZAP (chat do WhatsApp) — 3 colunas: Atendimento (lista) · conversa · Ficha -->
+    <div class="screen ba-zap-screen" id="ba-screen-zap" data-state="list">
+      <div class="ba-zap-col ba-zap-col-list" id="ba-zap-col-list">
+        <div class="ba-zap-col-head">
+          <div class="ba-slabel" style="margin:0">Atendimento</div>
+          <button class="ba-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem" onclick="baZapToggleNew()">+ Nova conversa</button>
         </div>
-        <div id="ba-zap-thread-view" style="display:none">
-          <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.9rem" onclick="baZapBackToList()">← Conversas</button>
-          <div class="ba-slabel" style="margin-top:0" id="ba-zap-thread-title">—</div>
-          <div class="ba-zap-thread" id="ba-zap-thread-messages"></div>
-          <div class="ba-zap-compose">
-            <textarea id="ba-zap-input" placeholder="Digite uma mensagem…" rows="1" maxlength="4000" oninput="baZapAutoGrow(this)" onkeydown="baZapInputKeydown(event)"></textarea>
-            <button class="ba-btn" id="ba-zap-send-btn" onclick="baZapSend()">Enviar</button>
+        <div id="ba-zap-new-form" style="display:none;padding:.9rem 1.2rem;border-bottom:1px solid rgba(198,167,94,.12)">
+          <div class="ba-field" style="max-width:100%;margin-bottom:.6rem"><label>Telefone do cliente (com DDD)</label><input type="tel" id="ba-zap-new-phone" placeholder="(11) 91234-5678" onkeydown="if(event.key==='Enter')baZapStartNew()"></div>
+          <button class="ba-btn" style="width:auto;max-width:none;margin:0;padding:.6rem 1.1rem;font-size:.7rem" onclick="baZapStartNew()">Iniciar conversa</button>
+        </div>
+        <div id="ba-zap-list"><div class="ba-zap-empty">Carregando…</div></div>
+      </div>
+
+      <div class="ba-zap-col ba-zap-col-main" id="ba-zap-col-main">
+        <div class="ba-zap-col-head">
+          <button class="ba-btn ghost ba-zap-back" onclick="baZapBackToList()">← Conversas</button>
+          <div class="ba-zap-main-title">
+            <div class="nm" id="ba-zap-thread-title">Nenhum atendimento selecionado</div>
+            <div class="sub" id="ba-zap-thread-sub">selecione uma conversa na lista</div>
           </div>
+          <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleFicha()">Ficha</button>
         </div>
+        <div class="ba-zap-thread" id="ba-zap-thread-messages"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
+        <div class="ba-zap-compose" id="ba-zap-compose" style="display:none">
+          <textarea id="ba-zap-input" placeholder="Digite uma mensagem…" rows="1" maxlength="4000" oninput="baZapAutoGrow(this)" onkeydown="baZapInputKeydown(event)"></textarea>
+          <button class="ba-btn" id="ba-zap-send-btn" onclick="baZapSend()">Enviar</button>
+        </div>
+      </div>
+
+      <div class="ba-zap-col ba-zap-col-ficha" id="ba-zap-col-ficha">
+        <div class="ba-zap-col-head">
+          <button class="ba-btn ghost ba-zap-back" onclick="baZapCloseFicha()">← Conversa</button>
+          <div class="ba-slabel" style="margin:0">Ficha</div>
+        </div>
+        <div id="ba-zap-ficha-body"><div class="ba-zap-empty">—</div></div>
       </div>
     </div>
 
@@ -4918,6 +4960,7 @@ function baTab(tab){
 // são DADO que veio de fora (o cliente escreveu) — sempre primeEsc() antes de ir pro DOM.
 let baZapPollTimer = null;
 let baZapCurrentChat = null; // chat_id aberto agora, ou null se está na lista
+let baZapCurrentPhone = null; // telefone (dígitos) do chat aberto, ou null
 let baZapNamesCache = {}; // phone -> nome do cliente (cache simples da sessão)
 
 function baZapFormatPhone(phone){
@@ -4968,18 +5011,116 @@ async function baRenderZapList(){
   }).join('');
 }
 
+// estado só pra decidir qual coluna mostrar no mobile (desktop mostra lista+conversa sempre,
+// a Ficha é a 3ª coluna que entra/sai com a classe 'ficha-open')
+function baZapSetState(state){
+  document.getElementById('ba-screen-zap').dataset.state = state;
+}
+
 function baZapOpenChat(chatId, phone){
   baZapCurrentChat = chatId;
-  document.getElementById('ba-zap-list-view').style.display = 'none';
-  document.getElementById('ba-zap-thread-view').style.display = '';
-  document.getElementById('ba-zap-thread-title').textContent = baZapTitleFor(chatId, phone || null);
+  baZapCurrentPhone = phone || (chatId.endsWith('@c.us') ? chatId.split('@')[0] : null);
+  document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
+  document.getElementById('ba-zap-ficha-btn').style.display = '';
+  document.getElementById('ba-zap-compose').style.display = '';
+  document.getElementById('ba-zap-thread-title').textContent = baZapTitleFor(chatId, baZapCurrentPhone);
+  document.getElementById('ba-zap-thread-sub').textContent = baZapFormatPhone(baZapCurrentPhone) || chatId;
+  baZapSetState('thread');
   baZapRenderThread();
 }
 function baZapBackToList(){
   baZapCurrentChat = null;
-  document.getElementById('ba-zap-thread-view').style.display = 'none';
-  document.getElementById('ba-zap-list-view').style.display = '';
+  baZapCurrentPhone = null;
+  document.getElementById('ba-screen-zap').classList.remove('ficha-open');
+  baZapSetState('list');
   baRenderZapList();
+}
+
+// ── Nova conversa ──
+function baZapToggleNew(){
+  const f = document.getElementById('ba-zap-new-form');
+  const opening = f.style.display === 'none';
+  f.style.display = opening ? 'block' : 'none';
+  if(opening) document.getElementById('ba-zap-new-phone').focus();
+}
+// Normaliza pro formato que a WAHA espera (DDI+DDD+número, só dígitos). Sem DDI, assume Brasil —
+// é o que qualquer número de celular digitado com DDD aqui vai ser.
+function baZapNormalizePhone(raw){
+  let d = String(raw||'').replace(/\D/g,'');
+  if(d.length===10 || d.length===11) d = '55'+d;
+  return d;
+}
+function baZapStartNew(){
+  const input = document.getElementById('ba-zap-new-phone');
+  const digits = baZapNormalizePhone(input.value);
+  if(digits.length!==12 && digits.length!==13){ alert('Telefone inválido — digite com DDD (e o 9 na frente, se for celular).'); return; }
+  document.getElementById('ba-zap-new-form').style.display = 'none';
+  input.value = '';
+  baZapOpenChat(`${digits}@c.us`, digits);
+}
+
+// ── Ficha (nome, idade, cortes concluídos, observação do atendimento) ──
+function baZapToggleFicha(){
+  if(!baZapCurrentChat) return;
+  const scr = document.getElementById('ba-screen-zap');
+  const opening = !scr.classList.contains('ficha-open');
+  scr.classList.toggle('ficha-open', opening);
+  if(opening){ baZapSetState('ficha'); baZapRenderFicha(); }
+  else baZapSetState('thread');
+}
+function baZapCloseFicha(){
+  document.getElementById('ba-screen-zap').classList.remove('ficha-open');
+  baZapSetState('thread');
+}
+async function baZapRenderFicha(){
+  const body = document.getElementById('ba-zap-ficha-body');
+  const chatId = baZapCurrentChat;
+  if(!chatId){ body.innerHTML = '<div class="ba-zap-empty">—</div>'; return; }
+  body.innerHTML = '<div class="ba-zap-empty">Carregando…</div>';
+  const phone = baZapCurrentPhone;
+  let client = null, cuts = [];
+  if(phone){
+    const { data: cs } = await sb.from('clients').select('id,name,age,instagram').eq('phone', phone).limit(1);
+    client = (cs && cs[0]) || null;
+    if(client){
+      const { data: ap } = await sb.from('appointments').select('day,services').eq('client_id', client.id).eq('status','concluido').order('day',{ascending:false}).limit(8);
+      cuts = ap || [];
+    }
+  }
+  const { data: noteRow } = await sb.from('whatsapp_contact_notes').select('note').eq('chat_id', chatId).maybeSingle();
+  const note = (noteRow && noteRow.note) || '';
+  if(chatId !== baZapCurrentChat) return; // trocou de conversa enquanto carregava
+  const title = client ? client.name : (baZapFormatPhone(phone) || chatId);
+  const cutsHtml = cuts.length
+    ? cuts.map(c=>`<div class="ba-cli-row"><span class="lbl">${baFormatDate(c.day)}</span><span class="val">${primeEsc((c.services||[]).join(', '))}</span></div>`).join('')
+    : '<div class="ba-zap-empty" style="padding:.6rem 0">Nenhum corte concluído registrado.</div>';
+  body.innerHTML = `
+    <div class="ba-card" style="margin-bottom:1rem">
+      <div style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:.2rem">${primeEsc(title)}</div>
+      <div style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">${client ? 'Cliente cadastrado no Prime' : 'Sem cadastro no Prime'}</div>
+      ${client && client.age ? `<div class="ba-cli-row"><span class="lbl">Idade</span><span class="val">${client.age}</span></div>` : ''}
+      ${phone ? `<div class="ba-cli-row"><span class="lbl">Telefone</span><span class="val">${primeEsc(baZapFormatPhone(phone))}</span></div>` : ''}
+      ${client && client.instagram ? `<div class="ba-cli-row"><span class="lbl">Instagram</span><span class="val">@${primeEsc(client.instagram)}</span></div>` : ''}
+    </div>
+    <div class="ba-slabel" style="margin-top:0">Cortes concluídos</div>
+    ${cutsHtml}
+    <div class="ba-slabel">Observação</div>
+    <textarea class="ba-zap-ficha-note" id="ba-zap-ficha-note" placeholder="Anotação interna sobre esse contato — só a equipe vê">${primeEsc(note)}</textarea>
+    <button class="ba-btn ghost" style="max-width:100%" id="ba-zap-ficha-save" onclick="baZapSaveNote()">Salvar observação</button>
+  `;
+}
+async function baZapSaveNote(){
+  const chatId = baZapCurrentChat;
+  if(!chatId) return;
+  const note = document.getElementById('ba-zap-ficha-note').value;
+  const btn = document.getElementById('ba-zap-ficha-save');
+  btn.disabled = true;
+  const { error } = await sb.from('whatsapp_contact_notes').upsert(
+    { chat_id: chatId, note, updated_at: new Date().toISOString(), updated_by: baCurrentBarberId },
+    { onConflict: 'chat_id' }
+  );
+  btn.disabled = false;
+  if(error) alert('Não foi possível salvar a observação.');
 }
 
 async function baZapRenderThread(){
@@ -5022,10 +5163,19 @@ async function baZapSend(){
 
 function baZapSetup(){
   baZapCurrentChat = null;
-  document.getElementById('ba-zap-list-view').style.display = '';
-  document.getElementById('ba-zap-thread-view').style.display = 'none';
+  baZapCurrentPhone = null;
+  document.getElementById('ba-screen-zap').classList.remove('ficha-open');
+  document.getElementById('ba-zap-ficha-btn').style.display = 'none';
+  document.getElementById('ba-zap-compose').style.display = 'none';
+  document.getElementById('ba-zap-new-form').style.display = 'none';
+  document.getElementById('ba-zap-thread-title').textContent = 'Nenhum atendimento selecionado';
+  document.getElementById('ba-zap-thread-sub').textContent = 'selecione uma conversa na lista';
+  document.getElementById('ba-zap-thread-messages').innerHTML = '<div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div>';
+  baZapSetState('list');
   baRenderZapList();
   baZapTeardown();
+  // só lista/conversa atualizam sozinhas; a Ficha fica parada enquanto aberta, pra não
+  // sobrescrever uma observação que a pessoa esteja digitando
   baZapPollTimer = setInterval(()=>{ baZapCurrentChat ? baZapRenderThread() : baRenderZapList(); }, 3000);
 }
 function baZapTeardown(){
