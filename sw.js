@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'prime-shell-v4';
+const SHELL_CACHE = 'prime-shell-v5';
 const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'manifest-staff.json', 'icon-192.png', 'icon-512.png',
   'splash-1170x2532.png', 'splash-1179x2556.png', 'splash-1284x2778.png', 'splash-1290x2796.png', 'splash-828x1792.png', 'splash-750x1334.png'];
 
@@ -38,6 +38,8 @@ self.addEventListener('push', (event) => {
     body: data.body || '',
     icon: 'icon-192.png',
     badge: 'icon-192.png',
+    tag: data.apptId ? 'appt-' + data.apptId : undefined,
+    vibrate: [250, 120, 250],
     data: { apptId: data.apptId ?? null, notifType: data.notifType ?? null }
   }));
 });

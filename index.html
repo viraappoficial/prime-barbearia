@@ -4221,6 +4221,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         </div>
 
         <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem" onclick="subscribeToPush()">Ativar notificações</button>
+        <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem" onclick="baAlertTest()">Testar som e aviso de novo agendamento</button>
+        <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem" id="ba-alert-mute-btn" onclick="baAlertToggleMute()">Som dos agendamentos: ligado</button>
         <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem;display:flex;align-items:center;justify-content:center;gap:.5rem" onclick="baOpenQRPrint()"><svg class="pi-icon" viewBox="0 0 24 24" style="width:16px;height:16px;flex:none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M17 20h3"/></svg> QR Code pro balcão</button>
         <button class="ba-btn ghost" style="max-width:100%" onclick="baLogout()">Sair</button>
       </div>
@@ -9122,6 +9124,112 @@ async function baFinalizarCarrinho(){
   }, {clientName: appt.name||'Cliente'});
 }
 
+// ── Aviso de novo agendamento: som + notificação ──
+// barbeiro é avisado dos seus; admin e vendas, de todos. Só conta agendamento feito pelo cliente
+// (status pendente, não é encaixe). Realtime avisa na hora; a checagem a cada 20s cobre se o realtime
+// não estiver ligado no banco. Só funciona com o app aberto (aba ou app instalado); com o app fechado
+// depende de push do servidor.
+let baAlertSeen = null, baAlertTimer = null, baAlertChannel = null, baAudioCtx = null, baAlertBusy = false, baAlertToastTimer = null;
+function baAlertMuted(){ try{ return localStorage.getItem('prime_alert_mute')==='1'; }catch(e){ return false; } }
+function baUnlockAudio(){
+  try{
+    if(!baAudioCtx){ const AC = window.AudioContext || window.webkitAudioContext; if(AC) baAudioCtx = new AC(); }
+    if(baAudioCtx && baAudioCtx.state==='suspended') baAudioCtx.resume();
+  }catch(e){}
+}
+// "plim-plim" duas vezes, alto o bastante pra ouvir no balcão
+function baPlayAlertSound(force){
+  if(!force && baAlertMuted()) return;
+  baUnlockAudio(); if(!baAudioCtx) return;
+  try{
+    const ctx = baAudioCtx, t0 = ctx.currentTime + .02;
+    [[880,0],[1319,.2],[880,.9],[1319,1.1]].forEach(([f,d])=>{
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t0+d); g.gain.linearRampToValueAtTime(.5, t0+d+.02); g.gain.exponentialRampToValueAtTime(.001, t0+d+.55);
+      o.connect(g); g.connect(ctx.destination); o.start(t0+d); o.stop(t0+d+.6);
+    });
+  }catch(e){ console.error('baPlayAlertSound', e); }
+}
+function baAlertToast(html, onClick){
+  let el = document.getElementById('ba-alert-toast');
+  if(!el){
+    el = document.createElement('div'); el.id = 'ba-alert-toast';
+    el.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:1300;max-width:min(92vw,420px);width:92vw;background:var(--grafite-card);border:1px solid var(--dourado);border-radius:12px;padding:.85rem 1rem;color:var(--texto,#EDEDE8);font-size:.85rem;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.5);cursor:pointer';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = html; el.style.display = 'block';
+  el.onclick = ()=>{ el.style.display='none'; if(onClick) onClick(); };
+  clearTimeout(baAlertToastTimer); baAlertToastTimer = setTimeout(()=>{ el.style.display='none'; }, 12000);
+}
+async function baAlertSystemNotif(title, body, tag){
+  try{
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    const opts = { body, icon:'icon-192.png', badge:'icon-192.png', tag, renotify:true, vibrate:[250,120,250] };
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if(reg && reg.showNotification) await reg.showNotification(title, opts); else new Notification(title, opts);
+  }catch(e){ console.error('baAlertSystemNotif', e); }
+}
+async function baAlertCheck(){
+  if(baAlertBusy || !baCurrentBarberId) return;
+  baAlertBusy = true;
+  try{
+    const { data, error } = await sb.from('appointments')
+      .select('id,client_name,day_label,time,services,barber_id,status,is_encaixe,created_at')
+      .order('created_at', {ascending:false}).limit(20);
+    if(error){ console.error('baAlertCheck', error); return; }
+    const rows = data || [];
+    if(baAlertSeen === null){ baAlertSeen = new Set(rows.map(r=>r.id)); return; }   // primeira leitura: só marca o que já existe
+    const all = baCurrentRole==='admin' || baCurrentRole==='vendas';
+    const novos = rows.filter(r=>!baAlertSeen.has(r.id));
+    rows.forEach(r=>baAlertSeen.add(r.id));
+    const meus = novos.filter(r=>r.status==='pendente' && !r.is_encaixe && (all || r.barber_id===baCurrentBarberId));
+    if(!meus.length) return;
+    baPlayAlertSound();
+    const linha = r=>`<b>${primeEsc(r.client_name||'Cliente')}</b> — ${primeEsc(r.day_label||'')} às ${primeEsc(r.time||'')}<br><span style="opacity:.75">${primeEsc((r.services||[]).join(' + '))}</span>`;
+    baAlertToast(`<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">Novo agendamento${meus.length>1 ? 's ('+meus.length+')' : ''}</div>${meus.slice(0,3).map(linha).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.1);margin:.5rem 0">')}`, ()=>baTab('agenda'));
+    meus.slice(0,3).forEach(r=>baAlertSystemNotif('Novo agendamento', `${r.client_name||'Cliente'} — ${r.day_label||''} às ${r.time||''} (${(r.services||[]).join(' + ')})`, 'appt-'+r.id));
+    if(typeof baRenderNotifs==='function') baRenderNotifs();
+    const ag = document.getElementById('ba-screen-agenda');
+    if(ag && ag.classList.contains('active') && typeof baRenderAgenda==='function') baRenderAgenda();
+  } finally { baAlertBusy = false; }
+}
+function baAlertStart(){
+  baAlertStop();
+  baAlertSeen = null;
+  baAlertCheck();
+  baAlertTimer = setInterval(baAlertCheck, 20000);
+  try{
+    baAlertChannel = sb.channel('prime-appt-alert')
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'appointments' }, ()=>baAlertCheck())
+      .subscribe();
+  }catch(e){ console.error('baAlertStart/realtime', e); }
+  baAlertUpdateBtn();
+}
+function baAlertStop(){
+  clearInterval(baAlertTimer); baAlertTimer = null; baAlertSeen = null;
+  if(baAlertChannel){ try{ sb.removeChannel(baAlertChannel); }catch(e){} baAlertChannel = null; }
+  const el = document.getElementById('ba-alert-toast'); if(el) el.style.display = 'none';
+}
+function baAlertUpdateBtn(){
+  const b = document.getElementById('ba-alert-mute-btn'); if(b) b.textContent = baAlertMuted() ? 'Som dos agendamentos: desligado' : 'Som dos agendamentos: ligado';
+}
+function baAlertToggleMute(){
+  try{ localStorage.setItem('prime_alert_mute', baAlertMuted() ? '0' : '1'); }catch(e){}
+  baAlertUpdateBtn();
+}
+function baAlertTest(){
+  baPlayAlertSound(true);
+  baAlertToast('<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">Teste</div><b>Assim aparece um novo agendamento</b><br><span style="opacity:.75">Se você ouviu o som, está tudo certo.</span>');
+  baAlertSystemNotif('Teste de aviso', 'Assim aparece um novo agendamento.', 'appt-teste');
+}
+// iOS/Chrome só liberam som e notificação depois de um toque na tela: no primeiro toque do staff libera os dois
+document.addEventListener('pointerdown', ()=>{
+  if(!baCurrentBarberId) return;
+  baUnlockAudio();
+  try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
+}, {passive:true});
+
 // ── Sino de notificações do barbeiro ──
 async function baRenderNotifs(){
   const notifs = await primeNotifsFor('barber', baCurrentBarberId);
@@ -10116,6 +10224,7 @@ function baEnter(barber){
   ['ba-link-caixa','ba-tabicon-caixa'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display = (isAdmin||isVendas) ? '' : 'none'; });
   csModalClose(); csLastReport = null;
   csState = null; csBanksCache = null; csFetchState();
+  baAlertStart();
   document.getElementById('ba-link-gestao').style.display = isAdmin ? '' : 'none';
   document.getElementById('ba-tabicon-gestao').style.display = isAdmin ? '' : 'none';
   document.querySelectorAll('#barberApp [data-tab="dashboard"],#barberApp [data-tab="clientes"],#barberApp [data-tab="vendas"]').forEach(el=>{
@@ -10129,6 +10238,7 @@ function baEnter(barber){
   baTab('agenda');
 }
 function baLogout(){
+  baAlertStop();
   sb.auth.signOut();
   // dados financeiros do caixa não podem sobreviver ao logout (modal aberto, relatório no alvo de impressão)
   csModalClose(); csState = null; csBanksCache = null; csLastReport = null; csUpdateChip();
