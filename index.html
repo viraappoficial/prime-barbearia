@@ -4221,8 +4221,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         </div>
 
         <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem" onclick="subscribeToPush()">Ativar notificações</button>
-        <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem" onclick="baAlertTest()">Testar som e aviso de novo agendamento</button>
-        <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem" id="ba-alert-mute-btn" onclick="baAlertToggleMute()">Som dos agendamentos: ligado</button>
+        <div class="ba-card" id="ba-alert-config"></div>
         <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem;display:flex;align-items:center;justify-content:center;gap:.5rem" onclick="baOpenQRPrint()"><svg class="pi-icon" viewBox="0 0 24 24" style="width:16px;height:16px;flex:none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M17 20h3"/></svg> QR Code pro balcão</button>
         <button class="ba-btn ghost" style="max-width:100%" onclick="baLogout()">Sair</button>
       </div>
@@ -4864,7 +4863,7 @@ function baTab(tab){
   if(tab==='clientes') primeSkeletonThen(['ba-clientes-list'], [[5,58]], baRenderClientes);
   if(tab==='caixa') csRenderScreen();
   if(tab==='agenda') baRenderAgenda();
-  if(tab==='perfil') baRenderPerfil();
+  if(tab==='perfil'){ baRenderPerfil(); baRenderAlertConfig(); }
   if(tab==='dashboard') baRenderDashboard();
   if(tab==='atendimento') baRenderAtendimento();
   if(tab==='gestao') baRenderGestao();
@@ -9137,27 +9136,42 @@ function baUnlockAudio(){
     if(baAudioCtx && baAudioCtx.state==='suspended') baAudioCtx.resume();
   }catch(e){}
 }
-// "plim-plim" três vezes, forte e com timbre cheio (triângulo + oitava) pra ouvir no balcão com a loja cheia
-function baPlayAlertSound(force){
-  if(!force && baAlertMuted()) return;
+// ── sons do aviso: o staff escolhe em Perfil → Notificações; vale na hora, neste aparelho ──
+// cada som toca em `dest` a partir de t0 (segundos do AudioContext)
+function baTone(ctx, dest, t, freq, dur, type, amp){
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp, t+.012); g.gain.exponentialRampToValueAtTime(.001, t+dur);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+.05);
+}
+const BA_SOUNDS = [
+  { id:'plim', name:'Plim-plim', desc:'Três toques agudos, claro e forte',
+    play(ctx, dest, t0){ [0,1.1,2.2].forEach(r=>[[880,0],[1319,.24]].forEach(([f,d])=>{ baTone(ctx,dest,t0+r+d,f,.75,'triangle',.95); baTone(ctx,dest,t0+r+d,f*2,.75,'sine',.35); })); } },
+  { id:'sino', name:'Sino de loja', desc:'Sino metálico, dois toques longos',
+    play(ctx, dest, t0){ [0,1.3].forEach(r=>[[1,1],[2.76,.5],[5.4,.3],[8.9,.15]].forEach(([m,a])=>baTone(ctx,dest,t0+r,660*m,1.15,'sine',.8*a))); } },
+  { id:'campainha', name:'Campainha', desc:'Toque de campainha, bem chamativo',
+    play(ctx, dest, t0){ for(let r=0;r<2;r++) for(let k=0;k<6;k++){ const t = t0 + r*1.25 + k*.095; baTone(ctx,dest,t,k%2 ? 1250 : 1000,.09,'square',.55); } } },
+  { id:'alerta', name:'Alerta', desc:'Três tons subindo, seco e direto',
+    play(ctx, dest, t0){ [0,1.2].forEach(r=>[523,698,880,1175].forEach((f,k)=>baTone(ctx,dest,t0+r+k*.16,f,.3,'sawtooth',.5))); } }
+];
+function baSoundId(){
+  let id = null; try{ id = localStorage.getItem('prime_alert_sound'); }catch(e){}
+  return BA_SOUNDS.some(x=>x.id===id) ? id : BA_SOUNDS[0].id;
+}
+function baPlaySoundById(id){
   baUnlockAudio(); if(!baAudioCtx) return;
+  const snd = BA_SOUNDS.find(x=>x.id===id) || BA_SOUNDS[0];
   try{
-    const ctx = baAudioCtx, t0 = ctx.currentTime + .02;
+    const ctx = baAudioCtx;
     const master = ctx.createGain(); master.gain.value = 1;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
     master.connect(comp); comp.connect(ctx.destination);
-    [0, 1.1, 2.2].forEach(rep=>{
-      [[880,0],[1319,.24]].forEach(([f,d])=>{
-        const t = t0+rep+d;
-        [[f,'triangle',.95],[f*2,'sine',.35]].forEach(([fr,type,amp])=>{
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.type = type; o.frequency.value = fr;
-          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp, t+.015); g.gain.exponentialRampToValueAtTime(.001, t+.75);
-          o.connect(g); g.connect(master); o.start(t); o.stop(t+.8);
-        });
-      });
-    });
-  }catch(e){ console.error('baPlayAlertSound', e); }
+    snd.play(ctx, master, ctx.currentTime + .02);
+  }catch(e){ console.error('baPlaySoundById', e); }
+}
+function baPlayAlertSound(force){
+  if(!force && baAlertMuted()) return;
+  baPlaySoundById(baSoundId());
 }
 function baAlertToast(html, onClick){
   let el = document.getElementById('ba-alert-toast');
@@ -9219,8 +9233,27 @@ function baAlertStop(){
   if(baAlertChannel){ try{ sb.removeChannel(baAlertChannel); }catch(e){} baAlertChannel = null; }
   const el = document.getElementById('ba-alert-toast'); if(el) el.style.display = 'none';
 }
-function baAlertUpdateBtn(){
-  const b = document.getElementById('ba-alert-mute-btn'); if(b) b.textContent = baAlertMuted() ? 'Som dos agendamentos: desligado' : 'Som dos agendamentos: ligado';
+function baRenderAlertConfig(){
+  const box = document.getElementById('ba-alert-config'); if(!box) return;
+  const cur = baSoundId(), muted = baAlertMuted();
+  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  const permTxt = perm==='granted' ? 'Notificação do sistema: ativada' : perm==='denied' ? 'Notificação do sistema: bloqueada neste navegador' : perm==='unsupported' ? 'Este aparelho não mostra notificação do sistema' : 'Notificação do sistema: ainda não permitida';
+  box.innerHTML = `<div class="ba-slabel" style="margin-top:0">Notificações de agendamento</div>
+    <p style="color:var(--prata-dim);font-size:.8rem;margin:0 0 .9rem">Escolha o som que toca quando chega um agendamento novo. Vale na hora, neste aparelho.</p>
+    <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.9rem" onclick="baAlertToggleMute()">Som dos agendamentos: ${muted ? 'desligado' : 'ligado'}</button>
+    ${BA_SOUNDS.map(x=>`<div class="ba-sound-row" data-sound="${x.id}" style="display:flex;align-items:center;gap:.6rem;padding:.65rem .75rem;margin-bottom:.5rem;border:1px solid ${x.id===cur ? 'var(--dourado)' : 'var(--hair, rgba(255,255,255,.12))'};border-radius:10px;background:${x.id===cur ? 'rgba(198,167,94,.10)' : 'transparent'}">
+      <button style="all:unset;flex:1;cursor:pointer" onclick="baAlertPickSound('${x.id}')" aria-label="Usar o som ${x.name}">
+        <div style="font-size:.9rem;color:var(--dourado)">${x.id===cur ? '● ' : '○ '}${x.name}</div>
+        <div style="font-size:.74rem;opacity:.7">${x.desc}</div></button>
+      <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0" onclick="baPlaySoundById('${x.id}')" aria-label="Ouvir ${x.name}">▶ Ouvir</button></div>`).join('')}
+    <div style="font-size:.74rem;opacity:.7;margin:.6rem 0 .7rem">${permTxt}</div>
+    <button class="ba-btn ghost" style="max-width:100%" onclick="baAlertTest()">Testar aviso completo (som + notificação)</button>`;
+}
+function baAlertUpdateBtn(){ baRenderAlertConfig(); }
+function baAlertPickSound(id){
+  try{ localStorage.setItem('prime_alert_sound', id); }catch(e){}
+  baRenderAlertConfig();
+  baPlaySoundById(id);
 }
 function baAlertToggleMute(){
   try{ localStorage.setItem('prime_alert_mute', baAlertMuted() ? '0' : '1'); }catch(e){}
