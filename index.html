@@ -3351,10 +3351,10 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-slabel:first-child{margin-top:.4rem}
 #barberApp .ba-card{background:var(--grafite-card);border:1px solid var(--dourado-dim);padding:1.3rem 1.4rem;margin-bottom:.9rem}
 /* ZAP (chat do WhatsApp) — layout de 3 colunas (Atendimento · conversa · Ficha), estilo inbox */
-#barberApp .ba-zap-screen{flex-direction:row;position:relative;overflow:hidden}
-#barberApp .ba-zap-col{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#barberApp .ba-zap-screen{flex-direction:row;position:relative;overflow:hidden;height:100%}
+#barberApp .ba-zap-col{display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;height:100%}
 #barberApp .ba-zap-col-list{width:300px;flex:none;border-right:1px solid var(--dourado-dim)}
-#barberApp .ba-zap-col-main{flex:1}
+#barberApp .ba-zap-col-main{flex:1;min-height:0}
 #barberApp .ba-zap-col-ficha{width:290px;flex:none;border-left:1px solid var(--dourado-dim);display:none}
 #barberApp .ba-zap-screen.ficha-open .ba-zap-col-ficha{display:flex}
 #barberApp .ba-zap-col-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:1rem 1.2rem;border-bottom:1px solid rgba(198,167,94,.12);flex-shrink:0}
@@ -3362,8 +3362,11 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-main-title{min-width:0;flex:1}
 #barberApp .ba-zap-main-title .nm{font-size:.92rem;color:var(--prata);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #barberApp .ba-zap-main-title .sub{font-size:.7rem;color:var(--prata-dim)}
-#barberApp .ba-zap-col-list>#ba-zap-list{flex:1;overflow-y:auto;padding:0 1.2rem}
-#barberApp .ba-zap-col-ficha>#ba-zap-ficha-body{flex:1;overflow-y:auto;padding:1rem 1.2rem}
+#barberApp .ba-zap-col-list>#ba-zap-list{flex:1;min-height:0;overflow-y:auto;padding:0 1.2rem}
+#barberApp .ba-zap-col-ficha>#ba-zap-ficha-body{flex:1;min-height:0;overflow-y:auto;padding:1rem 1.2rem}
+/* barra de rolagem sempre escondida nas 3 colunas (continua rolável, só não aparece a aba) */
+#barberApp .ba-zap-col-list>#ba-zap-list,#barberApp .ba-zap-col-ficha>#ba-zap-ficha-body,#barberApp .ba-zap-thread{scrollbar-width:none}
+#barberApp .ba-zap-col-list>#ba-zap-list::-webkit-scrollbar,#barberApp .ba-zap-col-ficha>#ba-zap-ficha-body::-webkit-scrollbar,#barberApp .ba-zap-thread::-webkit-scrollbar{display:none}
 #barberApp .ba-zap-row{display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.9rem 0;border-bottom:1px solid rgba(198,167,94,.12);cursor:pointer;text-align:left;width:100%;background:none;border-left:none;border-right:none;border-top:none;color:inherit;font-family:inherit}
 #barberApp .ba-zap-row:last-child{border-bottom:none}
 #barberApp .ba-zap-row .nm{font-size:.92rem;color:var(--prata)}
@@ -3371,16 +3374,46 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-row .when{font-size:.68rem;color:var(--prata-dim);flex:none;text-align:right}
 #barberApp .ba-zap-row .when.pending{color:var(--alerta)}
 #barberApp .ba-zap-row .when.failed{color:var(--erro)}
-#barberApp .ba-zap-thread{flex:1;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;padding:1rem 1.2rem}
+#barberApp .ba-zap-thread{flex:1;min-height:0;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;padding:1rem 1.2rem}
 #barberApp .ba-zap-bubble{max-width:72%;padding:.6rem .85rem;font-size:.86rem;line-height:1.45;border-radius:4px}
 #barberApp .ba-zap-bubble.in{align-self:flex-start;background:var(--grafite-card);border:1px solid var(--hair)}
 #barberApp .ba-zap-bubble.out{align-self:flex-end;background:rgba(198,167,94,.16);border:1px solid var(--dourado-dim)}
 #barberApp .ba-zap-bubble .st{display:block;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--prata-dim);margin-top:.3rem}
 #barberApp .ba-zap-bubble .st.failed{color:var(--erro)}
-#barberApp .ba-zap-compose{display:flex;gap:.6rem;align-items:flex-end;border-top:1px solid var(--dourado-dim);padding:.9rem 1.2rem;flex-shrink:0}
+#barberApp .ba-zap-compose{position:relative;display:flex;gap:.6rem;align-items:flex-end;border-top:1px solid var(--dourado-dim);padding:.9rem 1.2rem;flex-shrink:0}
 #barberApp .ba-zap-compose textarea{flex:1;resize:none;max-height:6.5rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.86rem;padding:.7rem .8rem;border-radius:2px}
 #barberApp .ba-zap-compose textarea:focus{outline:none;border-color:var(--dourado)}
 #barberApp .ba-zap-compose .ba-btn{width:auto;max-width:none;padding:.8rem 1.3rem;margin:0}
+#barberApp .ba-zap-tools{display:flex;gap:.3rem;align-items:center;flex-shrink:0;padding-bottom:.1rem}
+#barberApp .ba-zap-icon-btn{background:none;border:none;cursor:pointer;font-size:1.05rem;line-height:1;padding:.4rem;border-radius:3px;opacity:.85}
+#barberApp .ba-zap-icon-btn:hover{opacity:1;background:rgba(198,167,94,.12)}
+#barberApp .ba-zap-icon-btn.active{background:var(--dourado);opacity:1}
+#barberApp #ba-zap-rec-timer{font-size:.72rem;color:var(--erro);white-space:nowrap}
+#barberApp .ba-zap-emoji-pop{position:absolute;bottom:100%;left:1.2rem;margin-bottom:.4rem;width:260px;max-height:200px;overflow-y:auto;background:var(--grafite-card);border:1px solid var(--dourado-dim);padding:.6rem;display:grid;grid-template-columns:repeat(8,1fr);gap:.15rem;z-index:5;scrollbar-width:none}
+#barberApp .ba-zap-emoji-pop::-webkit-scrollbar{display:none}
+#barberApp .ba-zap-emoji-pop button{background:none;border:none;cursor:pointer;font-size:1.15rem;padding:.25rem;border-radius:3px;line-height:1.3}
+#barberApp .ba-zap-emoji-pop button:hover{background:rgba(198,167,94,.15)}
+#barberApp .ba-zap-attach-menu{position:absolute;bottom:100%;left:1.2rem;margin-bottom:.4rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);z-index:5;display:flex;flex-direction:column;min-width:170px}
+#barberApp .ba-zap-attach-menu button{background:none;border:none;text-align:left;padding:.75rem 1rem;color:var(--prata);font-family:var(--font-body);font-size:.8rem;cursor:pointer}
+#barberApp .ba-zap-attach-menu button:hover{background:rgba(198,167,94,.12)}
+#barberApp .ba-zap-reply-bar,#barberApp .ba-zap-attach-bar{display:flex;align-items:center;gap:.6rem;padding:.6rem 1.2rem;border-top:1px solid var(--dourado-dim);background:rgba(198,167,94,.06)}
+#barberApp .ba-zap-reply-bar{border-left:3px solid var(--dourado)}
+#barberApp .ba-zap-reply-bar-text{flex:1;min-width:0;font-size:.78rem;overflow:hidden}
+#barberApp .ba-zap-reply-bar-text .who{display:block;color:var(--dourado);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase}
+#barberApp .ba-zap-reply-bar-text span:not(.who){display:block;color:var(--prata-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#barberApp .ba-zap-attach-bar img{height:44px;width:44px;object-fit:cover;border-radius:3px}
+#barberApp .ba-zap-attach-bar audio{height:32px;max-width:220px}
+#barberApp .ba-zap-attach-bar #ba-zap-attach-name{flex:1;font-size:.78rem;color:var(--prata-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#barberApp .ba-zap-x{background:none;border:none;color:var(--prata-dim);cursor:pointer;font-size:.9rem;flex-shrink:0}
+#barberApp .ba-zap-x:hover{color:var(--erro)}
+#barberApp .ba-zap-bubble{position:relative}
+#barberApp .ba-zap-reply-quote{display:block;border-left:2px solid var(--dourado-dim);padding:.3rem .5rem;margin-bottom:.35rem;font-size:.76rem;color:var(--prata-dim);background:rgba(0,0,0,.14);border-radius:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#barberApp .ba-zap-reply-btn{position:absolute;top:-.3rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:50%;width:22px;height:22px;line-height:20px;text-align:center;font-size:.72rem;cursor:pointer;opacity:0;transition:opacity .15s}
+#barberApp .ba-zap-bubble.out .ba-zap-reply-btn{left:-1.6rem}
+#barberApp .ba-zap-bubble.in .ba-zap-reply-btn{right:-1.6rem}
+#barberApp .ba-zap-bubble:hover .ba-zap-reply-btn{opacity:1}
+#barberApp .ba-zap-bubble.swiping{transition:none}
+#barberApp .ba-zap-bubble-media{max-width:220px;border-radius:4px;display:block;margin-bottom:.3rem;cursor:pointer}
 #barberApp .ba-zap-empty{color:var(--prata-dim);font-size:.82rem;padding:1.2rem 0;text-align:center}
 #barberApp .ba-zap-ficha-note{width:100%;min-height:6rem;resize:vertical;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.84rem;padding:.7rem .8rem;border-radius:2px;margin-bottom:.7rem}
 #barberApp .ba-zap-ficha-note:focus{outline:none;border-color:var(--dourado)}
@@ -4268,10 +4301,35 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           </div>
           <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleFicha()">Ficha</button>
         </div>
-        <div class="ba-zap-thread" id="ba-zap-thread-messages"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
-        <div class="ba-zap-compose" id="ba-zap-compose" style="display:none">
-          <textarea id="ba-zap-input" placeholder="Digite uma mensagem…" rows="1" maxlength="4000" oninput="baZapAutoGrow(this)" onkeydown="baZapInputKeydown(event)"></textarea>
-          <button class="ba-btn" id="ba-zap-send-btn" onclick="baZapSend()">Enviar</button>
+        <div class="ba-zap-thread" id="ba-zap-thread-messages" ontouchstart="baZapThreadTouchStart(event)" ontouchmove="baZapThreadTouchMove(event)" ontouchend="baZapThreadTouchEnd(event)"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
+        <div id="ba-zap-compose-wrap" style="display:none">
+          <div class="ba-zap-reply-bar" id="ba-zap-reply-bar" style="display:none">
+            <div class="ba-zap-reply-bar-text"><span class="who" id="ba-zap-reply-who"></span><span id="ba-zap-reply-preview"></span></div>
+            <button type="button" class="ba-zap-x" onclick="baZapCancelReply()" aria-label="Cancelar resposta">✕</button>
+          </div>
+          <div class="ba-zap-attach-bar" id="ba-zap-attach-bar" style="display:none">
+            <img id="ba-zap-attach-thumb" style="display:none">
+            <audio id="ba-zap-attach-audio" controls style="display:none"></audio>
+            <span id="ba-zap-attach-name"></span>
+            <button type="button" class="ba-zap-x" onclick="baZapCancelAttachment()" aria-label="Remover anexo">✕</button>
+          </div>
+          <div class="ba-zap-compose" id="ba-zap-compose">
+            <div class="ba-zap-tools">
+              <button type="button" class="ba-zap-icon-btn" onclick="baZapToggleEmoji()" title="Emoji">🙂</button>
+              <button type="button" class="ba-zap-icon-btn" onclick="baZapToggleAttachMenu()" title="Anexar">📎</button>
+              <button type="button" class="ba-zap-icon-btn" id="ba-zap-mic-btn" onclick="baZapToggleRecording()" title="Gravar áudio">🎤</button>
+              <span id="ba-zap-rec-timer" style="display:none">● 0:00</span>
+            </div>
+            <textarea id="ba-zap-input" placeholder="Digite uma mensagem…" rows="1" maxlength="4000" oninput="baZapAutoGrow(this)" onkeydown="baZapInputKeydown(event)" onpaste="baZapHandlePaste(event)"></textarea>
+            <button class="ba-btn" id="ba-zap-send-btn" onclick="baZapSend()">Enviar</button>
+            <div class="ba-zap-emoji-pop" id="ba-zap-emoji-pop" style="display:none"></div>
+            <div class="ba-zap-attach-menu" id="ba-zap-attach-menu" style="display:none">
+              <button type="button" onclick="document.getElementById('ba-zap-file-photo').click()">🖼️ Foto/arquivo</button>
+              <button type="button" onclick="document.getElementById('ba-zap-file-camera').click()">📷 Câmera</button>
+            </div>
+            <input type="file" id="ba-zap-file-photo" accept="image/*" style="display:none" onchange="baZapFileChosen(this)">
+            <input type="file" id="ba-zap-file-camera" accept="image/*" capture="environment" style="display:none" onchange="baZapFileChosen(this)">
+          </div>
         </div>
       </div>
 
@@ -5020,9 +5078,10 @@ function baZapSetState(state){
 function baZapOpenChat(chatId, phone){
   baZapCurrentChat = chatId;
   baZapCurrentPhone = phone || (chatId.endsWith('@c.us') ? chatId.split('@')[0] : null);
+  baZapResetComposeState(); // trocar de conversa não pode levar anexo/resposta pendente da anterior junto
   document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
   document.getElementById('ba-zap-ficha-btn').style.display = '';
-  document.getElementById('ba-zap-compose').style.display = '';
+  document.getElementById('ba-zap-compose-wrap').style.display = '';
   document.getElementById('ba-zap-thread-title').textContent = baZapTitleFor(chatId, baZapCurrentPhone);
   document.getElementById('ba-zap-thread-sub').textContent = baZapFormatPhone(baZapCurrentPhone) || chatId;
   baZapSetState('thread');
@@ -5123,18 +5182,174 @@ async function baZapSaveNote(){
   if(error) alert('Não foi possível salvar a observação.');
 }
 
+let baZapThreadMessages = []; // cache da última renderização — usado pra achar a mensagem ao responder
+
+function baZapMessagePreview(m){
+  if(m.body) return m.body.slice(0,160);
+  if(m.media_kind==='image') return '📷 Foto';
+  if(m.media_kind==='audio') return '🎤 Áudio';
+  if(m.media_kind==='video') return '🎥 Vídeo';
+  if(m.media_kind) return '📎 Arquivo';
+  return '';
+}
+function baZapBubbleMedia(m){
+  if(!m.media_kind || !m.media_url) return '';
+  if(m.media_kind==='image') return `<a href="${primeEsc(m.media_url)}" target="_blank" rel="noopener"><img class="ba-zap-bubble-media" src="${primeEsc(m.media_url)}" loading="lazy"></a>`;
+  if(m.media_kind==='audio') return `<audio controls style="max-width:220px;display:block;margin-bottom:.3rem"><source src="${primeEsc(m.media_url)}" type="${primeEsc(m.media_mimetype||'')}"></audio>`;
+  if(m.media_kind==='video') return `<video controls style="max-width:220px;border-radius:4px;display:block;margin-bottom:.3rem"><source src="${primeEsc(m.media_url)}" type="${primeEsc(m.media_mimetype||'')}"></video>`;
+  return `<a href="${primeEsc(m.media_url)}" target="_blank" rel="noopener" style="display:block;margin-bottom:.3rem">📎 ${primeEsc(m.media_mimetype||'arquivo')}</a>`;
+}
 async function baZapRenderThread(){
   if(!baZapCurrentChat) return;
   const { data, error } = await sb.from('whatsapp_messages').select('*').eq('chat_id', baZapCurrentChat).order('created_at',{ascending:true}).limit(200);
   const box = document.getElementById('ba-zap-thread-messages');
   if(error){ box.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as mensagens.</div>'; return; }
+  baZapThreadMessages = data || [];
   const wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
-  box.innerHTML = (data||[]).map(m=>{
+  box.innerHTML = baZapThreadMessages.map(m=>{
     const cls = m.direction==='outbound' ? 'out' : 'in';
     const status = m.status==='pending' ? '<span class="st">enviando…</span>' : m.status==='failed' ? `<span class="st failed">não enviada${m.error?' · '+primeEsc(m.error):''}</span>` : '';
-    return `<div class="ba-zap-bubble ${cls}">${primeEsc(m.body)}${status}</div>`;
+    const quote = m.reply_to_preview
+      ? `<span class="ba-zap-reply-quote">${m.reply_to_direction==='outbound'?'Você: ':''}${primeEsc(m.reply_to_preview)}</span>` : '';
+    return `<div class="ba-zap-bubble ${cls}" data-id="${m.id}" ondblclick="baZapReplyToMessage(${m.id})">
+      <button type="button" class="ba-zap-reply-btn" onclick="baZapReplyToMessage(${m.id})" title="Responder">↩</button>
+      ${quote}${baZapBubbleMedia(m)}${m.body?primeEsc(m.body):''}${status}
+    </div>`;
   }).join('') || '<div class="ba-zap-empty">Nenhuma mensagem ainda.</div>';
   if(wasAtBottom) box.scrollTop = box.scrollHeight;
+}
+
+// ── responder (seta no hover, duplo clique, arrastar no toque) ──
+let baZapReplyTarget = null;
+function baZapReplyToMessage(id){
+  const m = baZapThreadMessages.find(x=>x.id===id);
+  if(!m) return;
+  baZapReplyTarget = { waMessageId: m.wa_message_id || null, preview: baZapMessagePreview(m) || '(mensagem)', direction: m.direction };
+  document.getElementById('ba-zap-reply-who').textContent = m.direction==='outbound' ? 'Você' : (baZapTitleFor(baZapCurrentChat, baZapCurrentPhone)||'Contato');
+  document.getElementById('ba-zap-reply-preview').textContent = baZapReplyTarget.preview;
+  document.getElementById('ba-zap-reply-bar').style.display = 'flex';
+  document.getElementById('ba-zap-input').focus();
+}
+function baZapCancelReply(){
+  baZapReplyTarget = null;
+  document.getElementById('ba-zap-reply-bar').style.display = 'none';
+}
+let baZapSwipe = null;
+function baZapThreadTouchStart(ev){
+  const bubble = ev.target.closest('.ba-zap-bubble');
+  if(!bubble) return;
+  baZapSwipe = { el: bubble, id: Number(bubble.dataset.id), startX: ev.touches[0].clientX };
+  bubble.classList.add('swiping');
+}
+function baZapThreadTouchMove(ev){
+  if(!baZapSwipe) return;
+  const dx = ev.touches[0].clientX - baZapSwipe.startX;
+  baZapSwipe.el.style.transform = `translateX(${Math.max(-70,Math.min(70,dx))}px)`;
+}
+function baZapThreadTouchEnd(){
+  if(!baZapSwipe) return;
+  const { el, id } = baZapSwipe;
+  const dx = parseFloat(el.style.transform.replace(/[^-\d.]/g,'')) || 0;
+  el.style.transform = '';
+  el.classList.remove('swiping');
+  if(Math.abs(dx) > 40) baZapReplyToMessage(id);
+  baZapSwipe = null;
+}
+
+// ── emoji ──
+const BA_ZAP_EMOJI = ['😀','😁','😂','🤣','😊','🙂','😉','😍','😘','😎','🤔','😅','🙏','👍','👎','👏','💪','🤝','❤️','🔥','✨','🎉','✂️','💈','💇','⏰','📅','✅','❌','😴','🥳','👌','💰','📍','📸','🗓️','😢','😡','👋','🙌'];
+function baZapCloseMenus(except){
+  if(except!=='emoji') document.getElementById('ba-zap-emoji-pop').style.display = 'none';
+  if(except!=='attach') document.getElementById('ba-zap-attach-menu').style.display = 'none';
+}
+function baZapToggleEmoji(){
+  const pop = document.getElementById('ba-zap-emoji-pop');
+  const opening = pop.style.display === 'none';
+  baZapCloseMenus('emoji');
+  if(opening && !pop.childElementCount) pop.innerHTML = BA_ZAP_EMOJI.map(e=>`<button type="button" onclick="baZapInsertEmoji('${e}')">${e}</button>`).join('');
+  pop.style.display = opening ? 'grid' : 'none';
+}
+function baZapInsertEmoji(e){
+  const ta = document.getElementById('ba-zap-input');
+  const start = ta.selectionStart ?? ta.value.length, end = ta.selectionEnd ?? ta.value.length;
+  ta.value = ta.value.slice(0,start) + e + ta.value.slice(end);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = start + e.length;
+  baZapAutoGrow(ta);
+}
+
+// ── anexo (foto/arquivo, câmera, colar print) ──
+let baZapPendingAttachment = null; // {blob, mimetype, kind, filename}
+function baZapToggleAttachMenu(){
+  const m = document.getElementById('ba-zap-attach-menu');
+  const opening = m.style.display === 'none';
+  baZapCloseMenus('attach');
+  m.style.display = opening ? 'flex' : 'none';
+}
+function baZapFileChosen(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  document.getElementById('ba-zap-attach-menu').style.display = 'none';
+  if(file) baZapSetAttachment(file, 'image');
+}
+function baZapHandlePaste(ev){
+  const items = ev.clipboardData && ev.clipboardData.items;
+  if(!items) return;
+  for(const it of items){
+    if(it.type && it.type.startsWith('image/')){
+      ev.preventDefault();
+      const file = it.getAsFile();
+      if(file) baZapSetAttachment(file, 'image');
+      return;
+    }
+  }
+}
+function baZapSetAttachment(blobOrFile, kind){
+  baZapPendingAttachment = {
+    blob: blobOrFile,
+    mimetype: blobOrFile.type || (kind==='audio' ? 'audio/webm' : 'application/octet-stream'),
+    kind,
+    filename: blobOrFile.name || `${kind}.${(blobOrFile.type||'').split('/')[1]||'bin'}`,
+  };
+  const img = document.getElementById('ba-zap-attach-thumb'), audio = document.getElementById('ba-zap-attach-audio');
+  img.style.display = 'none'; audio.style.display = 'none';
+  if(kind==='image'){ img.src = URL.createObjectURL(blobOrFile); img.style.display = ''; }
+  else { audio.src = URL.createObjectURL(blobOrFile); audio.style.display = ''; }
+  document.getElementById('ba-zap-attach-name').textContent = kind==='image' ? 'Foto anexada' : 'Áudio gravado';
+  document.getElementById('ba-zap-attach-bar').style.display = 'flex';
+}
+function baZapCancelAttachment(){
+  baZapPendingAttachment = null;
+  document.getElementById('ba-zap-attach-bar').style.display = 'none';
+}
+
+// ── gravar áudio ──
+let baZapRecorder = null, baZapRecChunks = [], baZapRecStart = 0, baZapRecTimer = null;
+async function baZapToggleRecording(){
+  if(baZapRecorder && baZapRecorder.state === 'recording'){ baZapRecorder.stop(); return; }
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch{ alert('Não foi possível acessar o microfone — verifique a permissão do navegador.'); return; }
+  baZapRecChunks = [];
+  baZapRecorder = new MediaRecorder(stream);
+  baZapRecorder.ondataavailable = e=>{ if(e.data.size>0) baZapRecChunks.push(e.data); };
+  baZapRecorder.onstop = ()=>{
+    stream.getTracks().forEach(t=>t.stop());
+    clearInterval(baZapRecTimer);
+    document.getElementById('ba-zap-rec-timer').style.display = 'none';
+    document.getElementById('ba-zap-mic-btn').classList.remove('active');
+    const blob = new Blob(baZapRecChunks, {type: baZapRecorder.mimeType || 'audio/webm'});
+    if(blob.size>0) baZapSetAttachment(blob, 'audio');
+  };
+  baZapRecorder.start();
+  baZapRecStart = Date.now();
+  document.getElementById('ba-zap-mic-btn').classList.add('active');
+  const timerEl = document.getElementById('ba-zap-rec-timer');
+  timerEl.style.display = 'inline';
+  baZapRecTimer = setInterval(()=>{
+    const s = Math.floor((Date.now()-baZapRecStart)/1000);
+    timerEl.textContent = `● ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  }, 500);
 }
 
 function baZapAutoGrow(el){
@@ -5145,28 +5360,55 @@ function baZapInputKeydown(ev){
   // Enter manda, Shift+Enter quebra linha — igual qualquer app de mensagem
   if(ev.key === 'Enter' && !ev.shiftKey){ ev.preventDefault(); baZapSend(); }
 }
+function baZapResetComposeState(){
+  baZapPendingAttachment = null;
+  baZapReplyTarget = null;
+  document.getElementById('ba-zap-attach-bar').style.display = 'none';
+  document.getElementById('ba-zap-reply-bar').style.display = 'none';
+  baZapCloseMenus();
+  if(baZapRecorder && baZapRecorder.state === 'recording') baZapRecorder.stop();
+}
 async function baZapSend(){
   const input = document.getElementById('ba-zap-input');
   const body = input.value.trim();
-  if(!body || !baZapCurrentChat) return;
+  const attachment = baZapPendingAttachment;
+  if((!body && !attachment) || !baZapCurrentChat) return;
   const btn = document.getElementById('ba-zap-send-btn');
   btn.disabled = true;
-  const { error } = await sb.from('whatsapp_messages').insert({
+
+  const row = {
     chat_id: baZapCurrentChat, direction: 'outbound', status: 'pending', body, created_by: baCurrentBarberId,
-  });
+    reply_to_wa_id: baZapReplyTarget ? baZapReplyTarget.waMessageId : null,
+    reply_to_preview: baZapReplyTarget ? baZapReplyTarget.preview : null,
+    reply_to_direction: baZapReplyTarget ? baZapReplyTarget.direction : null,
+  };
+
+  if(attachment){
+    const ext = (attachment.mimetype.split('/')[1]||'bin').replace(/[^a-z0-9]/gi,'');
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('whatsapp-media').upload(path, attachment.blob, { contentType: attachment.mimetype });
+    if(upErr){ btn.disabled = false; alert('Não foi possível enviar o anexo. Tente de novo.'); return; }
+    row.media_url = sb.storage.from('whatsapp-media').getPublicUrl(path).data.publicUrl;
+    row.media_mimetype = attachment.mimetype;
+    row.media_kind = attachment.kind;
+  }
+
+  const { error } = await sb.from('whatsapp_messages').insert(row);
   btn.disabled = false;
   if(error){ alert('Não foi possível mandar a mensagem. Tente de novo.'); return; }
   input.value = '';
   baZapAutoGrow(input);
+  baZapResetComposeState();
   baZapRenderThread();
 }
 
 function baZapSetup(){
   baZapCurrentChat = null;
   baZapCurrentPhone = null;
+  baZapResetComposeState();
   document.getElementById('ba-screen-zap').classList.remove('ficha-open');
   document.getElementById('ba-zap-ficha-btn').style.display = 'none';
-  document.getElementById('ba-zap-compose').style.display = 'none';
+  document.getElementById('ba-zap-compose-wrap').style.display = 'none';
   document.getElementById('ba-zap-new-form').style.display = 'none';
   document.getElementById('ba-zap-thread-title').textContent = 'Nenhum atendimento selecionado';
   document.getElementById('ba-zap-thread-sub').textContent = 'selecione uma conversa na lista';
