@@ -3396,6 +3396,7 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-attach-menu{position:absolute;bottom:100%;left:1.2rem;margin-bottom:.4rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);z-index:5;display:flex;flex-direction:column;min-width:170px}
 #barberApp .ba-zap-attach-menu button{background:none;border:none;text-align:left;padding:.75rem 1rem;color:var(--prata);font-family:var(--font-body);font-size:.8rem;cursor:pointer}
 #barberApp .ba-zap-attach-menu button:hover{background:rgba(198,167,94,.12)}
+#barberApp .ba-zap-compose-wrap{display:flex;flex-direction:column;flex-shrink:0;flex-grow:0;max-height:60%}
 #barberApp .ba-zap-reply-bar,#barberApp .ba-zap-attach-bar{display:flex;align-items:center;gap:.6rem;padding:.6rem 1.2rem;border-top:1px solid var(--dourado-dim);background:rgba(198,167,94,.06)}
 #barberApp .ba-zap-reply-bar{border-left:3px solid var(--dourado)}
 #barberApp .ba-zap-reply-bar-text{flex:1;min-width:0;font-size:.78rem;overflow:hidden}
@@ -4302,7 +4303,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleFicha()">Ficha</button>
         </div>
         <div class="ba-zap-thread" id="ba-zap-thread-messages" ontouchstart="baZapThreadTouchStart(event)" ontouchmove="baZapThreadTouchMove(event)" ontouchend="baZapThreadTouchEnd(event)"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
-        <div id="ba-zap-compose-wrap" style="display:none">
+        <div class="ba-zap-compose-wrap" id="ba-zap-compose-wrap" style="display:none">
           <div class="ba-zap-reply-bar" id="ba-zap-reply-bar" style="display:none">
             <div class="ba-zap-reply-bar-text"><span class="who" id="ba-zap-reply-who"></span><span id="ba-zap-reply-preview"></span></div>
             <button type="button" class="ba-zap-x" onclick="baZapCancelReply()" aria-label="Cancelar resposta">✕</button>
