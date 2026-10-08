@@ -6712,7 +6712,7 @@ let csBusy = false;
 const CS_ERR = {
   NOT_ADMIN: 'Essa ação precisa da confirmação de um admin.',
   BAD_OPERATOR: 'Só a conta de vendas ou um admin podem operar o caixa.',
-  NOT_SESSION_OWNER: 'Só quem abriu o caixa (ou um admin) pode fazer isso.',
+  NOT_SESSION_OWNER: 'Seu usuário não pode operar o caixa.',
   SESSION_ALREADY_OPEN: 'Já existe um caixa aberto.',
   NO_OPEN_SESSION: 'Não há caixa aberto.',
   NO_OPEN_CASH_SESSION: 'Caixa fechado. Peça pra abrir o caixa antes de registrar a venda.',
@@ -6738,7 +6738,8 @@ function csCents(v){ return Math.round((Number(v)||0)*100); }
 function csMethodLabel(m){ const x = BA_PGTO_METODOS.find(i=>i.v===m); return x ? x.l : m; }
 function csCanOperate(){ return baCurrentRole==='admin' || baCurrentRole==='vendas'; }
 // quem pode movimentar/fechar a sessão aberta: quem abriu ou qualquer admin (o banco confere de novo)
-function csIsOwnerOrAdmin(st){ return baCurrentRole==='admin' || !!(st && st.session && st.session.opened_by === baCurrentBarberId); }
+// admin e vendas operam qualquer caixa (o banco exige a confirmação de um admin em cada operação)
+function csIsOwnerOrAdmin(){ return baCurrentRole==='admin' || baCurrentRole==='vendas'; }
 
 async function csFetchState(){
   const { data, error } = await sb.rpc('cash_session_current');
@@ -6954,7 +6955,7 @@ async function csRenderScreen(){
         <button class="ba-btn ghost" onclick="csOpenSangriaModal()">Sangria</button>
         <button class="ba-btn ghost" onclick="csOpenSuprimentoModal()">Suprimento</button>
         <button class="ba-btn" onclick="csOpenCloseModal()">Fechar caixa</button>
-      </div>` : `<div class="cs-note" style="margin:0">Esse caixa foi aberto por ${primeEsc(s.opened_by_name||'outra pessoa')}. Só quem abriu (ou um admin) pode movimentar e fechar. As vendas continuam entrando normalmente.</div>`}</div>`;
+      </div>` : ''}</div>`;
     if(rep) html += '<div class="cs-slabel">Resumo do turno</div>' + csSummaryHtml(rep)
       + `<button class="ba-btn ghost" style="margin-top:.8rem" onclick="csShowReport(${Number(s.id)})">Ver relatório completo</button>`;
   }
@@ -7144,6 +7145,7 @@ function csDoClose(){
     }
   }
   const note = document.getElementById('cs-close-nota').value.trim() || null;
+  if(!confirm('Você vai FECHAR o caixa.\n\nContado: '+csMoney(counted)+'\nFica pro próximo dia: '+csMoney(carry)+'\n\nTem certeza?')) return;
   csRunWithAdmin({subtitle:'Fechar o caixa precisa da confirmação de um admin.', confirmLabel:'Fechar caixa'},
     c => c.rpc('cash_session_close', { p_operator: baCurrentBarberId, p_counted: counted, p_carry: carry, p_destino: destino, p_bank_account_id: bankId, p_note: note }),
     async (res)=>{
