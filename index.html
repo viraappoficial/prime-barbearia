@@ -4797,7 +4797,7 @@ function baAddDays(iso, days){
 
 function baShow(id){document.querySelectorAll('#barberApp .screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function baOpen(){document.getElementById('barberApp').classList.add('open');document.body.style.overflow='hidden'}
-function baClose(){document.getElementById('barberApp').classList.remove('open');document.body.style.overflow=''}
+function baClose(){ if(document.documentElement.classList.contains('staff-host')) return; document.getElementById('barberApp').classList.remove('open');document.body.style.overflow=''}
 
 // seletor de barbeiro nas telas de Agenda/Atendimento — só aparece pra conta role='vendas'.
 // escolher um chip seta baActingBarberId e reaproveita baTab() pra re-renderizar a tela atual.
@@ -10524,6 +10524,14 @@ async function baCreateBarber(){
   document.getElementById('ba-nb-vendas-hint').style.display='none';
 }
 
+// subdomínio da equipe (staff.primebarbearia.app.br): abre direto no login do staff, sem a página do cliente por trás
+if(/^staff\./i.test(location.hostname)){
+  document.documentElement.classList.add('staff-host');
+  document.title = 'Prime Staff';
+  const mf = document.querySelector('link[rel="manifest"]'); if(mf) mf.setAttribute('href','manifest-staff.json');
+  const rb = document.createElement('meta'); rb.name = 'robots'; rb.content = 'noindex,nofollow'; document.head.appendChild(rb);
+  baOpen();
+}
 document.querySelectorAll('[data-open-barber]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();baOpen();}));
 addEventListener('keydown',e=>{if(e.key==='Escape'){baClose();closeBarberProfile();}});
 document.getElementById('barberProfileModal').addEventListener('click',e=>{if(e.target.id==='barberProfileModal')closeBarberProfile();});
@@ -10937,6 +10945,7 @@ function primeRenderProductCatalog(search){
 
 <style>
 #ba-report-print, #ba-qr-print{display:none}
+.staff-host #barberApp .ba-close, .staff-host #barberApp button[onclick="baClose()"]{display:none!important}
 @media print{
   body > *:not(.prime-print-target){display:none!important}
   .prime-print-target{display:block!important}
