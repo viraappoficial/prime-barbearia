@@ -3388,6 +3388,8 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-row .when{font-size:.68rem;color:var(--prata-dim);flex:none;text-align:right}
 #barberApp .ba-zap-row .when.pending{color:var(--alerta)}
 #barberApp .ba-zap-row .when.failed{color:var(--erro)}
+#barberApp .ba-zap-handoff-badge{display:inline-block;margin-top:.25rem;font-size:.66rem;font-weight:600;color:var(--alerta)}
+#barberApp .ba-zap-assumed-badge{display:inline-block;margin-top:.25rem;padding:.08rem .45rem;border-radius:999px;font-size:.64rem;font-weight:600;background:var(--dourado);color:var(--verde-noite)}
 #barberApp .ba-zap-thread{grid-row:2;min-height:0;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;padding:1rem 1.2rem}
 #barberApp .ba-zap-bubble{max-width:72%;padding:.6rem .85rem;font-size:.86rem;line-height:1.45;border-radius:4px}
 #barberApp .ba-zap-bubble.in{align-self:flex-start;background:var(--grafite-card);border:1px solid var(--hair)}
@@ -4319,6 +4321,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
               <div class="sub" id="ba-zap-thread-sub">selecione uma conversa na lista</div>
             </div>
           </div>
+          <button class="ba-btn ghost" id="ba-zap-assume-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleAssume()">Assumir</button>
           <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleFicha()">Ficha</button>
         </div>
         <div class="ba-zap-thread" id="ba-zap-thread-messages" ontouchstart="baZapThreadTouchStart(event)" ontouchmove="baZapThreadTouchMove(event)" ontouchend="baZapThreadTouchEnd(event)"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
@@ -5067,12 +5070,12 @@ async function baZapResolveNames(phones){
 }
 // nome/foto reais do WhatsApp — independe de cadastro no Prime (gravado só pelo servidor de
 // casa, em whatsapp_contacts). Prioridade de nome: WhatsApp > cliente do Prime > telefone.
-async function baZapResolveWaInfo(chatIds){
-  const toFetch = [...new Set(chatIds)].filter(id=>id && !(id in baZapWaInfoCache));
+async function baZapResolveWaInfo(chatIds, force){
+  const toFetch = [...new Set(chatIds)].filter(id=>id && (force || !(id in baZapWaInfoCache)));
   if(toFetch.length){
-    const { data } = await sb.from('whatsapp_contacts').select('chat_id,wa_name,picture_url').in('chat_id', toFetch);
-    (data||[]).forEach(c=>{ baZapWaInfoCache[c.chat_id] = { name: c.wa_name, pictureUrl: c.picture_url }; });
-    toFetch.forEach(id=>{ if(!(id in baZapWaInfoCache)) baZapWaInfoCache[id] = { name:null, pictureUrl:null }; });
+    const { data } = await sb.from('whatsapp_contacts').select('chat_id,wa_name,picture_url,handoff_requested,assumed_by').in('chat_id', toFetch);
+    (data||[]).forEach(c=>{ baZapWaInfoCache[c.chat_id] = { name: c.wa_name, pictureUrl: c.picture_url, handoffRequested: c.handoff_requested, assumedBy: c.assumed_by }; });
+    toFetch.forEach(id=>{ if(!(id in baZapWaInfoCache)) baZapWaInfoCache[id] = { name:null, pictureUrl:null, handoffRequested:false, assumedBy:null }; });
   }
 }
 function baZapTitleFor(chatId, phone){
@@ -5100,9 +5103,12 @@ async function baRenderZapList(){
     const whenTxt = c.last_status==='pending' ? 'enviando…' : c.last_status==='failed' ? 'falhou' : baZapWhen(c.last_at);
     // chat_id e contact_phone já são validados/sanitizados na captura (inbound.ts) — só
     // [A-Za-z0-9@._:-] e dígitos, nunca precisam de aspas/escaping dentro do onclick.
+    const info = baZapWaInfoCache[c.chat_id];
+    const badge = info && info.handoffRequested ? '<div class="ba-zap-handoff-badge">Atendimento solicitado</div>'
+      : info && info.assumedBy ? '<div class="ba-zap-assumed-badge">Assumido</div>' : '';
     return `<button class="ba-zap-row" onclick="baZapOpenChat('${c.chat_id}','${c.contact_phone||''}')">
       ${baZapAvatarHtml(c.chat_id, title)}
-      <div style="min-width:0;flex:1"><div class="nm">${primeEsc(title)}</div><div class="pv">${primeEsc(prefix + c.last_body)}</div></div>
+      <div style="min-width:0;flex:1"><div class="nm">${primeEsc(title)}</div><div class="pv">${primeEsc(prefix + c.last_body)}</div>${badge}</div>
       <div class="when ${whenCls}">${whenTxt}</div>
     </button>`;
   }).join('');
@@ -5126,8 +5132,32 @@ async function baZapOpenChat(chatId, phone){
   document.getElementById('ba-zap-thread-title').textContent = title;
   document.getElementById('ba-zap-thread-sub').textContent = baZapFormatPhone(baZapCurrentPhone) || chatId;
   document.getElementById('ba-zap-thread-avatar').innerHTML = baZapAvatarHtml(chatId, title);
+  baZapUpdateAssumeBtn(chatId);
   baZapSetState('thread');
   baZapRenderThread();
+}
+// botão de cabeçalho: "Assumir" pausa a URA pra esse número (ela fica calada até devolver);
+// "Devolver pro bot" reativa. Qualquer vendas/admin pode alternar — a equipe compartilha a fila.
+function baZapUpdateAssumeBtn(chatId){
+  const btn = document.getElementById('ba-zap-assume-btn');
+  const info = baZapWaInfoCache[chatId];
+  const assumed = !!(info && info.assumedBy);
+  btn.style.display = '';
+  btn.textContent = assumed ? 'Devolver pro bot' : 'Assumir';
+  btn.classList.toggle('active', assumed);
+}
+async function baZapToggleAssume(){
+  if(!baZapCurrentChat) return;
+  const info = baZapWaInfoCache[baZapCurrentChat];
+  const assumed = !!(info && info.assumedBy);
+  const btn = document.getElementById('ba-zap-assume-btn');
+  btn.disabled = true;
+  const { error } = await sb.rpc(assumed ? 'release_whatsapp_chat' : 'assume_whatsapp_chat', { p_chat_id: baZapCurrentChat });
+  btn.disabled = false;
+  if(error){ alert('Não foi possível ' + (assumed?'devolver':'assumir') + ' agora. Tenta de novo.'); return; }
+  await baZapResolveWaInfo([baZapCurrentChat], true); // força reconsulta, ignora cache
+  baZapUpdateAssumeBtn(baZapCurrentChat);
+  baRenderZapList();
 }
 function baZapBackToList(){
   baZapCurrentChat = null;
