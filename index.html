@@ -7183,63 +7183,90 @@ function csReportText(rep){
   const s = rep.session, bm = rep.by_method || {};
   const sup = csSumSuprimentos(rep), sang = csSumSangrias(rep);
   const L = [];
-  L.push(`*Caixa #${Number(s.id)} — Prime Barbearia*`);
-  L.push(`${csFmtDate(s.opened_at)} · ${s.opened_by_name||'—'} · ${csFmtTime(s.opened_at)}${s.closed_at ? '–'+csFmtTime(s.closed_at) : ' (aberto)'}`);
-  L.push('');
-  L.push(`Abertura: ${csMoney(s.opening_amount)}`);
+  const sep = '──────────────';
+  const money = csMoney;
+  // só mostra as formas que tiveram valor: "Dinheiro R$ 10,00 · Pix R$ 5,00"
+  const formas = o => [['Dinheiro', o.dinheiro], ['Cartão', o.cartao], ['Pix', o.pix], ['A prazo', o.a_prazo]]
+    .filter(f=>Number(f[1])>0.004).map(f=>`${f[0]} ${money(f[1])}`).join(' · ');
+  L.push('*PRIME BARBEARIA*');
+  L.push(`*Fechamento do Caixa #${Number(s.id)}*`);
+  L.push(`📅 ${csFmtDate(s.opened_at)} · ${csFmtTime(s.opened_at)}${s.closed_at ? ' às '+csFmtTime(s.closed_at) : ' (ainda aberto)'}`);
+  L.push(`👤 Aberto por ${s.opened_by_name||'—'}${s.closed_at && s.closed_by_name ? ' · Fechado por '+s.closed_by_name : ''}`);
+
+  // ── dinheiro da gaveta ──
+  L.push(''); L.push(sep); L.push('*💵 DINHEIRO DA GAVETA*');
+  L.push(`Abertura: ${money(s.opening_amount)}`);
   const od = s.opening_difference!=null ? Number(s.opening_difference) : 0;
-  if(Math.abs(od)>=0.005) L.push(`${od<0 ? 'Falta' : 'Sobra'} na abertura: ${csMoney(Math.abs(od))}`);
-  L.push(`Vendas em dinheiro: ${csMoney(bm.dinheiro||0)}`);
-  if(sup) L.push(`Suprimentos: ${csMoney(sup)}`);
-  if(sang) L.push(`Sangrias: ${csMoney(sang)}`);
-  L.push(`*Esperado em dinheiro: ${csMoney(rep.expected_cash)}*`);
+  if(Math.abs(od)>=0.005) L.push(`   ${od<0 ? '⚠️ Falta' : 'Sobra'} na abertura: ${money(Math.abs(od))}`);
+  L.push(`+ Vendas em dinheiro: ${money(bm.dinheiro||0)}`);
+  if(sup) L.push(`+ Suprimentos: ${money(sup)}`);
+  if(sang) L.push(`− Sangrias: ${money(sang)}`);
+  L.push(`*= Esperado: ${money(rep.expected_cash)}*`);
   if(s.closed_at){
     const d = Number(s.difference);
-    L.push(`Contado: ${csMoney(s.counted_cash)}`);
-    L.push(Math.abs(d)<0.005 ? '*Confere (sem falta nem sobra)*' : `*${d<0 ? 'Falta' : 'Sobra'} de ${csMoney(Math.abs(d))}*`);
-    L.push(`Ficou no caixa: ${csMoney(s.carry_amount)}`);
-    if(Number(s.withdrawn_amount)>0) L.push(`Retirado pro ${s.close_destino==='banco' ? 'banco' : 'cofre'}: ${csMoney(s.withdrawn_amount)}`);
+    L.push(`Contado: ${money(s.counted_cash)}`);
+    L.push(Math.abs(d)<0.005 ? '✅ *Confere, sem falta nem sobra*' : `${d<0 ? '⚠️ *FALTA' : '➕ *SOBRA'} de ${money(Math.abs(d))}*`);
+    L.push(`Ficou no caixa: ${money(s.carry_amount)}`);
+    if(Number(s.withdrawn_amount)>0) L.push(`Levado pro ${s.close_destino==='banco' ? 'banco' : 'cofre'}: ${money(s.withdrawn_amount)}`);
   }
+
+  // ── recebido por forma ──
+  const g = csGroupMethods(bm);
+  L.push(''); L.push(sep); L.push('*💰 RECEBIDO NO DIA*');
+  L.push(`Dinheiro: ${money(g.dinheiro)}`);
+  L.push(`Cartão: ${money(g.cartao)}`);
+  L.push(`Pix: ${money(g.pix)}`);
+  L.push(`*Total: ${money(g.dinheiro+g.cartao+g.pix)}*`);
+  if(g.a_prazo>0) L.push(`A prazo (a receber): ${money(g.a_prazo)}`);
+
+  // ── por colaborador ──
+  if((rep.por_barbeiro_formas||[]).length){
+    L.push(''); L.push(sep); L.push('*👥 RECEBIDO POR COLABORADOR*');
+    rep.por_barbeiro_formas.forEach(b=>{
+      L.push(`• *${b.name||'—'}*: ${money(b.total)}`);
+      const f = formas(b); if(f) L.push(`   ${f}`);
+    });
+  }
+
+  // ── vendas ──
   if(rep.totais){
     const t = rep.totais, nv = Number(t.qtd_vendas)||0;
-    L.push(''); L.push('*Vendas do turno*');
-    L.push(`Serviços (${Number(t.qtd_servicos)||0}): ${csMoney(t.servicos)}`);
-    L.push(`Produtos (${Number(t.qtd_produtos)||0} un.): ${csMoney(t.produtos)}`);
-    L.push(`*Total vendido: ${csMoney(t.total)}* (${nv} venda${nv===1?'':'s'})`);
-  }
-  {
-    const g = csGroupMethods(bm);
-    L.push(''); L.push('*Recebido por forma*');
-    L.push(`Dinheiro: ${csMoney(g.dinheiro)}`);
-    L.push(`Cartão: ${csMoney(g.cartao)}`);
-    L.push(`Pix: ${csMoney(g.pix)}`);
-    L.push(`*Total recebido: ${csMoney(g.dinheiro+g.cartao+g.pix)}*`);
-    if(g.a_prazo>0) L.push(`A prazo (a receber): ${csMoney(g.a_prazo)}`);
-  }
-  if((rep.por_barbeiro_formas||[]).length){
-    L.push(''); L.push('*Recebido por colaborador*');
-    rep.por_barbeiro_formas.forEach(b=>L.push(`${b.name||'—'}: ${csMoney(b.total)} (dinheiro ${csMoney(b.dinheiro)} · cartão ${csMoney(b.cartao)} · pix ${csMoney(b.pix)}${Number(b.a_prazo)>0 ? ' · a prazo '+csMoney(b.a_prazo) : ''})`));
+    L.push(''); L.push(sep); L.push('*✂️ VENDAS DO TURNO*');
+    L.push(`Serviços (${Number(t.qtd_servicos)||0}): ${money(t.servicos)}`);
+    if(Number(t.qtd_produtos)>0) L.push(`Produtos (${Number(t.qtd_produtos)} un.): ${money(t.produtos)}`);
+    L.push(`*Total vendido: ${money(t.total)}* · ${nv} venda${nv===1?'':'s'}`);
   }
   if((rep.por_barbeiro_vendas||[]).length){
     L.push(''); L.push('*Por barbeiro*');
-    rep.por_barbeiro_vendas.forEach(b=>L.push(`${b.name||'—'}: ${csMoney(b.total)} (serviços ${csMoney(b.servicos)} · produtos ${csMoney(b.produtos)})`));
+    rep.por_barbeiro_vendas.forEach(b=>{
+      const extra = Number(b.produtos)>0.004 ? ` (serviços ${money(b.servicos)} · produtos ${money(b.produtos)})` : '';
+      L.push(`• ${b.name||'—'}: ${money(b.total)}${extra}`);
+    });
   } else if((rep.by_barber||[]).length){
     L.push(''); L.push('*Por barbeiro*');
-    rep.by_barber.forEach(b=>L.push(`${b.name||'—'}: ${csMoney(b.total)}`));
+    rep.by_barber.forEach(b=>L.push(`• ${b.name||'—'}: ${money(b.total)}`));
   }
   if((rep.produtos||[]).length){
     L.push(''); L.push('*Produtos vendidos*');
-    rep.produtos.forEach(p=>L.push(`${p.name} × ${Number(p.qty)}: ${csMoney(p.total)}`));
+    rep.produtos.forEach(p=>L.push(`• ${p.name} × ${Number(p.qty)}: ${money(p.total)}`));
   }
+
+  // ── detalhe (uma venda = 2 linhas) ──
   if((rep.vendas||[]).length){
     const vs = rep.vendas, MAX = 60;
-    L.push(''); L.push(`*Detalhe das vendas (${vs.length})*`);
+    L.push(''); L.push(sep); L.push(`*🧾 DETALHE DAS VENDAS (${vs.length})*`);
     vs.slice(0, MAX).forEach(v=>{
-      const its = (v.items||[]).map(csItemText).join(' + ');
-      const pays = (v.payments||[]).map(csPayText).join(' + ');
-      L.push(`${csFmtTime(v.at)} · ${v.client||'Cliente'}${v.late ? ' (vendida em '+csFmtDate(v.sold_at)+')' : ''}`);
-      if(its) L.push(`   ${its}`);
-      if(pays) L.push(`   Pago: ${pays}`);
+      const pays = (v.payments||[]).map(p=>{
+        let t = csMethodLabel(p.method);
+        if(p.method==='credito' && p.parcelas) t += ` ${Number(p.parcelas)}x`;
+        if(p.bandeira) t += ` ${p.bandeira}`;
+        return (v.payments||[]).length>1 ? `${t} ${money(p.value)}` : t;
+      }).join(' + ');
+      const its = v.items||[];
+      const nomes = its.slice(0,3).map(i=>`${i.service}${Number(i.qty)>1 ? ' ×'+Number(i.qty) : ''}${i.barber ? ' ('+i.barber+')' : ''}`).join(', ')
+        + (its.length>3 ? ` +${its.length-3} itens` : '');
+      L.push(`*${csFmtTime(v.at)}* ${v.client||'Cliente'} · *${money(v.late ? v.paid : v.items_total)}*${pays ? ' · '+pays : ''}`);
+      L.push(`   ${v.late ? '(venda de '+csFmtDate(v.sold_at)+') ' : ''}${nomes || '—'}`);
     });
     if(vs.length > MAX) L.push(`… e mais ${vs.length-MAX} vendas (veja o PDF)`);
   }
