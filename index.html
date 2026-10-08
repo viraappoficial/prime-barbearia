@@ -3365,7 +3365,15 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-screen.ficha-open .ba-zap-col-ficha{display:flex}
 #barberApp .ba-zap-col-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:1rem 1.2rem;border-bottom:1px solid rgba(198,167,94,.12);flex-shrink:0}
 #barberApp .ba-zap-col-head .ba-zap-back{display:none}
-#barberApp .ba-zap-main-title{min-width:0;flex:1}
+#barberApp .ba-zap-main-title{min-width:0;flex:1;display:flex;align-items:center;gap:.7rem}
+#barberApp .ba-zap-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;background:var(--grafite-card);border:1px solid var(--dourado-dim)}
+#barberApp .ba-zap-avatar-ph{width:36px;height:36px;border-radius:50%;flex:none;background:var(--grafite-card);border:1px solid var(--dourado-dim);display:flex;align-items:center;justify-content:center;font-size:.85rem;color:var(--dourado);font-family:var(--font-display)}
+#barberApp .ba-zap-row .ba-zap-avatar,#barberApp .ba-zap-row .ba-zap-avatar-ph{width:40px;height:40px;font-size:.95rem}
+#barberApp .ba-zap-ticks{letter-spacing:-.1em;font-size:.72rem;margin-left:.3rem}
+#barberApp .ba-zap-ticks.read{color:#34B7F1}
+#barberApp .ba-zap-bubble.deleted{font-style:italic;color:var(--prata-dim)}
+#barberApp .ba-zap-delete-btn{position:absolute;top:-.3rem;left:-2.9rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:50%;width:22px;height:22px;line-height:20px;text-align:center;font-size:.72rem;cursor:pointer;opacity:0;transition:opacity .15s}
+#barberApp .ba-zap-bubble.out:hover .ba-zap-delete-btn{opacity:1}
 #barberApp .ba-zap-main-title .nm{font-size:.92rem;color:var(--prata);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #barberApp .ba-zap-main-title .sub{font-size:.7rem;color:var(--prata-dim)}
 #barberApp .ba-zap-col-list>#ba-zap-list{flex:1;min-height:0;overflow-y:auto;padding:0 1.2rem}
@@ -4305,8 +4313,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <div class="ba-zap-col-head">
           <button class="ba-btn ghost ba-zap-back" onclick="baZapBackToList()">← Conversas</button>
           <div class="ba-zap-main-title">
-            <div class="nm" id="ba-zap-thread-title">Nenhum atendimento selecionado</div>
-            <div class="sub" id="ba-zap-thread-sub">selecione uma conversa na lista</div>
+            <div id="ba-zap-thread-avatar"></div>
+            <div style="min-width:0">
+              <div class="nm" id="ba-zap-thread-title">Nenhum atendimento selecionado</div>
+              <div class="sub" id="ba-zap-thread-sub">selecione uma conversa na lista</div>
+            </div>
           </div>
           <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleFicha()">Ficha</button>
         </div>
@@ -5028,7 +5039,8 @@ function baTab(tab){
 let baZapPollTimer = null;
 let baZapCurrentChat = null; // chat_id aberto agora, ou null se está na lista
 let baZapCurrentPhone = null; // telefone (dígitos) do chat aberto, ou null
-let baZapNamesCache = {}; // phone -> nome do cliente (cache simples da sessão)
+let baZapNamesCache = {}; // phone -> nome do cliente do Prime (cache simples da sessão)
+let baZapWaInfoCache = {}; // chat_id -> {name, pictureUrl} do WhatsApp de verdade (vem de whatsapp_contacts)
 
 function baZapFormatPhone(phone){
   if(!phone) return null;
@@ -5053,9 +5065,26 @@ async function baZapResolveNames(phones){
     toFetch.forEach(p=>{ if(!(p in baZapNamesCache)) baZapNamesCache[p] = null; });
   }
 }
+// nome/foto reais do WhatsApp — independe de cadastro no Prime (gravado só pelo servidor de
+// casa, em whatsapp_contacts). Prioridade de nome: WhatsApp > cliente do Prime > telefone.
+async function baZapResolveWaInfo(chatIds){
+  const toFetch = [...new Set(chatIds)].filter(id=>id && !(id in baZapWaInfoCache));
+  if(toFetch.length){
+    const { data } = await sb.from('whatsapp_contacts').select('chat_id,wa_name,picture_url').in('chat_id', toFetch);
+    (data||[]).forEach(c=>{ baZapWaInfoCache[c.chat_id] = { name: c.wa_name, pictureUrl: c.picture_url }; });
+    toFetch.forEach(id=>{ if(!(id in baZapWaInfoCache)) baZapWaInfoCache[id] = { name:null, pictureUrl:null }; });
+  }
+}
 function baZapTitleFor(chatId, phone){
-  const name = phone ? baZapNamesCache[phone] : null;
-  return name || baZapFormatPhone(phone) || chatId;
+  const waName = baZapWaInfoCache[chatId] && baZapWaInfoCache[chatId].name;
+  const clientName = phone ? baZapNamesCache[phone] : null;
+  return waName || clientName || baZapFormatPhone(phone) || chatId;
+}
+function baZapAvatarHtml(chatId, title){
+  const pic = baZapWaInfoCache[chatId] && baZapWaInfoCache[chatId].pictureUrl;
+  if(pic) return `<img class="ba-zap-avatar" src="${primeEsc(pic)}" alt="">`;
+  const letter = (title||'?').trim().charAt(0).toUpperCase() || '?';
+  return `<div class="ba-zap-avatar-ph">${primeEsc(letter)}</div>`;
 }
 
 async function baRenderZapList(){
@@ -5063,7 +5092,7 @@ async function baRenderZapList(){
   const list = document.getElementById('ba-zap-list');
   if(error){ list.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as conversas agora.</div>'; return; }
   if(!data || !data.length){ list.innerHTML = '<div class="ba-zap-empty">Nenhuma conversa ainda.</div>'; return; }
-  await baZapResolveNames(data.map(c=>c.contact_phone));
+  await Promise.all([baZapResolveNames(data.map(c=>c.contact_phone)), baZapResolveWaInfo(data.map(c=>c.chat_id))]);
   list.innerHTML = data.map(c=>{
     const title = baZapTitleFor(c.chat_id, c.contact_phone);
     const prefix = c.last_direction === 'outbound' ? 'Você: ' : '';
@@ -5072,7 +5101,8 @@ async function baRenderZapList(){
     // chat_id e contact_phone já são validados/sanitizados na captura (inbound.ts) — só
     // [A-Za-z0-9@._:-] e dígitos, nunca precisam de aspas/escaping dentro do onclick.
     return `<button class="ba-zap-row" onclick="baZapOpenChat('${c.chat_id}','${c.contact_phone||''}')">
-      <div><div class="nm">${primeEsc(title)}</div><div class="pv">${primeEsc(prefix + c.last_body)}</div></div>
+      ${baZapAvatarHtml(c.chat_id, title)}
+      <div style="min-width:0;flex:1"><div class="nm">${primeEsc(title)}</div><div class="pv">${primeEsc(prefix + c.last_body)}</div></div>
       <div class="when ${whenCls}">${whenTxt}</div>
     </button>`;
   }).join('');
@@ -5084,15 +5114,18 @@ function baZapSetState(state){
   document.getElementById('ba-screen-zap').dataset.state = state;
 }
 
-function baZapOpenChat(chatId, phone){
+async function baZapOpenChat(chatId, phone){
   baZapCurrentChat = chatId;
   baZapCurrentPhone = phone || (chatId.endsWith('@c.us') ? chatId.split('@')[0] : null);
   baZapResetComposeState(); // trocar de conversa não pode levar anexo/resposta pendente da anterior junto
   document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
   document.getElementById('ba-zap-ficha-btn').style.display = '';
   document.getElementById('ba-zap-compose-wrap').style.display = '';
-  document.getElementById('ba-zap-thread-title').textContent = baZapTitleFor(chatId, baZapCurrentPhone);
+  await baZapResolveWaInfo([chatId]); // pode já estar no cache (veio da lista); se não, busca agora
+  const title = baZapTitleFor(chatId, baZapCurrentPhone);
+  document.getElementById('ba-zap-thread-title').textContent = title;
   document.getElementById('ba-zap-thread-sub').textContent = baZapFormatPhone(baZapCurrentPhone) || chatId;
+  document.getElementById('ba-zap-thread-avatar').innerHTML = baZapAvatarHtml(chatId, title);
   baZapSetState('thread');
   baZapRenderThread();
 }
@@ -5158,7 +5191,8 @@ async function baZapRenderFicha(){
   const { data: noteRow } = await sb.from('whatsapp_contact_notes').select('note').eq('chat_id', chatId).maybeSingle();
   const note = (noteRow && noteRow.note) || '';
   if(chatId !== baZapCurrentChat) return; // trocou de conversa enquanto carregava
-  const title = client ? client.name : (baZapFormatPhone(phone) || chatId);
+  const waName = baZapWaInfoCache[chatId] && baZapWaInfoCache[chatId].name;
+  const title = waName || (client ? client.name : (baZapFormatPhone(phone) || chatId));
   const cutsHtml = cuts.length
     ? cuts.map(c=>`<div class="ba-cli-row"><span class="lbl">${baFormatDate(c.day)}</span><span class="val">${primeEsc((c.services||[]).join(', '))}</span></div>`).join('')
     : '<div class="ba-zap-empty" style="padding:.6rem 0">Nenhum corte concluído registrado.</div>';
@@ -5217,15 +5251,35 @@ async function baZapRenderThread(){
   const wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
   box.innerHTML = baZapThreadMessages.map(m=>{
     const cls = m.direction==='outbound' ? 'out' : 'in';
-    const status = m.status==='pending' ? '<span class="st">enviando…</span>' : m.status==='failed' ? `<span class="st failed">não enviada${m.error?' · '+primeEsc(m.error):''}</span>` : '';
+    if(m.deleted_at){
+      return `<div class="ba-zap-bubble ${cls} deleted" data-id="${m.id}">🚫 Mensagem apagada</div>`;
+    }
+    const status = m.status==='pending' ? '<span class="st">enviando…</span>'
+      : m.status==='failed' ? `<span class="st failed">não enviada${m.error?' · '+primeEsc(m.error):''}</span>`
+      : m.direction==='outbound' ? baZapTicksHtml(m.ack) : '';
     const quote = m.reply_to_preview
       ? `<span class="ba-zap-reply-quote">${m.reply_to_direction==='outbound'?'Você: ':''}${primeEsc(m.reply_to_preview)}</span>` : '';
+    const deleteBtn = (m.direction==='outbound' && m.status==='sent')
+      ? `<button type="button" class="ba-zap-delete-btn" onclick="baZapDeleteMessage(${m.id})" title="Apagar para todos">🗑</button>` : '';
     return `<div class="ba-zap-bubble ${cls}" data-id="${m.id}" ondblclick="baZapReplyToMessage(${m.id})">
-      <button type="button" class="ba-zap-reply-btn" onclick="baZapReplyToMessage(${m.id})" title="Responder">↩</button>
+      ${deleteBtn}<button type="button" class="ba-zap-reply-btn" onclick="baZapReplyToMessage(${m.id})" title="Responder">↩</button>
       ${quote}${baZapBubbleMedia(m)}${m.body?primeEsc(m.body):''}${status}
     </div>`;
   }).join('') || '<div class="ba-zap-empty">Nenhuma mensagem ainda.</div>';
   if(wasAtBottom) box.scrollTop = box.scrollHeight;
+}
+// ✓ enviada (SERVER) · ✓✓ entregue (DEVICE) · ✓✓ azul lida/ouvida (READ/PLAYED)
+function baZapTicksHtml(ack){
+  if(!ack || ack==='ERROR' || ack==='PENDING') return '<span class="ba-zap-ticks">✓</span>';
+  if(ack==='SERVER') return '<span class="ba-zap-ticks">✓</span>';
+  if(ack==='DEVICE') return '<span class="ba-zap-ticks">✓✓</span>';
+  return '<span class="ba-zap-ticks read">✓✓</span>'; // READ ou PLAYED
+}
+async function baZapDeleteMessage(id){
+  if(!confirm('Apagar esta mensagem para todos? Não tem como desfazer.')) return;
+  const { error } = await sb.rpc('request_message_delete', { p_message_id: id });
+  if(error){ alert('Não foi possível apagar agora. Tente de novo.'); return; }
+  baZapRenderThread();
 }
 
 // ── responder (seta no hover, duplo clique, arrastar no toque) ──
