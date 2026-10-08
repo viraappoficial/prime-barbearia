@@ -6733,6 +6733,33 @@ function csErrMsg(err){
 function csMoney(v){ return baFormatMoney(Number(v)||0); }
 function csFmtTime(iso){ return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function csFmtDate(iso){ const d=new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+function csFmtDateY(iso){ return csFmtDate(iso)+'/'+new Date(iso).getFullYear(); }
+function csFmtDT(iso){ return iso ? `${csFmtDate(iso)} ${csFmtTime(iso)}` : '—'; }
+// quanto tempo o caixa ficou aberto (ou está aberto) e se virou o dia sem fechar
+function csSpanInfo(s){
+  const start = new Date(s.opened_at), end = s.closed_at ? new Date(s.closed_at) : new Date();
+  const mins = Math.max(0, Math.floor((end-start)/60000)), days = Math.floor(mins/1440), h = Math.floor((mins%1440)/60), m = mins%60;
+  const cal = Math.round((new Date(end.getFullYear(),end.getMonth(),end.getDate()) - new Date(start.getFullYear(),start.getMonth(),start.getDate()))/86400000);
+  const txt = days>=1 ? `${days} dia${days===1?'':'s'}${h ? ` e ${h}h` : ''}` : (h ? `${h}h${m ? String(m).padStart(2,'0') : ''}` : `${m} min`);
+  return { txt, cal, over: cal>=1 };
+}
+// datas das vendas feitas durante o turno (as quitações de vendas antigas ficam de fora)
+function csSalesRange(rep){
+  const ds = (rep.vendas||[]).filter(v=>!v.late).map(v=>new Date(v.sold_at||v.at).getTime()).filter(x=>!isNaN(x));
+  if(!ds.length) return '';
+  const a = csFmtDate(new Date(Math.min(...ds)).toISOString()), b = csFmtDate(new Date(Math.max(...ds)).toISOString());
+  return a===b ? a : `${a} a ${b}`;
+}
+// linhas de período usadas na tela, no WhatsApp e no PDF
+function csPeriodLines(rep){
+  const s = rep.session, sp = csSpanInfo(s), L = [];
+  L.push(['Abertura', `${csFmtDateY(s.opened_at)} às ${csFmtTime(s.opened_at)}${s.opened_by_name ? ' · '+s.opened_by_name : ''}`]);
+  L.push(['Fechamento', s.closed_at ? `${csFmtDateY(s.closed_at)} às ${csFmtTime(s.closed_at)}${s.closed_by_name ? ' · '+s.closed_by_name : ''}` : 'ainda aberto']);
+  L.push([s.closed_at ? 'Ficou aberto por' : 'Aberto há', sp.txt]);
+  const r = csSalesRange(rep); if(r) L.push(['Vendas do turno', r]);
+  const warn = sp.over ? (s.closed_at ? `Ficou aberto por ${sp.cal} dia${sp.cal===1?'':'s'} de calendário sem ser fechado` : `Está aberto há ${sp.cal} dia${sp.cal===1?'':'s'} de calendário sem ser fechado`) : '';
+  return { lines: L, warn };
+}
 function csFmtInput(v){ return (Number(v)||0).toFixed(2).replace('.',','); }
 function csCents(v){ return Math.round((Number(v)||0)*100); }
 function csMethodLabel(m){ const x = BA_PGTO_METODOS.find(i=>i.v===m); return x ? x.l : m; }
@@ -6873,13 +6900,13 @@ function csPayText(p){
   return `${t} ${csMoney(p.value)}`;
 }
 function csItemText(i){
-  return `${i.service}${Number(i.qty)>1 ? ' ×'+Number(i.qty) : ''} ${csMoney(i.value)}${i.barber ? ' ('+i.barber+')' : ''}`;
+  return `${i.service}${i.tipo==='produto' ? ' [produto]' : ''}${Number(i.qty)>1 ? ' ×'+Number(i.qty) : ''} ${csMoney(i.value)}${i.barber ? ' ('+i.barber+')' : ''}`;
 }
 function csVendaCardHtml(v){
-  const items = (v.items||[]).map(i=>`<div class="cs-item"><span>${primeEsc(i.service)}${Number(i.qty)>1 ? ` ×${Number(i.qty)}` : ''}${i.barber ? ` <span class="cs-muted">· ${primeEsc(i.barber)}</span>` : ''}</span><b>${csMoney(i.value)}</b></div>`).join('');
+  const items = (v.items||[]).map(i=>`<div class="cs-item"><span>${primeEsc(i.service)}${i.tipo==='produto' ? ' <span class="cs-muted">(produto)</span>' : ''}${Number(i.qty)>1 ? ` ×${Number(i.qty)}` : ''}${i.barber ? ` <span class="cs-muted">· ${primeEsc(i.barber)}</span>` : ''}${v.late && (i.at||v.sold_at) ? ` <span class="cs-muted">· ${csFmtDT(i.at||v.sold_at)}</span>` : ''}</span><b>${csMoney(i.value)}</b></div>`).join('');
   const pays = (v.payments||[]).map(p=>`<div class="cs-muted">${primeEsc(csPayText(p))}</div>`).join('');
-  const sub = v.late ? ` · vendida em ${csFmtDate(v.sold_at)}` : '';
-  return `<div class="cs-venda"><div class="cs-venda-h"><span><b>${primeEsc(v.client||'Cliente')}</b> <span class="cs-muted">· ${csFmtTime(v.at)}${sub}</span></span><b>${csMoney(v.late ? v.paid : v.items_total)}</b></div>${items}<div class="cs-pays">${pays}</div></div>`;
+  const when = v.late ? `recebido ${csFmtDT(v.at)}` : csFmtDT(v.sold_at||v.at);
+  return `<div class="cs-venda"><div class="cs-venda-h"><span><b>${primeEsc(v.client||'Cliente')}</b> <span class="cs-muted">· ${when}</span></span><b>${csMoney(v.late ? v.paid : v.items_total)}</b></div>${items}<div class="cs-pays">${pays}</div></div>`;
 }
 // dinheiro / cartão (débito + crédito) / pix (maquininha + chave) / a prazo, a partir de by_method
 function csGroupMethods(bm){
@@ -7171,13 +7198,18 @@ async function csShowReport(id){
   csModalOpen(`
     <button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
     <h3>Caixa #${Number(s.id)}</h3>
-    <p class="cs-sub">${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ` → ${csFmtTime(s.closed_at)}` : ' · ainda aberto'}</p>
+    ${csPeriodHtml(rep)}
     ${csSummaryHtml(rep)}
     ${csFormasHtml(rep)}
     ${csVendasHtml(rep)}
     <div class="cs-field" style="margin-top:1.1rem"><label>Mandar resumo no WhatsApp (número com DDD)</label><input type="tel" id="cs-wa-fone" inputmode="tel" placeholder="(44) 99999-9999" value="${primeEsc(lastWa)}"></div>
     <p class="cs-err" id="cs-err" style="display:none"></p>
     <div class="cs-btns"><button class="btn btn-primary" onclick="csShareReport()">Enviar no WhatsApp</button><button class="btn btn-ghost" onclick="csPrintReport()">Imprimir / salvar PDF</button><button class="btn btn-ghost" onclick="csModalClose()">Fechar</button></div>`);
+}
+function csPeriodHtml(rep){
+  const pd = csPeriodLines(rep);
+  return `<div class="cs-block" style="margin-bottom:.9rem">${pd.lines.map(l=>csRowHtml(primeEsc(l[0]), primeEsc(l[1]))).join('')}</div>`
+    + (pd.warn ? `<div class="cs-warn">${primeEsc(pd.warn)}</div>` : '');
 }
 function csReportText(rep){
   const s = rep.session, bm = rep.by_method || {};
@@ -7190,8 +7222,9 @@ function csReportText(rep){
     .filter(f=>Number(f[1])>0.004).map(f=>`${f[0]} ${money(f[1])}`).join(' · ');
   L.push('*PRIME BARBEARIA*');
   L.push(`*Fechamento do Caixa #${Number(s.id)}*`);
-  L.push(`📅 ${csFmtDate(s.opened_at)} · ${csFmtTime(s.opened_at)}${s.closed_at ? ' às '+csFmtTime(s.closed_at) : ' (ainda aberto)'}`);
-  L.push(`👤 Aberto por ${s.opened_by_name||'—'}${s.closed_at && s.closed_by_name ? ' · Fechado por '+s.closed_by_name : ''}`);
+  { const pd = csPeriodLines(rep);
+    pd.lines.forEach((l,k)=>L.push(`${['📂','🔒','⏱️','📅'][k]||'•'} ${l[0]}: ${l[1]}`));
+    if(pd.warn) L.push(`⚠️ ${pd.warn}`); }
 
   // ── dinheiro da gaveta ──
   L.push(''); L.push(sep); L.push('*💵 DINHEIRO DA GAVETA*');
@@ -7263,10 +7296,10 @@ function csReportText(rep){
         return (v.payments||[]).length>1 ? `${t} ${money(p.value)}` : t;
       }).join(' + ');
       const its = v.items||[];
-      const nomes = its.slice(0,3).map(i=>`${i.service}${Number(i.qty)>1 ? ' ×'+Number(i.qty) : ''}${i.barber ? ' ('+i.barber+')' : ''}`).join(', ')
+      const nomes = its.slice(0,3).map(i=>`${i.service}${i.tipo==='produto' ? ' [produto]' : ''}${Number(i.qty)>1 ? ' ×'+Number(i.qty) : ''}${i.barber ? ' ('+i.barber+')' : ''}${v.late && i.at ? ' '+csFmtDate(i.at) : ''}`).join(', ')
         + (its.length>3 ? ` +${its.length-3} itens` : '');
-      L.push(`*${csFmtTime(v.at)}* ${v.client||'Cliente'} · *${money(v.late ? v.paid : v.items_total)}*${pays ? ' · '+pays : ''}`);
-      L.push(`   ${v.late ? '(venda de '+csFmtDate(v.sold_at)+') ' : ''}${nomes || '—'}`);
+      L.push(`*${v.late ? 'Recebido '+csFmtDT(v.at) : csFmtDT(v.sold_at||v.at)}* ${v.client||'Cliente'} · *${money(v.late ? v.paid : v.items_total)}*${pays ? ' · '+pays : ''}`);
+      L.push(`   ${nomes || '—'}`);
     });
     if(vs.length > MAX) L.push(`… e mais ${vs.length-MAX} vendas (veja o PDF)`);
   }
@@ -7311,6 +7344,8 @@ function csPrintReport(){
     ...(rep.suprimentos||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>Suprimento (${primeEsc(x.origem)})</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">+ ${csMoney(x.value)}</td></tr>`),
     ...(rep.sangrias||[]).map(x=>`<tr><td>${csFmtTime(x.created_at)}</td><td>${x.is_closing ? 'Retirada do fechamento' : 'Sangria'} → ${primeEsc(x.destino)}</td><td class="muted">${primeEsc(x.note||'')}</td><td class="num">− ${csMoney(x.value)}</td></tr>`)
   ];
+  const pdPeriod = csPeriodLines(rep);
+  const periodStats = pdPeriod.lines.map((l,k)=>stat(primeEsc(l[0]), primeEsc(l[1]), k===2 && pdPeriod.warn)).join('');
   const gm = csGroupMethods(bm);
   const formasStats = stat('Dinheiro', csMoney(gm.dinheiro)) + stat('Cartão', csMoney(gm.cartao)) + stat('Pix', csMoney(gm.pix))
     + stat('Total recebido', csMoney(gm.dinheiro+gm.cartao+gm.pix), true) + (gm.a_prazo>0 ? stat('A prazo (a receber)', csMoney(gm.a_prazo)) : '');
@@ -7329,12 +7364,12 @@ function csPrintReport(){
       (rep.produtos||[]).map(p=>`<tr><td>${primeEsc(p.name)}</td><td class="num">${Number(p.qty)}</td><td class="num">${csMoney(p.total)}</td></tr>`), 1);
     vendasHtml += table('Conferir com a maquininha', ['Forma','Bandeira','Transações','Total'],
       (rep.cartoes||[]).map(c=>`<tr><td>${primeEsc(csMethodLabel(c.method))}</td><td>${primeEsc(c.bandeira||'—')}</td><td class="num">${Number(c.qtd)}</td><td class="num">${csMoney(c.total)}</td></tr>`), 2);
-    const linha = v=>`<tr><td>${csFmtTime(v.at)}</td><td>${primeEsc(v.client||'Cliente')}${v.late ? `<div class="muted">vendida em ${csFmtDate(v.sold_at)}</div>` : ''}</td>
-      <td class="muted">${(v.items||[]).map(i=>primeEsc(csItemText(i))).join('<br>')}</td>
+    const linha = v=>`<tr><td class="nowrap">${v.late ? 'Recebido<br>'+csFmtDT(v.at) : csFmtDT(v.sold_at||v.at).replace(' ','<br>')}</td><td>${primeEsc(v.client||'Cliente')}</td>
+      <td class="muted">${(v.items||[]).map(i=>primeEsc(csItemText(i))+(v.late && (i.at||v.sold_at) ? ' · '+csFmtDT(i.at||v.sold_at) : '')).join('<br>')}</td>
       <td class="muted">${(v.payments||[]).map(p=>primeEsc(csPayText(p))).join('<br>')}</td><td class="num">${csMoney(v.late ? v.paid : v.items_total)}</td></tr>`;
     const vendas = (rep.vendas||[]).filter(v=>!v.late), antigas = (rep.vendas||[]).filter(v=>v.late);
-    vendasHtml += table(`Detalhe das vendas (${vendas.length})`, ['Hora','Cliente','Itens','Pagamento','Valor'], vendas.map(linha));
-    vendasHtml += table(`Recebimentos de vendas anteriores (${antigas.length})`, ['Hora','Cliente','Itens','Pagamento','Valor'], antigas.map(linha));
+    vendasHtml += table(`Detalhe das vendas (${vendas.length})`, ['Data / hora','Cliente','Itens vendidos','Pagamento','Valor'], vendas.map(linha));
+    vendasHtml += table(`Recebimentos de vendas anteriores (${antigas.length})`, ['Data / hora','Cliente','Itens vendidos','Pagamento','Valor'], antigas.map(linha));
   } else {
     const notaRows = (rep.notas||[]).map(n=>{
       const meths = String(n.methods||'').split(', ').filter(Boolean).map(csMethodLabel).join(', ');
@@ -7346,8 +7381,9 @@ function csPrintReport(){
     <div class="rp-head">
       <div class="rp-logo-badge">${logo}</div>
       <div><div class="rp-brand">PRIME BARBEARIA</div><div class="sub">fechamento de caixa</div></div>
-      <div class="rp-meta"><b>Caixa #${Number(s.id)}</b>${primeEsc(s.opened_by_name||'—')} · ${csFmtDate(s.opened_at)} ${csFmtTime(s.opened_at)}${s.closed_at ? ' → '+csFmtTime(s.closed_at) : ' (aberto)'}<br>Gerado em ${geradoEm}</div>
+      <div class="rp-meta"><b>Caixa #${Number(s.id)}</b>Gerado em ${geradoEm}</div>
     </div>
+    <div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Período do caixa</div></div><div class="rp-grid">${periodStats}</div>${pdPeriod.warn ? `<div class="rp-resumo" style="margin-top:.7rem"><b>Atenção:</b> ${primeEsc(pdPeriod.warn)}</div>` : ''}</div>
     <div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Conferência do dinheiro</div></div><div class="rp-grid">${stats}</div></div>
     <div class="rp-section"><div class="rp-section-head"><div class="rp-slabel">Recebido por forma de pagamento</div></div><div class="rp-grid">${formasStats}</div></div>
     ${colabTable}
@@ -10942,6 +10978,11 @@ function primeRenderProductCatalog(search){
 #ba-report-print .rp-barber-name .count{font-family:'Jost',sans-serif;font-size:.68rem;color:var(--rp-ink-dim);font-weight:400}
 #ba-report-print .rp-resumo{font-size:.8rem;color:var(--rp-ink-dim);background:var(--rp-card);border-radius:6px;padding:.7rem .95rem}
 #ba-report-print .rp-resumo b{color:var(--rp-ink);font-weight:500}
+#ba-report-print .rp-stat,#ba-report-print .rp-resumo,#ba-report-print .rp-barber-block,#ba-report-print .rp-table tr,#ba-report-print .rp-foot{break-inside:avoid;page-break-inside:avoid}
+#ba-report-print .rp-grid{break-inside:avoid;page-break-inside:avoid}
+#ba-report-print .rp-section-head{break-after:avoid;page-break-after:avoid}
+#ba-report-print .rp-table thead{display:table-header-group}
+#ba-report-print .rp-table .nowrap{white-space:nowrap}
 #ba-report-print .rp-foot{margin-top:1.8rem;padding-top:1rem;border-top:1px solid var(--rp-hair);font-size:.66rem;color:var(--rp-ink-dim);text-align:center;line-height:1.6}
 
 #ba-qr-print{background:#FBF9F3;color:#20241D;font-family:'Jost',sans-serif;text-align:center;padding:3rem 2rem;max-width:520px;margin:0 auto}
