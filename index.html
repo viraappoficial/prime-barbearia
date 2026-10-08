@@ -9137,17 +9137,25 @@ function baUnlockAudio(){
     if(baAudioCtx && baAudioCtx.state==='suspended') baAudioCtx.resume();
   }catch(e){}
 }
-// "plim-plim" duas vezes, alto o bastante pra ouvir no balcão
+// "plim-plim" três vezes, forte e com timbre cheio (triângulo + oitava) pra ouvir no balcão com a loja cheia
 function baPlayAlertSound(force){
   if(!force && baAlertMuted()) return;
   baUnlockAudio(); if(!baAudioCtx) return;
   try{
     const ctx = baAudioCtx, t0 = ctx.currentTime + .02;
-    [[880,0],[1319,.2],[880,.9],[1319,1.1]].forEach(([f,d])=>{
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o.frequency.value = f;
-      g.gain.setValueAtTime(0, t0+d); g.gain.linearRampToValueAtTime(.5, t0+d+.02); g.gain.exponentialRampToValueAtTime(.001, t0+d+.55);
-      o.connect(g); g.connect(ctx.destination); o.start(t0+d); o.stop(t0+d+.6);
+    const master = ctx.createGain(); master.gain.value = 1;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
+    master.connect(comp); comp.connect(ctx.destination);
+    [0, 1.1, 2.2].forEach(rep=>{
+      [[880,0],[1319,.24]].forEach(([f,d])=>{
+        const t = t0+rep+d;
+        [[f,'triangle',.95],[f*2,'sine',.35]].forEach(([fr,type,amp])=>{
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = type; o.frequency.value = fr;
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp, t+.015); g.gain.exponentialRampToValueAtTime(.001, t+.75);
+          o.connect(g); g.connect(master); o.start(t); o.stop(t+.8);
+        });
+      });
     });
   }catch(e){ console.error('baPlayAlertSound', e); }
 }
