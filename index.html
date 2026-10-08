@@ -3402,7 +3402,10 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-attach-menu{position:absolute;bottom:100%;left:1.2rem;margin-bottom:.4rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);z-index:5;display:flex;flex-direction:column;min-width:170px}
 #barberApp .ba-zap-attach-menu button{background:none;border:none;text-align:left;padding:.75rem 1rem;color:var(--prata);font-family:var(--font-body);font-size:.8rem;cursor:pointer}
 #barberApp .ba-zap-attach-menu button:hover{background:rgba(198,167,94,.12)}
-#barberApp .ba-zap-compose-wrap{grid-row:3;display:flex;flex-direction:column;max-height:50vh;overflow-y:auto}
+/* SEM overflow aqui — o emoji/anexar abrem com position:absolute;bottom:100% (pra cima), e
+   qualquer overflow:hidden/auto num ancestral corta esse popover (achado real: "aparece
+   cortada"). A altura dela já é só o conteúdo (grid-row:auto não precisa de limite). */
+#barberApp .ba-zap-compose-wrap{grid-row:3;display:flex;flex-direction:column}
 #barberApp .ba-zap-reply-bar,#barberApp .ba-zap-attach-bar{display:flex;align-items:center;gap:.6rem;padding:.6rem 1.2rem;border-top:1px solid var(--dourado-dim);background:rgba(198,167,94,.06)}
 #barberApp .ba-zap-reply-bar{border-left:3px solid var(--dourado)}
 #barberApp .ba-zap-reply-bar-text{flex:1;min-width:0;font-size:.78rem;overflow:hidden}
