@@ -5053,6 +5053,19 @@ function baZapFormatPhone(phone){
   if(d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
   return phone;
 }
+// clients.phone é cadastrado sem DDI e sempre com o "9" (ex: "44999445716"). O telefone que vem
+// do WhatsApp tem "55" na frente e, vindo de conversa @lid resolvida, às vezes sem o "9" (JID
+// antigo do WhatsApp no Brasil). Gera as variantes plausíveis pra não perder o vínculo com a
+// conta por causa disso (mesma lógica do prime-whatsapp-server, ura.ts).
+function baZapLocalPhoneCandidates(waPhone){
+  if(!waPhone) return [waPhone];
+  const candidates = new Set([waPhone]);
+  let local = waPhone;
+  if(waPhone.length>=12 && waPhone.startsWith('55')){ local = waPhone.slice(2); candidates.add(local); }
+  if(local.length===10) candidates.add(local.slice(0,2)+'9'+local.slice(2));
+  if(local.length===11 && local[2]==='9') candidates.add(local.slice(0,2)+local.slice(3));
+  return [...candidates];
+}
 function baZapWhen(iso){
   const diffMin = Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
   if(diffMin < 1) return 'agora';
@@ -5064,9 +5077,13 @@ function baZapWhen(iso){
 async function baZapResolveNames(phones){
   const toFetch = phones.filter(p=>p && !(p in baZapNamesCache));
   if(toFetch.length){
-    const { data } = await sb.from('clients').select('name,phone').in('phone', toFetch);
-    (data||[]).forEach(c=>{ baZapNamesCache[c.phone] = c.name; });
-    toFetch.forEach(p=>{ if(!(p in baZapNamesCache)) baZapNamesCache[p] = null; });
+    const allCandidates = [...new Set(toFetch.flatMap(baZapLocalPhoneCandidates))];
+    const { data } = await sb.from('clients').select('name,phone').in('phone', allCandidates);
+    toFetch.forEach(p=>{
+      const cands = baZapLocalPhoneCandidates(p);
+      const match = (data||[]).find(c=>cands.includes(c.phone));
+      baZapNamesCache[p] = match ? match.name : null;
+    });
   }
 }
 // nome/foto reais do WhatsApp — independe de cadastro no Prime (gravado só pelo servidor de
@@ -5229,7 +5246,7 @@ async function baZapRenderFicha(){
   const phone = baZapCurrentPhone;
   let client = null, cuts = [];
   if(phone){
-    const { data: cs } = await sb.from('clients').select('id,name,age,instagram').eq('phone', phone).limit(1);
+    const { data: cs } = await sb.from('clients').select('id,name,age,instagram').in('phone', baZapLocalPhoneCandidates(phone)).limit(1);
     client = (cs && cs[0]) || null;
     if(client){
       const { data: ap } = await sb.from('appointments').select('day,services').eq('client_id', client.id).eq('status','concluido').order('day',{ascending:false}).limit(8);
