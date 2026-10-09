@@ -4438,6 +4438,21 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       </div>
     </div>
 
+    <!-- Encaixe com horário indisponível: explica o motivo e pede a confirmação antes de forçar -->
+    <div id="ba-zap-enc-confirm" style="display:none;position:fixed;inset:0;z-index:1250;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:1rem">
+      <div class="ba-card" style="max-width:460px;width:100%;max-height:90vh;overflow-y:auto">
+        <div class="ba-slabel" style="margin-top:0;color:var(--alerta)">Horário indisponível</div>
+        <ul id="ba-zap-enc-confirm-reasons" style="margin:0 0 1rem 1.1rem;padding:0;font-size:.85rem;line-height:1.5;color:var(--prata)"></ul>
+        <p id="ba-zap-enc-confirm-summary" style="font-size:.9rem;line-height:1.6;margin:0 0 .6rem"></p>
+        <p id="ba-zap-enc-confirm-wa" style="font-size:.78rem;color:var(--prata-dim);margin:0 0 .8rem">O encaixe fica confirmado na agenda e o cliente é avisado pelo WhatsApp.</p>
+        <p class="ba-err" id="ba-zap-enc-confirm-err" style="display:none;margin-bottom:.6rem"></p>
+        <div style="display:flex;gap:.5rem">
+          <button class="ba-btn" id="ba-zap-enc-force-btn" style="flex:1;margin:0" onclick="baZapEncConfirmForce()">Sim, confirmar encaixe</button>
+          <button class="ba-btn ghost" style="flex:1;margin:0" onclick="baZapEncCancelConfirm()">Voltar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- PERFIL -->
     <div class="screen" id="ba-screen-perfil">
       <div class="ba-head"><div><div class="hi">Sua conta</div><div class="name">Perfil</div></div></div>
@@ -5311,6 +5326,7 @@ async function baZapOpenChat(chatId, phone){
   baZapCurrentPhone = phone || (chatId.endsWith('@c.us') ? chatId.split('@')[0] : null);
   baZapResetComposeState(); // trocar de conversa não pode levar anexo/resposta pendente da anterior junto
   document.getElementById('ba-zap-encaixe-modal').style.display = 'none'; // nem um encaixe começado na conversa anterior
+  document.getElementById('ba-zap-enc-confirm').style.display = 'none'; baZapEncPending = null;
   document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
   document.getElementById('ba-zap-ficha-btn').style.display = '';
   document.getElementById('ba-zap-end-btn').style.display = '';
@@ -5392,6 +5408,36 @@ async function baZapToggleEncaixe(){
   document.getElementById('ba-zap-enc-err').style.display = 'none';
   modal.style.display = 'flex';
 }
+// função ainda não criada no banco (migration do encaixe forçado não rodada): PostgREST responde PGRST202
+const baZapEncIsMissing = e => !!e && (e.code === 'PGRST202' || /Could not find the function/i.test(e.message||''));
+let baZapEncRpcMissing = false;   // banco ainda sem a migration do encaixe forçado: cai no fluxo antigo
+let baZapEncPending = null;       // encaixe esperando a confirmação "mesmo assim?"
+const baZapEncDayName = d => ['domingo','segunda','terça','quarta','quinta','sexta','sábado'][d];
+// por que esse horário "não deveria" receber agendamento: loja fechada, folga/horário do barbeiro,
+// bloqueio da agenda (com motivo só pro admin) e agendamento já marcado. Devolve lista de textos.
+async function baZapEncReasons(barber, day, time, dur){
+  const reasons = [];
+  const wd = new Date(day+'T12:00:00').getDay();
+  const nome = barber ? barber.name : 'o barbeiro';
+  if(!HORARIOS[wd]) reasons.push(`A barbearia não abre ${baZapEncDayName(wd) === 'domingo' ? 'aos domingos' : 'nesse dia da semana'}.`);
+  else {
+    const h = resolveBarberHours(barber, wd);
+    const toMin = t => { const [a,b] = t.split(':').map(Number); return a*60+b; };
+    if(!h) reasons.push(`${nome} está de folga nesse dia (não trabalha ${baZapEncDayName(wd)}).`);
+    else if(toMin(time) < toMin(h[0]) || toMin(time)+dur > toMin(h[1])) reasons.push(`Fora do horário de ${nome} nesse dia (ele atende das ${h[0]} às ${h[1]}).`);
+  }
+  if(!baZapEncRpcMissing){
+    const { data, error } = await sb.rpc('staff_slot_conflicts', { p_barber: barber.id, p_day: day, p_time: time, p_duration: dur });
+    if(error){
+      if(baZapEncIsMissing(error)) baZapEncRpcMissing = true;
+      else console.error('staff_slot_conflicts', error);
+    } else (data||[]).forEach(c=>{
+      if(c.kind === 'block') reasons.push(`Horário bloqueado na agenda de ${nome} (das ${c.start} às ${c.end})${c.reason ? ` — motivo: “${c.reason}”` : ''}.`);
+      else if(c.kind === 'booked') reasons.push(`${nome} já tem agendamento às ${c.time}${c.client ? ` (${c.client})` : ''}.`);
+    });
+  }
+  return reasons;
+}
 async function baZapSaveEncaixe(){
   const errEl = document.getElementById('ba-zap-enc-err');
   const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
@@ -5401,8 +5447,6 @@ async function baZapSaveEncaixe(){
   const day = document.getElementById('ba-zap-enc-day').value;
   if(!day) return fail('Escolha o dia.');
   const barber = primeGetBarberRoster().find(b=>b.id===barberId);
-  const h = resolveBarberHours(barber, new Date(day+'T12:00:00').getDay());
-  if(!h) return fail('Esse barbeiro está de folga nesse dia.');
   const time = document.getElementById('ba-zap-enc-time').value;
   if(!time) return fail('Escolha o horário.');
   const svcs = [...document.querySelectorAll('.ba-zap-enc-svc:checked')].map(x=>x.value);
@@ -5422,24 +5466,75 @@ async function baZapSaveEncaixe(){
     const client = (existingClients && existingClients[0]) || null;
     const d = new Date(day+'T12:00:00');
     const dayLabel = `${DIAS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-    const appt = await primeCreateAppointment({
-      services: svcs, day, dayLabel, time, duration: dur, notes,
-      name: client ? client.name : title, clientId: client ? client.id : null, clientPhone: phone || null,
-      barberId, status: 'confirmado', isEncaixe: true
-    });
-    if(!appt){ fail(primeApptErrorMessage()); return; }
-    if(notifyWa && phone){
-      const { error: msgErr } = await sb.from('whatsapp_messages').insert({
-        chat_id: chatId, contact_phone: phone, direction: 'outbound', status: 'pending',
-        body: `Consegui encaixar você! ✂️ ${svcs.join(' + ')} com ${barber.name}, dia ${dayLabel} às ${time}. Te espero!`
-      });
-      if(msgErr) console.error('baZapSaveEncaixe/notify', msgErr);
-    }
-    document.getElementById('ba-zap-encaixe-modal').style.display = 'none';
-    if(baZapCurrentChat === chatId) baZapRenderThread();
+    const params = { chatId, phone, barber, day, dayLabel, time, dur, svcs, notes, notifyWa, name: client ? client.name : title, clientId: client ? client.id : null };
+    const reasons = await baZapEncReasons(barber, day, time, dur);
+    if(reasons.length){ baZapEncShowConfirm(params, reasons); return; }   // horário indisponível: pede confirmação
+    await baZapEncCreate(params, false, fail);
   } finally {
     btn.disabled = false; btn.classList.remove('btn-loading');
   }
+}
+function baZapEncShowConfirm(params, reasons){
+  baZapEncPending = params;
+  document.getElementById('ba-zap-enc-confirm-reasons').innerHTML = reasons.map(r=>`<li>${primeEsc(r)}</li>`).join('');
+  document.getElementById('ba-zap-enc-confirm-summary').innerHTML =
+    `Quer confirmar o encaixe mesmo assim?<br><b>${primeEsc(params.name)}</b> com <b>${primeEsc(params.barber.name)}</b><br><b>${primeEsc(params.dayLabel)} às ${primeEsc(params.time)}</b>`;
+  document.getElementById('ba-zap-enc-confirm-wa').style.display = params.notifyWa ? '' : 'none';
+  document.getElementById('ba-zap-enc-confirm-err').style.display = 'none';
+  document.getElementById('ba-zap-enc-confirm').style.display = 'flex';
+}
+function baZapEncCancelConfirm(){
+  baZapEncPending = null;
+  document.getElementById('ba-zap-enc-confirm').style.display = 'none';
+}
+async function baZapEncConfirmForce(){
+  const params = baZapEncPending; if(!params) return;
+  const btn = document.getElementById('ba-zap-enc-force-btn');
+  if(btn.disabled) return;
+  btn.disabled = true; btn.classList.add('btn-loading');
+  const errEl = document.getElementById('ba-zap-enc-confirm-err');
+  try{
+    await baZapEncCreate(params, true, msg=>{ errEl.textContent = msg; errEl.style.display = 'block'; });
+  } finally { btn.disabled = false; btn.classList.remove('btn-loading'); }
+}
+// cria o encaixe (forçando o horário só quando a equipe confirmou) e avisa o cliente pelo WhatsApp
+async function baZapEncCreate(params, force, fail){
+  let appt = null;
+  if(!baZapEncRpcMissing){
+    const { data, error } = await sb.rpc('staff_create_encaixe', {
+      p_barber: params.barber.id, p_day: params.day, p_day_label: params.dayLabel, p_time: params.time, p_duration: params.dur,
+      p_services: params.svcs, p_name: params.name, p_client_id: params.clientId, p_client_phone: params.phone || null,
+      p_notes: params.notes, p_force: force });
+    if(error){
+      if(baZapEncIsMissing(error)) baZapEncRpcMissing = true;
+      else {
+        console.error('staff_create_encaixe', error);
+        if(String(error.message).includes('SLOT_CONFLICT')){   // alguém ocupou o horário no meio tempo: mostra o motivo de novo
+          const reasons = await baZapEncReasons(params.barber, params.day, params.time, params.dur);
+          if(reasons.length){ baZapEncShowConfirm(params, reasons); return; }
+        }
+        fail(primeApptErrorMessage()); return;
+      }
+    } else appt = primeApptFromRow(data);
+  }
+  if(baZapEncRpcMissing){   // banco sem a migration nova: fluxo antigo (o gatilho pode recusar horário bloqueado)
+    appt = await primeCreateAppointment({
+      services: params.svcs, day: params.day, dayLabel: params.dayLabel, time: params.time, duration: params.dur, notes: params.notes,
+      name: params.name, clientId: params.clientId, clientPhone: params.phone || null,
+      barberId: params.barber.id, status: 'confirmado', isEncaixe: true
+    });
+    if(!appt){ fail(primeApptErrorMessage()); return; }
+  }
+  if(params.notifyWa && params.phone){
+    const { error: msgErr } = await sb.from('whatsapp_messages').insert({
+      chat_id: params.chatId, contact_phone: params.phone, direction: 'outbound', status: 'pending',
+      body: `Consegui encaixar você! ✂️ ${params.svcs.join(' + ')} com ${params.barber.name}, dia ${params.dayLabel} às ${params.time}. Te espero!`
+    });
+    if(msgErr) console.error('baZapSaveEncaixe/notify', msgErr);
+  }
+  baZapEncCancelConfirm();
+  document.getElementById('ba-zap-encaixe-modal').style.display = 'none';
+  if(baZapCurrentChat === params.chatId) baZapRenderThread();
 }
 function baZapBackToList(){
   if(baZapCurrentChat) baZapMarkRead(baZapCurrentChat); // pega quem chegou enquanto a conversa tava aberta
@@ -5828,6 +5923,7 @@ function baZapSetup(){
   document.getElementById('ba-screen-zap').classList.remove('ficha-open');
   ['ba-zap-ficha-btn','ba-zap-end-btn','ba-zap-encaixe-btn','ba-zap-assume-btn'].forEach(id=>{ document.getElementById(id).style.display = 'none'; });  // sem conversa aberta não há o que assumir/encaixar/encerrar
   document.getElementById('ba-zap-encaixe-modal').style.display = 'none';
+  document.getElementById('ba-zap-enc-confirm').style.display = 'none';
   document.getElementById('ba-zap-compose-wrap').style.display = 'none';
   document.getElementById('ba-zap-new-form').style.display = 'none';
   document.getElementById('ba-zap-thread-title').textContent = 'Nenhum atendimento selecionado';
@@ -5841,7 +5937,8 @@ function baZapSetup(){
   baZapPollTimer = setInterval(()=>{ if(baZapCurrentChat) baZapRenderThread(); baRenderZapList(); }, 3000);   // no desktop a lista fica visível ao lado da conversa, então atualiza junto
 }
 function baZapTeardown(){
-  const encModal = document.getElementById('ba-zap-encaixe-modal'); if(encModal) encModal.style.display = 'none';   // modal é fixo na tela: não pode ficar aberto ao sair da aba
+  const encModal = document.getElementById('ba-zap-encaixe-modal'); if(encModal) encModal.style.display = 'none';
+  const encConf = document.getElementById('ba-zap-enc-confirm'); if(encConf) encConf.style.display = 'none'; baZapEncPending = null;   // modal é fixo na tela: não pode ficar aberto ao sair da aba
   if(baZapPollTimer){ clearInterval(baZapPollTimer); baZapPollTimer = null; }
 }
 
