@@ -3400,6 +3400,12 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-row .when.pending{color:var(--alerta)}
 #barberApp .ba-zap-row .when.failed{color:var(--erro)}
 #barberApp .ba-zap-handoff-badge{display:inline-block;margin-top:.25rem;font-size:.66rem;font-weight:600;color:var(--alerta)}
+#barberApp .ba-zap-status{display:none;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.5rem 1rem;font-size:.76rem;border-bottom:1px solid rgba(198,167,94,.12);color:var(--prata-dim)}
+#barberApp .ba-zap-status .dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
+#barberApp .ba-zap-status .hint{opacity:.7}
+#barberApp .ba-zap-status.human{background:rgba(53,197,88,.10);color:var(--verde-neon)}
+#barberApp .ba-zap-status.human .dot{box-shadow:0 0 0 3px rgba(53,197,88,.25)}
+#barberApp .ba-zap-status.wait{background:rgba(229,160,53,.10);color:var(--alerta)}
 #barberApp .ba-zap-assumed-badge{display:inline-block;margin-top:.25rem;padding:.08rem .45rem;border-radius:999px;font-size:.64rem;font-weight:600;background:var(--dourado);color:var(--verde-noite)}
 #barberApp .ba-zap-unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 .3rem;border-radius:999px;background:var(--verde-neon);color:var(--verde-noite);font-size:.7rem;font-weight:700;line-height:1}
 #barberApp .ba-zap-archive-btn{flex:none;width:22px;height:22px;border-radius:50%;border:none;background:none;color:var(--prata-dim);font-size:.75rem;line-height:1;cursor:pointer;opacity:.6}
@@ -4371,6 +4377,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;white-space:nowrap;flex-shrink:0" onclick="baZapToggleFicha()">Ficha</button>
           </div>
         </div>
+        <div class="ba-zap-status" id="ba-zap-status"></div>
         <div class="ba-zap-thread" id="ba-zap-thread-messages" ontouchstart="baZapThreadTouchStart(event)" ontouchmove="baZapThreadTouchMove(event)" ontouchend="baZapThreadTouchEnd(event)"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
         <div class="ba-zap-compose-wrap" id="ba-zap-compose-wrap" style="display:none">
           <div class="ba-zap-reply-bar" id="ba-zap-reply-bar" style="display:none">
@@ -5243,9 +5250,9 @@ async function baZapResolveNames(phones){
 async function baZapResolveWaInfo(chatIds, force){
   const toFetch = [...new Set(chatIds)].filter(id=>id && (force || !(id in baZapWaInfoCache)));
   if(toFetch.length){
-    const { data } = await sb.from('whatsapp_contacts').select('chat_id,wa_name,picture_url,handoff_requested,assumed_by').in('chat_id', toFetch);
-    (data||[]).forEach(c=>{ baZapWaInfoCache[c.chat_id] = { name: c.wa_name, pictureUrl: c.picture_url, handoffRequested: c.handoff_requested, assumedBy: c.assumed_by }; });
-    toFetch.forEach(id=>{ if(!(id in baZapWaInfoCache)) baZapWaInfoCache[id] = { name:null, pictureUrl:null, handoffRequested:false, assumedBy:null }; });
+    const { data } = await sb.from('whatsapp_contacts').select('chat_id,wa_name,picture_url,handoff_requested,assumed_by,assumed_at').in('chat_id', toFetch);
+    (data||[]).forEach(c=>{ baZapWaInfoCache[c.chat_id] = { name: c.wa_name, pictureUrl: c.picture_url, handoffRequested: c.handoff_requested, assumedBy: c.assumed_by, assumedAt: c.assumed_at }; });
+    toFetch.forEach(id=>{ if(!(id in baZapWaInfoCache)) baZapWaInfoCache[id] = { name:null, pictureUrl:null, handoffRequested:false, assumedBy:null, assumedAt:null }; });
   }
 }
 function baZapTitleFor(chatId, phone){
@@ -5283,7 +5290,7 @@ async function baRenderZapList(){
   if(!data || !data.length){ list.innerHTML = `<div class="ba-zap-empty">${baZapListMode==='archived' ? 'Nenhuma conversa arquivada.' : 'Nenhuma conversa ainda.'}</div>`; return; }
   const [, , unreadRes] = await Promise.all([
     baZapResolveNames(data.map(c=>c.contact_phone)),
-    baZapResolveWaInfo(data.map(c=>c.chat_id)),
+    baZapResolveWaInfo(data.map(c=>c.chat_id), true),   // sempre fresco: quem assumiu/devolveu muda o selo da lista
     sb.from('whatsapp_unread_counts').select('chat_id,unread_count'),
   ]);
   if(seq !== baZapListSeq) return;
@@ -5300,7 +5307,7 @@ async function baRenderZapList(){
     // [A-Za-z0-9@._:-] e dígitos, nunca precisam de aspas/escaping dentro do onclick.
     const info = baZapWaInfoCache[c.chat_id];
     const badge = info && info.handoffRequested ? '<div class="ba-zap-handoff-badge">Atendimento solicitado</div>'
-      : info && info.assumedBy ? '<div class="ba-zap-assumed-badge">Assumido</div>' : '';
+      : info && info.assumedBy ? `<div class="ba-zap-assumed-badge">👤 Em atendimento · ${primeEsc(baZapStaffName(info.assumedBy))}</div>` : '';
     const unread = c.chat_id === baZapCurrentChat ? 0 : (unreadByChat[c.chat_id] || 0);
     const unreadHtml = unread > 0 ? `<div class="ba-zap-unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
     const rowAction = baZapListMode === 'archived'
@@ -5346,7 +5353,30 @@ async function baZapOpenChat(chatId, phone){
 }
 // botão de cabeçalho: "Assumir" pausa a URA pra esse número (ela fica calada até devolver);
 // "Devolver pro bot" reativa. Qualquer vendas/admin pode alternar — a equipe compartilha a fila.
+// primeiro nome de quem da equipe está atendendo (vem do elenco já carregado no login)
+function baZapStaffName(uuid){
+  if(uuid === baCurrentBarberId) return 'você';
+  const b = (typeof baRosterCache !== 'undefined' ? baRosterCache : []).find(x=>x.id === uuid);
+  return b && b.name ? String(b.name).trim().split(/\s+/)[0] : 'a equipe';
+}
+// faixa fixa no topo da conversa: quem está atendendo agora (humano, bot, ou cliente esperando alguém)
+function baZapUpdateStatus(chatId){
+  const el = document.getElementById('ba-zap-status'); if(!el) return;
+  if(!chatId){ el.style.display = 'none'; el.className = 'ba-zap-status'; return; }
+  const info = baZapWaInfoCache[chatId];
+  let cls, html;
+  if(info && info.assumedBy){
+    const since = info.assumedAt ? ` · desde ${new Date(info.assumedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}` : '';
+    cls = 'human'; html = `<span class="dot"></span> Atendimento humano: <b>${primeEsc(baZapStaffName(info.assumedBy))}</b>${since} <span class="hint">· o bot está pausado</span>`;
+  } else if(info && info.handoffRequested){
+    cls = 'wait'; html = '<span class="dot"></span> O cliente pediu um atendente — ninguém assumiu ainda <span class="hint">· o bot está pausado</span>';
+  } else {
+    cls = 'bot'; html = '<span class="dot"></span> O bot está atendendo <span class="hint">· responda ou toque em Assumir para entrar</span>';
+  }
+  el.className = 'ba-zap-status ' + cls; el.innerHTML = html; el.style.display = 'flex';
+}
 function baZapUpdateAssumeBtn(chatId){
+  baZapUpdateStatus(chatId);
   const btn = document.getElementById('ba-zap-assume-btn');
   const info = baZapWaInfoCache[chatId];
   const assumed = !!(info && info.assumedBy);
@@ -5903,6 +5933,15 @@ async function baZapSend(){
     row.media_kind = attachment.kind;
   }
 
+  // quem responde "entra" no atendimento: assume a conversa (o bot fica quieto e a faixa mostra quem está atendendo).
+  // Se outra pessoa da equipe já assumiu, não rouba — só manda a mensagem.
+  const chatForAssume = baZapCurrentChat;
+  const infoNow = baZapWaInfoCache[chatForAssume];
+  if(!(infoNow && infoNow.assumedBy)){
+    const { error: asErr } = await sb.rpc('assume_whatsapp_chat', { p_chat_id: chatForAssume });
+    if(asErr) console.error('assume_whatsapp_chat (auto)', asErr);
+    else { await baZapResolveWaInfo([chatForAssume], true); if(baZapCurrentChat === chatForAssume) baZapUpdateAssumeBtn(chatForAssume); baRenderZapList(); }
+  }
   const { error } = await sb.from('whatsapp_messages').insert(row);
   btn.disabled = false;
   if(error){ alert('Não foi possível mandar a mensagem. Tente de novo.'); return; }
@@ -5924,6 +5963,7 @@ function baZapSetup(){
   ['ba-zap-ficha-btn','ba-zap-end-btn','ba-zap-encaixe-btn','ba-zap-assume-btn'].forEach(id=>{ document.getElementById(id).style.display = 'none'; });  // sem conversa aberta não há o que assumir/encaixar/encerrar
   document.getElementById('ba-zap-encaixe-modal').style.display = 'none';
   document.getElementById('ba-zap-enc-confirm').style.display = 'none';
+  baZapUpdateStatus(null);   // sem conversa aberta não há quem esteja atendendo
   document.getElementById('ba-zap-compose-wrap').style.display = 'none';
   document.getElementById('ba-zap-new-form').style.display = 'none';
   document.getElementById('ba-zap-thread-title').textContent = 'Nenhum atendimento selecionado';
@@ -5934,7 +5974,14 @@ function baZapSetup(){
   baZapTeardown();
   // só lista/conversa atualizam sozinhas; a Ficha fica parada enquanto aberta, pra não
   // sobrescrever uma observação que a pessoa esteja digitando
-  baZapPollTimer = setInterval(()=>{ if(baZapCurrentChat) baZapRenderThread(); baRenderZapList(); }, 3000);   // no desktop a lista fica visível ao lado da conversa, então atualiza junto
+  baZapPollTimer = setInterval(()=>{
+    if(baZapCurrentChat){
+      baZapRenderThread();
+      const cur = baZapCurrentChat;
+      baZapResolveWaInfo([cur], true).then(()=>{ if(baZapCurrentChat === cur) baZapUpdateAssumeBtn(cur); });
+    }
+    baRenderZapList();
+  }, 3000);   // no desktop a lista fica visível ao lado da conversa, então atualiza junto
 }
 function baZapTeardown(){
   const encModal = document.getElementById('ba-zap-encaixe-modal'); if(encModal) encModal.style.display = 'none';
