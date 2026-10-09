@@ -4415,6 +4415,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
         <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem" onclick="subscribeToPush()">Ativar notificações</button>
         <div class="ba-card" id="ba-alert-config"></div>
+        <div class="ba-card" id="ba-zap-alert-config"></div>
         <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.8rem;display:flex;align-items:center;justify-content:center;gap:.5rem" onclick="baOpenQRPrint()"><svg class="pi-icon" viewBox="0 0 24 24" style="width:16px;height:16px;flex:none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M17 20h3"/></svg> QR Code pro balcão</button>
         <button class="ba-btn ghost" style="max-width:100%" onclick="baLogout()">Sair</button>
       </div>
@@ -5061,7 +5062,7 @@ function baTab(tab){
   if(tab==='clientes') primeSkeletonThen(['ba-clientes-list'], [[5,58]], baRenderClientes);
   if(tab==='caixa') csRenderScreen();
   if(tab==='agenda') baRenderAgenda();
-  if(tab==='perfil'){ baRenderPerfil(); baRenderAlertConfig(); }
+  if(tab==='perfil'){ baRenderPerfil(); baRenderAlertConfig(); baRenderZapAlertConfig(); }
   if(tab==='dashboard') baRenderDashboard();
   if(tab==='atendimento') baRenderAtendimento();
   if(tab==='gestao') baRenderGestao();
@@ -10081,6 +10082,91 @@ function baAlertTest(){
   baAlertToast('<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">Teste</div><b>Assim aparece um novo agendamento</b><br><span style="opacity:.75">Se você ouviu o som, está tudo certo.</span>');
   baAlertSystemNotif('Teste de aviso', 'Assim aparece um novo agendamento.', 'appt-teste');
 }
+
+// ── Aviso de mensagem nova no WhatsApp (Zap) — mesmo motor do aviso de agendamento, mas
+// configurável separado (som diferente de propósito, pra dar pra diferenciar sem olhar a tela)
+// e só pra vendas/admin, que são quem usa o Zap.
+let baZapAlertTimer = null, baZapAlertChannel = null, baZapAlertSeen = null, baZapAlertBusy = false;
+function baZapAlertMuted(){ try{ return localStorage.getItem('prime_alert_mute_zap')==='1'; }catch(e){ return false; } }
+function baZapSoundId(){
+  let id = null; try{ id = localStorage.getItem('prime_alert_sound_zap'); }catch(e){}
+  return BA_SOUNDS.some(x=>x.id===id) ? id : 'sino'; // padrão diferente do de agendamento (plim), de propósito
+}
+function baPlayZapAlertSound(force){
+  if(!force && baZapAlertMuted()) return;
+  baPlaySoundById(baZapSoundId());
+}
+async function baZapAlertCheck(){
+  if(baZapAlertBusy || (baCurrentRole!=='admin' && baCurrentRole!=='vendas')) return;
+  baZapAlertBusy = true;
+  try{
+    const { data, error } = await sb.from('whatsapp_messages')
+      .select('id,chat_id,contact_phone,body,created_at')
+      .eq('direction','inbound').order('created_at',{ascending:false}).limit(20);
+    if(error){ console.error('baZapAlertCheck', error); return; }
+    const rows = data || [];
+    if(baZapAlertSeen === null){ baZapAlertSeen = new Set(rows.map(r=>r.id)); return; } // primeira leitura: só marca o que já existe
+    const novos = rows.filter(r=>!baZapAlertSeen.has(r.id));
+    rows.forEach(r=>baZapAlertSeen.add(r.id));
+    if(!novos.length) return;
+    baPlayZapAlertSound();
+    const title = novos.length>1 ? `${novos.length} mensagens novas no WhatsApp` : 'Mensagem nova no WhatsApp';
+    const linha = r=>{
+      const info = baZapWaInfoCache[r.chat_id];
+      const nome = (info && info.name) || baZapFormatPhone(r.contact_phone) || r.chat_id;
+      return `<b>${primeEsc(nome)}</b><br><span style="opacity:.75">${primeEsc((r.body||'').slice(0,80))}</span>`;
+    };
+    baAlertToast(`<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">${title}</div>${novos.slice(0,3).map(linha).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.1);margin:.5rem 0">')}`, ()=>baTab('zap'));
+    novos.slice(0,3).forEach(r=>baAlertSystemNotif('Mensagem no WhatsApp', (r.body||'').slice(0,100), 'zap-'+r.id));
+    const zapScreen = document.getElementById('ba-screen-zap');
+    if(zapScreen && zapScreen.classList.contains('active') && typeof baRenderZapList==='function' && !baZapCurrentChat) baRenderZapList();
+  } finally { baZapAlertBusy = false; }
+}
+function baZapAlertStart(){
+  baZapAlertStop();
+  if(baCurrentRole!=='admin' && baCurrentRole!=='vendas') return; // quem não usa Zap não precisa desse polling/realtime
+  baZapAlertSeen = null;
+  baZapAlertCheck();
+  baZapAlertTimer = setInterval(baZapAlertCheck, 20000);
+  try{
+    baZapAlertChannel = sb.channel('prime-zap-alert')
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'whatsapp_messages', filter:'direction=eq.inbound' }, ()=>baZapAlertCheck())
+      .subscribe();
+  }catch(e){ console.error('baZapAlertStart/realtime', e); }
+  baRenderZapAlertConfig();
+}
+function baZapAlertStop(){
+  clearInterval(baZapAlertTimer); baZapAlertTimer = null; baZapAlertSeen = null;
+  if(baZapAlertChannel){ try{ sb.removeChannel(baZapAlertChannel); }catch(e){} baZapAlertChannel = null; }
+}
+function baRenderZapAlertConfig(){
+  const box = document.getElementById('ba-zap-alert-config'); if(!box) return;
+  if(baCurrentRole!=='admin' && baCurrentRole!=='vendas'){ box.innerHTML = ''; return; }
+  const cur = baZapSoundId(), muted = baZapAlertMuted();
+  box.innerHTML = `<div class="ba-slabel" style="margin-top:0">Notificações do WhatsApp (Zap)</div>
+    <p style="color:var(--prata-dim);font-size:.8rem;margin:0 0 .9rem">Som separado do aviso de agendamento, pra dar pra diferenciar sem olhar a tela. Vale na hora, neste aparelho.</p>
+    <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.9rem" onclick="baZapAlertToggleMute()">Som do WhatsApp: ${muted ? 'desligado' : 'ligado'}</button>
+    ${BA_SOUNDS.map(x=>`<div class="ba-sound-row" data-sound="${x.id}" style="display:flex;align-items:center;gap:.6rem;padding:.65rem .75rem;margin-bottom:.5rem;border:1px solid ${x.id===cur ? 'var(--dourado)' : 'var(--hair, rgba(255,255,255,.12))'};border-radius:10px;background:${x.id===cur ? 'rgba(198,167,94,.10)' : 'transparent'}">
+      <button style="all:unset;flex:1;cursor:pointer" onclick="baZapAlertPickSound('${x.id}')" aria-label="Usar o som ${x.name}">
+        <div style="font-size:.9rem;color:var(--dourado)">${x.id===cur ? '● ' : '○ '}${x.name}</div>
+        <div style="font-size:.74rem;opacity:.7">${x.desc}</div></button>
+      <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0" onclick="baPlaySoundById('${x.id}')" aria-label="Ouvir ${x.name}">▶ Ouvir</button></div>`).join('')}
+    <button class="ba-btn ghost" style="max-width:100%" onclick="baZapAlertTest()">Testar aviso do WhatsApp (som + notificação)</button>`;
+}
+function baZapAlertPickSound(id){
+  try{ localStorage.setItem('prime_alert_sound_zap', id); }catch(e){}
+  baRenderZapAlertConfig();
+  baPlaySoundById(id);
+}
+function baZapAlertToggleMute(){
+  try{ localStorage.setItem('prime_alert_mute_zap', baZapAlertMuted() ? '0' : '1'); }catch(e){}
+  baRenderZapAlertConfig();
+}
+function baZapAlertTest(){
+  baPlayZapAlertSound(true);
+  baAlertToast('<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">Teste</div><b>Assim aparece uma mensagem nova no WhatsApp</b><br><span style="opacity:.75">Se você ouviu o som, está tudo certo.</span>');
+  baAlertSystemNotif('Teste de aviso', 'Assim aparece uma mensagem nova no WhatsApp.', 'zap-teste');
+}
 // iOS/Chrome só liberam som e notificação depois de um toque na tela: no primeiro toque do staff libera os dois
 document.addEventListener('pointerdown', ()=>{
   if(!baCurrentBarberId) return;
@@ -11094,6 +11180,7 @@ function baEnter(barber){
   csModalClose(); csLastReport = null;
   csState = null; csBanksCache = null; csFetchState();
   baAlertStart();
+  baZapAlertStart();
   document.getElementById('ba-link-gestao').style.display = isAdmin ? '' : 'none';
   document.getElementById('ba-tabicon-gestao').style.display = isAdmin ? '' : 'none';
   document.querySelectorAll('#barberApp [data-tab="dashboard"],#barberApp [data-tab="clientes"],#barberApp [data-tab="vendas"]').forEach(el=>{
@@ -11108,6 +11195,7 @@ function baEnter(barber){
 }
 function baLogout(){
   baAlertStop();
+  baZapAlertStop();
   sb.auth.signOut();
   // dados financeiros do caixa não podem sobreviver ao logout (modal aberto, relatório no alvo de impressão)
   csModalClose(); csState = null; csBanksCache = null; csLastReport = null; csUpdateChip();
