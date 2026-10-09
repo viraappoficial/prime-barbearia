@@ -5262,7 +5262,6 @@ async function baRenderZapList(){
   const seq = ++baZapListSeq;   // chamadas em paralelo (timer + clique) terminam fora de ordem: só a mais nova pode desenhar
   const table = baZapListMode === 'archived' ? 'whatsapp_archived_conversations' : 'whatsapp_conversations';
   const { data, error } = await sb.from(table).select('*').order('last_at',{ascending:false}).limit(100);
-  if(seq !== baZapListSeq) return;
   const list = document.getElementById('ba-zap-list');
   if(seq !== baZapListSeq) return;
   if(error){ list.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as conversas agora.</div>'; return; }
@@ -5311,6 +5310,7 @@ async function baZapOpenChat(chatId, phone){
   baZapCurrentChat = chatId;
   baZapCurrentPhone = phone || (chatId.endsWith('@c.us') ? chatId.split('@')[0] : null);
   baZapResetComposeState(); // trocar de conversa não pode levar anexo/resposta pendente da anterior junto
+  document.getElementById('ba-zap-encaixe-modal').style.display = 'none'; // nem um encaixe começado na conversa anterior
   document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
   document.getElementById('ba-zap-ficha-btn').style.display = '';
   document.getElementById('ba-zap-end-btn').style.display = '';
@@ -5826,7 +5826,8 @@ function baZapSetup(){
   document.getElementById('ba-zap-archived-toggle').classList.remove('active');
   baZapResetComposeState();
   document.getElementById('ba-screen-zap').classList.remove('ficha-open');
-  document.getElementById('ba-zap-ficha-btn').style.display = 'none';
+  ['ba-zap-ficha-btn','ba-zap-end-btn','ba-zap-encaixe-btn','ba-zap-assume-btn'].forEach(id=>{ document.getElementById(id).style.display = 'none'; });  // sem conversa aberta não há o que assumir/encaixar/encerrar
+  document.getElementById('ba-zap-encaixe-modal').style.display = 'none';
   document.getElementById('ba-zap-compose-wrap').style.display = 'none';
   document.getElementById('ba-zap-new-form').style.display = 'none';
   document.getElementById('ba-zap-thread-title').textContent = 'Nenhum atendimento selecionado';
@@ -5840,6 +5841,7 @@ function baZapSetup(){
   baZapPollTimer = setInterval(()=>{ if(baZapCurrentChat) baZapRenderThread(); baRenderZapList(); }, 3000);   // no desktop a lista fica visível ao lado da conversa, então atualiza junto
 }
 function baZapTeardown(){
+  const encModal = document.getElementById('ba-zap-encaixe-modal'); if(encModal) encModal.style.display = 'none';   // modal é fixo na tela: não pode ficar aberto ao sair da aba
   if(baZapPollTimer){ clearInterval(baZapPollTimer); baZapPollTimer = null; }
 }
 
