@@ -1448,6 +1448,15 @@ render();
 #clientApp .fid-stamp{width:34px;height:34px;flex:none;border-radius:50%;border:1.5px dashed rgba(198,167,94,.35);display:flex;align-items:center;justify-content:center;font-size:.85rem;color:var(--dourado-dim);transition:all .35s cubic-bezier(.34,1.56,.64,1)}
 #clientApp .fid-stamp.filled{border-style:solid;background:linear-gradient(145deg,#8F7538,#C6A75E);border-color:var(--dourado);color:#1a1506;box-shadow:0 0 12px rgba(198,167,94,.45);transform:scale(1.05)}
 #clientApp .fid-history{font-size:.68rem;color:var(--prata-dim);margin-top:.6rem;opacity:.85}
+/* mesmo cartão de fidelidade do cliente, reaproveitado na Ficha do Zap (staff) */
+#barberApp .club-card{background:var(--grafite-card);border:1px solid var(--dourado-dim);padding:.9rem 1.1rem}
+#barberApp .club-card .cl-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.5rem}
+#barberApp .club-card .cl-nivel{font-family:var(--font-display);font-size:1.05rem;color:#E8D5A4;letter-spacing:.08em}
+#barberApp .club-card .cl-cuts{font-size:.75rem;color:var(--prata-dim)}
+#barberApp .club-card .cl-next{font-size:.7rem;color:var(--prata-dim);margin-top:.45rem}
+#barberApp .fid-stamps{display:flex;gap:.55rem;margin:.75rem 0;flex-wrap:wrap}
+#barberApp .fid-stamp{width:34px;height:34px;flex:none;border-radius:50%;border:1.5px dashed rgba(198,167,94,.35);display:flex;align-items:center;justify-content:center;font-size:.85rem;color:var(--dourado-dim);transition:all .35s cubic-bezier(.34,1.56,.64,1)}
+#barberApp .fid-stamp.filled{border-style:solid;background:linear-gradient(145deg,#8F7538,#C6A75E);border-color:var(--dourado);color:#1a1506;box-shadow:0 0 12px rgba(198,167,94,.45);transform:scale(1.05)}
 #clientApp .club-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem .7rem}
 #clientApp .club-stk{display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #clientApp .club-medal{position:relative;width:100%}
@@ -5376,13 +5385,20 @@ async function baZapRenderFicha(){
   if(!chatId){ body.innerHTML = '<div class="ba-zap-empty">—</div>'; return; }
   body.innerHTML = '<div class="ba-zap-empty">Carregando…</div>';
   const phone = baZapCurrentPhone;
-  let client = null, cuts = [];
+  let client = null, cuts = [], cutCount = 0, upcoming = null, fidInfo = null;
   if(phone){
-    const { data: cs } = await sb.from('clients').select('id,name,age,instagram').in('phone', baZapLocalPhoneCandidates(phone)).limit(1);
+    const { data: cs } = await sb.from('clients').select('id,name,age,instagram,favorite_barber').in('phone', baZapLocalPhoneCandidates(phone)).limit(1);
     client = (cs && cs[0]) || null;
     if(client){
-      const { data: ap } = await sb.from('appointments').select('day,services').eq('client_id', client.id).eq('status','concluido').order('day',{ascending:false}).limit(8);
-      cuts = ap || [];
+      const [apRes, countRes, upcomingRes] = await Promise.all([
+        sb.from('appointments').select('day,services').eq('client_id', client.id).eq('status','concluido').order('day',{ascending:false}).limit(8),
+        sb.from('appointments').select('id', {count:'exact', head:true}).eq('client_id', client.id).eq('status','concluido'),
+        sb.from('appointments').select('day,day_label,time,services,status').eq('client_id', client.id).in('status',['pendente','confirmado']).gte('day', primeLocalDate()).order('day').limit(1),
+      ]);
+      cuts = apRes.data || [];
+      cutCount = countRes.count || 0;
+      upcoming = (upcomingRes.data && upcomingRes.data[0]) || null;
+      fidInfo = await primeBrindeCutsInfo(client.id, cutCount);
     }
   }
   const { data: noteRow } = await sb.from('whatsapp_contact_notes').select('note').eq('chat_id', chatId).maybeSingle();
@@ -5393,14 +5409,34 @@ async function baZapRenderFicha(){
   const cutsHtml = cuts.length
     ? cuts.map(c=>`<div class="ba-cli-row"><span class="lbl">${baFormatDate(c.day)}</span><span class="val">${primeEsc((c.services||[]).join(', '))}</span></div>`).join('')
     : '<div class="ba-zap-empty" style="padding:.6rem 0">Nenhum corte concluído registrado.</div>';
+  const daysSince = cuts.length ? baDaysSince(cuts[0].day) : null;
+  const sumiuHtml = daysSince !== null && daysSince >= SEM_CORTE_DAYS
+    ? `<div class="ba-cli-row" style="color:var(--erro)"><span class="lbl">Sem cortar há</span><span class="val">${daysSince} dias</span></div>` : '';
+  const upcomingHtml = upcoming
+    ? `<div class="ba-card" style="margin-bottom:1rem;border-color:var(--dourado)"><div class="ba-slabel" style="margin-top:0">Próximo agendamento</div><div class="ba-cli-row"><span class="lbl">${primeEsc(upcoming.day_label || baFormatDate(upcoming.day))}</span><span class="val">${primeEsc(upcoming.time)}</span></div><div style="color:var(--prata-dim);font-size:.78rem">${primeEsc((upcoming.services||[]).join(' + '))}</div></div>`
+    : '';
+  const fidHtml = fidInfo && fidInfo.cuts > 0 ? (()=>{
+    const inCycle = Math.min(BRINDE_EVERY, Math.max(0, fidInfo.cuts - fidInfo.lastGiftAt));
+    const remaining = Math.max(0, BRINDE_EVERY - inCycle);
+    const stamps = Array.from({length: BRINDE_EVERY}, (_,i)=>`<span class="fid-stamp${i<inCycle?' filled':''}">${i<inCycle?'✂':''}</span>`).join('');
+    return `<div class="club-card" style="margin-bottom:1rem">
+      <div class="cl-row"><span class="cl-nivel">Cartão fidelidade</span><span class="cl-cuts">${inCycle}/${BRINDE_EVERY} cortes</span></div>
+      <div class="fid-stamps">${stamps}</div>
+      <div class="cl-next">${fidInfo.eligible ? '🎁 Elegível a brinde — já pode dar!' : `Faltam ${remaining} corte${remaining===1?'':'s'} pro próximo brinde`}</div>
+    </div>`;
+  })() : '';
   body.innerHTML = `
+    ${upcomingHtml}
     <div class="ba-card" style="margin-bottom:1rem">
       <div style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:.2rem">${primeEsc(title)}</div>
       <div style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">${client ? 'Cliente cadastrado no Prime' : 'Sem cadastro no Prime'}</div>
       ${client && client.age ? `<div class="ba-cli-row"><span class="lbl">Idade</span><span class="val">${client.age}</span></div>` : ''}
       ${phone ? `<div class="ba-cli-row"><span class="lbl">Telefone</span><span class="val">${primeEsc(baZapFormatPhone(phone))}</span></div>` : ''}
       ${client && client.instagram ? `<div class="ba-cli-row"><span class="lbl">Instagram</span><span class="val">@${primeEsc(client.instagram)}</span></div>` : ''}
+      ${client && client.favorite_barber ? `<div class="ba-cli-row"><span class="lbl">Barbeiro favorito</span><span class="val">${primeEsc(client.favorite_barber)}</span></div>` : ''}
+      ${sumiuHtml}
     </div>
+    ${fidHtml}
     <div class="ba-slabel" style="margin-top:0">Cortes concluídos</div>
     ${cutsHtml}
     <div class="ba-slabel">Observação</div>
