@@ -4355,7 +4355,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       </div>
 
       <div class="ba-zap-col ba-zap-col-main" id="ba-zap-col-main">
-        <div class="ba-zap-col-head">
+        <div class="ba-zap-col-head" style="flex-wrap:wrap;row-gap:.6rem">
           <button class="ba-btn ghost ba-zap-back" onclick="baZapBackToList()">← Conversas</button>
           <div class="ba-zap-main-title">
             <div id="ba-zap-thread-avatar"></div>
@@ -4364,9 +4364,12 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
               <div class="sub" id="ba-zap-thread-sub">selecione uma conversa na lista</div>
             </div>
           </div>
-          <button class="ba-btn ghost" id="ba-zap-assume-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleAssume()">Assumir</button>
-          <button class="ba-btn ghost" id="ba-zap-end-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;border-color:#E5574B;color:#E5574B" onclick="baZapEndAttendance()">Encerrar</button>
-          <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleFicha()">Ficha</button>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto">
+            <button class="ba-btn ghost" id="ba-zap-assume-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;white-space:nowrap;flex-shrink:0" onclick="baZapToggleAssume()">Assumir</button>
+            <button class="ba-btn ghost" id="ba-zap-encaixe-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;white-space:nowrap;flex-shrink:0" onclick="baZapToggleEncaixe()">Encaixe</button>
+            <button class="ba-btn ghost" id="ba-zap-end-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;border-color:#E5574B;color:#E5574B;white-space:nowrap;flex-shrink:0" onclick="baZapEndAttendance()">Encerrar</button>
+            <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;white-space:nowrap;flex-shrink:0" onclick="baZapToggleFicha()">Ficha</button>
+          </div>
         </div>
         <div class="ba-zap-thread" id="ba-zap-thread-messages" ontouchstart="baZapThreadTouchStart(event)" ontouchmove="baZapThreadTouchMove(event)" ontouchend="baZapThreadTouchEnd(event)"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
         <div class="ba-zap-compose-wrap" id="ba-zap-compose-wrap" style="display:none">
@@ -4406,6 +4409,32 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="ba-slabel" style="margin:0">Ficha</div>
         </div>
         <div id="ba-zap-ficha-body"><div class="ba-zap-empty">—</div></div>
+      </div>
+    </div>
+
+    <!-- Encaixe direto do Zap — mesmo motor confiável do Encaixe do balcão (primeCreateAppointment,
+         já protegido contra conflito de horário), só que com o cliente da conversa já preenchido
+         e confirmação automática pelo WhatsApp ao salvar. -->
+    <div id="ba-zap-encaixe-modal" style="display:none;position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:1rem">
+      <div class="ba-card" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+        <div class="ba-slabel" style="margin-top:0">Encaixe pra <span id="ba-zap-enc-clientname"></span></div>
+        <div class="ba-field" style="max-width:100%"><label>Barbeiro</label><select id="ba-zap-enc-barber" style="width:100%"></select></div>
+        <div class="ba-slabel">Serviço</div>
+        <div class="ba-svc-grid" id="ba-zap-enc-svcs"></div>
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin:.6rem 0">
+          <div class="ba-field" style="flex:1;min-width:120px;margin:0"><label>Dia</label><input type="date" id="ba-zap-enc-day" style="width:100%"></div>
+          <div class="ba-field" style="flex:1;min-width:100px;margin:0"><label>Horário</label><input type="time" id="ba-zap-enc-time" style="width:100%"></div>
+          <div class="ba-field" style="flex:1;min-width:90px;margin:0"><label>Duração (min)</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="ba-zap-enc-dur" value="45" style="width:100%"></div>
+        </div>
+        <textarea id="ba-zap-enc-notes" class="obs-textarea" placeholder="Observação (opcional)"></textarea>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--prata-dim);margin:.8rem 0;cursor:pointer">
+          <input type="checkbox" id="ba-zap-enc-notify-wa" checked style="width:15px;height:15px;accent-color:var(--dourado)"> Mandar confirmação pelo WhatsApp
+        </label>
+        <p class="ba-err" id="ba-zap-enc-err" style="display:none;margin-bottom:.6rem"></p>
+        <div style="display:flex;gap:.5rem">
+          <button class="ba-btn" id="ba-zap-enc-confirm-btn" style="flex:1;margin:0" onclick="baZapSaveEncaixe()">Confirmar encaixe</button>
+          <button class="ba-btn ghost" style="flex:1;margin:0" onclick="baZapToggleEncaixe()">Cancelar</button>
+        </div>
       </div>
     </div>
 
@@ -5233,6 +5262,7 @@ async function baRenderZapList(){
   const seq = ++baZapListSeq;   // chamadas em paralelo (timer + clique) terminam fora de ordem: só a mais nova pode desenhar
   const table = baZapListMode === 'archived' ? 'whatsapp_archived_conversations' : 'whatsapp_conversations';
   const { data, error } = await sb.from(table).select('*').order('last_at',{ascending:false}).limit(100);
+  if(seq !== baZapListSeq) return;
   const list = document.getElementById('ba-zap-list');
   if(seq !== baZapListSeq) return;
   if(error){ list.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as conversas agora.</div>'; return; }
@@ -5284,6 +5314,7 @@ async function baZapOpenChat(chatId, phone){
   document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
   document.getElementById('ba-zap-ficha-btn').style.display = '';
   document.getElementById('ba-zap-end-btn').style.display = '';
+  document.getElementById('ba-zap-encaixe-btn').style.display = '';
   document.getElementById('ba-zap-compose-wrap').style.display = '';
   await baZapResolveWaInfo([chatId]); // pode já estar no cache (veio da lista); se não, busca agora
   const title = baZapTitleFor(chatId, baZapCurrentPhone);
@@ -5335,6 +5366,80 @@ async function baZapEndAttendance(){
   baZapUpdateAssumeBtn(baZapCurrentChat);
   baRenderZapList();
   baZapRenderThread();
+}
+// Encaixe direto do Zap: mesmo motor do Encaixe de balcão (primeCreateAppointment, status
+// 'confirmado' na hora, protegido pelo mesmo gatilho de conflito de horário), com o cliente da
+// conversa já preenchido e confirmação automática pelo WhatsApp.
+async function baZapToggleEncaixe(){
+  const modal = document.getElementById('ba-zap-encaixe-modal');
+  if(modal.style.display !== 'none'){ modal.style.display = 'none'; return; }
+  if(!baZapCurrentChat) return;
+  await primeEnsureBarberRoster();
+  const barbers = primeGetBarberRoster();
+  const title = baZapTitleFor(baZapCurrentChat, baZapCurrentPhone);
+  document.getElementById('ba-zap-enc-clientname').textContent = title;
+  document.getElementById('ba-zap-enc-barber').innerHTML = barbers.map(b=>`<option value="${b.id}">${primeEsc(b.name)}</option>`).join('');
+  document.getElementById('ba-zap-enc-svcs').innerHTML = primeGroupedSvcHtml(s=>
+    `<div class="ba-svc-chip" onclick="this.classList.toggle('selected');this.querySelector('input').checked=this.classList.contains('selected')">
+      <input type="checkbox" class="ba-zap-enc-svc" value="${primeEsc(s.name)}">
+      <span class="ba-svc-chip-label">${primeEsc(s.name)}<span class="ba-svc-chip-price">${primeFormatPriceDisplay(s.price)}</span></span>
+    </div>`);
+  document.getElementById('ba-zap-enc-day').value = primeLocalDate();
+  document.getElementById('ba-zap-enc-time').value = '';
+  document.getElementById('ba-zap-enc-dur').value = '45';
+  document.getElementById('ba-zap-enc-notes').value = '';
+  document.getElementById('ba-zap-enc-notify-wa').checked = true;
+  document.getElementById('ba-zap-enc-err').style.display = 'none';
+  modal.style.display = 'flex';
+}
+async function baZapSaveEncaixe(){
+  const errEl = document.getElementById('ba-zap-enc-err');
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  errEl.style.display = 'none';
+  const barberId = document.getElementById('ba-zap-enc-barber').value;
+  if(!barberId) return fail('Escolha um barbeiro.');
+  const day = document.getElementById('ba-zap-enc-day').value;
+  if(!day) return fail('Escolha o dia.');
+  const barber = primeGetBarberRoster().find(b=>b.id===barberId);
+  const h = resolveBarberHours(barber, new Date(day+'T12:00:00').getDay());
+  if(!h) return fail('Esse barbeiro está de folga nesse dia.');
+  const time = document.getElementById('ba-zap-enc-time').value;
+  if(!time) return fail('Escolha o horário.');
+  const svcs = [...document.querySelectorAll('.ba-zap-enc-svc:checked')].map(x=>x.value);
+  if(!svcs.length) return fail('Selecione pelo menos um serviço.');
+  const dur = parseInt(document.getElementById('ba-zap-enc-dur').value)||45;
+  const notes = document.getElementById('ba-zap-enc-notes').value.trim() || null;
+  const notifyWa = document.getElementById('ba-zap-enc-notify-wa').checked;
+
+  const btn = document.getElementById('ba-zap-enc-confirm-btn');
+  if(btn.disabled) return;
+  btn.disabled = true; btn.classList.add('btn-loading');
+  try{
+    const chatId = baZapCurrentChat, phone = baZapCurrentPhone;
+    const title = baZapTitleFor(chatId, phone);
+    // mesmo vínculo por telefone da URA: se já existe conta cadastrada, liga nela
+    const { data: existingClients } = await sb.from('clients').select('id,name').in('phone', baZapLocalPhoneCandidates(phone||''));
+    const client = (existingClients && existingClients[0]) || null;
+    const d = new Date(day+'T12:00:00');
+    const dayLabel = `${DIAS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    const appt = await primeCreateAppointment({
+      services: svcs, day, dayLabel, time, duration: dur, notes,
+      name: client ? client.name : title, clientId: client ? client.id : null, clientPhone: phone || null,
+      barberId, status: 'confirmado', isEncaixe: true
+    });
+    if(!appt){ fail(primeApptErrorMessage()); return; }
+    if(notifyWa && phone){
+      const { error: msgErr } = await sb.from('whatsapp_messages').insert({
+        chat_id: chatId, contact_phone: phone, direction: 'outbound', status: 'pending',
+        body: `Consegui encaixar você! ✂️ ${svcs.join(' + ')} com ${barber.name}, dia ${dayLabel} às ${time}. Te espero!`
+      });
+      if(msgErr) console.error('baZapSaveEncaixe/notify', msgErr);
+    }
+    document.getElementById('ba-zap-encaixe-modal').style.display = 'none';
+    if(baZapCurrentChat === chatId) baZapRenderThread();
+  } finally {
+    btn.disabled = false; btn.classList.remove('btn-loading');
+  }
 }
 function baZapBackToList(){
   if(baZapCurrentChat) baZapMarkRead(baZapCurrentChat); // pega quem chegou enquanto a conversa tava aberta
