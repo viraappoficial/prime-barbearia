@@ -4330,7 +4330,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <div class="screen ba-zap-screen" id="ba-screen-zap" data-state="list">
       <div class="ba-zap-col ba-zap-col-list" id="ba-zap-col-list">
         <div class="ba-zap-col-head">
-          <div class="ba-slabel" style="margin:0">Atendimento</div>
+          <div class="ba-slabel" style="margin:0" id="ba-zap-list-label">Atendimento</div>
+          <button class="ba-btn ghost" style="width:auto;max-width:none;margin:0 .5rem 0 0;padding:.5rem .8rem;font-size:.68rem" id="ba-zap-archived-toggle" onclick="baZapToggleArchivedView()">Arquivados</button>
           <button class="ba-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem" onclick="baZapToggleNew()">+ Nova conversa</button>
         </div>
         <div id="ba-zap-new-form" style="display:none;padding:.9rem 1.2rem;border-bottom:1px solid rgba(198,167,94,.12)">
@@ -5201,11 +5202,20 @@ function baZapAvatarHtml(chatId, title){
   return `<div class="ba-zap-avatar-ph">${primeEsc(letter)}</div>`;
 }
 
+let baZapListMode = 'active'; // 'active' | 'archived'
+function baZapToggleArchivedView(){
+  baZapListMode = baZapListMode === 'active' ? 'archived' : 'active';
+  document.getElementById('ba-zap-list-label').textContent = baZapListMode === 'archived' ? 'Arquivados' : 'Atendimento';
+  document.getElementById('ba-zap-archived-toggle').textContent = baZapListMode === 'archived' ? '← Voltar' : 'Arquivados';
+  document.getElementById('ba-zap-archived-toggle').classList.toggle('active', baZapListMode === 'archived');
+  baRenderZapList();
+}
 async function baRenderZapList(){
-  const { data, error } = await sb.from('whatsapp_conversations').select('*').order('last_at',{ascending:false}).limit(100);
+  const table = baZapListMode === 'archived' ? 'whatsapp_archived_conversations' : 'whatsapp_conversations';
+  const { data, error } = await sb.from(table).select('*').order('last_at',{ascending:false}).limit(100);
   const list = document.getElementById('ba-zap-list');
   if(error){ list.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as conversas agora.</div>'; return; }
-  if(!data || !data.length){ list.innerHTML = '<div class="ba-zap-empty">Nenhuma conversa ainda.</div>'; return; }
+  if(!data || !data.length){ list.innerHTML = `<div class="ba-zap-empty">${baZapListMode==='archived' ? 'Nenhuma conversa arquivada.' : 'Nenhuma conversa ainda.'}</div>`; return; }
   const [, , unreadRes] = await Promise.all([
     baZapResolveNames(data.map(c=>c.contact_phone)),
     baZapResolveWaInfo(data.map(c=>c.chat_id)),
@@ -5225,11 +5235,14 @@ async function baRenderZapList(){
       : info && info.assumedBy ? '<div class="ba-zap-assumed-badge">Assumido</div>' : '';
     const unread = unreadByChat[c.chat_id] || 0;
     const unreadHtml = unread > 0 ? `<div class="ba-zap-unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
+    const rowAction = baZapListMode === 'archived'
+      ? `<button class="ba-zap-archive-btn" title="Restaurar" onclick="event.stopPropagation(); baZapUnarchiveChat('${c.chat_id}')">↩</button>`
+      : `<button class="ba-zap-archive-btn" title="Tirar da lista" onclick="event.stopPropagation(); baZapArchiveChat('${c.chat_id}')">✕</button>`;
     return `<div class="ba-zap-row" role="button" tabindex="0" onclick="baZapOpenChat('${c.chat_id}','${c.contact_phone||''}')">
       ${baZapAvatarHtml(c.chat_id, title)}
       <div style="min-width:0;flex:1"><div class="nm">${primeEsc(title)}</div><div class="pv">${primeEsc(prefix + c.last_body)}</div>${badge}</div>
       <div class="when ${whenCls}" style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">${whenTxt}${unreadHtml}</div>
-      <button class="ba-zap-archive-btn" title="Tirar da lista" onclick="event.stopPropagation(); baZapArchiveChat('${c.chat_id}')">✕</button>
+      ${rowAction}
     </div>`;
   }).join('');
 }
@@ -5311,6 +5324,11 @@ async function baZapArchiveChat(chatId){
   const { error } = await sb.rpc('archive_whatsapp_chat', { p_chat_id: chatId });
   if(error){ alert('Não foi possível tirar da lista agora.'); return; }
   if(baZapCurrentChat === chatId) baZapBackToList(); else baRenderZapList();
+}
+async function baZapUnarchiveChat(chatId){
+  const { error } = await sb.rpc('unarchive_whatsapp_chat', { p_chat_id: chatId });
+  if(error){ alert('Não foi possível restaurar agora.'); return; }
+  baRenderZapList();
 }
 
 // ── Nova conversa ──
@@ -5644,6 +5662,10 @@ async function baZapSend(){
 function baZapSetup(){
   baZapCurrentChat = null;
   baZapCurrentPhone = null;
+  baZapListMode = 'active'; // sempre entra na aba pela lista normal, não nos arquivados
+  document.getElementById('ba-zap-list-label').textContent = 'Atendimento';
+  document.getElementById('ba-zap-archived-toggle').textContent = 'Arquivados';
+  document.getElementById('ba-zap-archived-toggle').classList.remove('active');
   baZapResetComposeState();
   document.getElementById('ba-screen-zap').classList.remove('ficha-open');
   document.getElementById('ba-zap-ficha-btn').style.display = 'none';
