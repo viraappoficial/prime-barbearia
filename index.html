@@ -4322,6 +4322,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
           </div>
           <button class="ba-btn ghost" id="ba-zap-assume-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleAssume()">Assumir</button>
+          <button class="ba-btn ghost" id="ba-zap-end-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;border-color:#E5574B;color:#E5574B" onclick="baZapEndAttendance()">Encerrar</button>
           <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none" onclick="baZapToggleFicha()">Ficha</button>
         </div>
         <div class="ba-zap-thread" id="ba-zap-thread-messages" ontouchstart="baZapThreadTouchStart(event)" ontouchmove="baZapThreadTouchMove(event)" ontouchend="baZapThreadTouchEnd(event)"><div class="ba-zap-empty">Selecione uma conversa à esquerda, ou comece uma nova.</div></div>
@@ -5126,6 +5127,7 @@ async function baZapOpenChat(chatId, phone){
   baZapResetComposeState(); // trocar de conversa não pode levar anexo/resposta pendente da anterior junto
   document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
   document.getElementById('ba-zap-ficha-btn').style.display = '';
+  document.getElementById('ba-zap-end-btn').style.display = '';
   document.getElementById('ba-zap-compose-wrap').style.display = '';
   await baZapResolveWaInfo([chatId]); // pode já estar no cache (veio da lista); se não, busca agora
   const title = baZapTitleFor(chatId, baZapCurrentPhone);
@@ -5158,6 +5160,22 @@ async function baZapToggleAssume(){
   await baZapResolveWaInfo([baZapCurrentChat], true); // força reconsulta, ignora cache
   baZapUpdateAssumeBtn(baZapCurrentChat);
   baRenderZapList();
+}
+// "Encerrar" fecha o atendimento de vez: manda despedida pro cliente e reseta a URA pro menu
+// (próxima mensagem dele começa do zero) — diferente de "Devolver pro bot", que só reativa a
+// URA sem mandar nada. Funciona em qualquer estado (assumido ou não).
+async function baZapEndAttendance(){
+  if(!baZapCurrentChat) return;
+  if(!confirm('Encerrar esse atendimento? O cliente recebe uma mensagem de despedida.')) return;
+  const btn = document.getElementById('ba-zap-end-btn');
+  btn.disabled = true;
+  const { error } = await sb.rpc('end_attendance', { p_chat_id: baZapCurrentChat });
+  btn.disabled = false;
+  if(error){ alert('Não foi possível encerrar agora. Tenta de novo.'); return; }
+  await baZapResolveWaInfo([baZapCurrentChat], true);
+  baZapUpdateAssumeBtn(baZapCurrentChat);
+  baRenderZapList();
+  baZapRenderThread();
 }
 function baZapBackToList(){
   baZapCurrentChat = null;
