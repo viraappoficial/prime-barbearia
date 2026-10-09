@@ -5218,12 +5218,11 @@ function baZapFormatPhone(phone){
 // conta por causa disso (mesma lógica do prime-whatsapp-server, ura.ts).
 function baZapLocalPhoneCandidates(waPhone){
   if(!waPhone) return [waPhone];
-  const candidates = new Set([waPhone]);
-  let local = waPhone;
-  if(waPhone.length>=12 && waPhone.startsWith('55')){ local = waPhone.slice(2); candidates.add(local); }
-  if(local.length===10) candidates.add(local.slice(0,2)+'9'+local.slice(2));
-  if(local.length===11 && local[2]==='9') candidates.add(local.slice(0,2)+local.slice(3));
-  return [...candidates];
+  const d = String(waPhone).replace(/\D/g,'');
+  const intl = primeIntlPhone(d) || d;
+  const out = new Set([waPhone, d, intl]);
+  primeBrVariants(intl).forEach(v=>{ out.add(v); if(v.startsWith('55') && PRIME_BR_DDDS.has(v.slice(2,4))) out.add(v.slice(2)); });
+  return [...out].filter(Boolean);
 }
 function baZapWhen(iso){
   const diffMin = Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
@@ -5596,18 +5595,57 @@ function baZapToggleNew(){
 }
 // Normaliza pro formato que a WAHA espera (DDI+DDD+número, só dígitos). Sem DDI, assume Brasil —
 // é o que qualquer número de celular digitado com DDD aqui vai ser.
-function baZapNormalizePhone(raw){
-  let d = String(raw||'').replace(/\D/g,'');
-  if(d.length===10 || d.length===11) d = '55'+d;
-  return d;
+// ── Telefones: UMA regra só (a mesma do servidor do WhatsApp, phone.ts) ──
+// "+" ou "00" na frente = número de outro país, informado de propósito: nunca recebe o 55. Sem isso, só vira
+// brasileiro-sem-DDI o que tem DDD VÁLIDO e 10/11 dígitos (celular: 9 na 3ª posição). DDD 55 (Santa Maria) é
+// DDD, não DDI. Zero de tronco ("044 ...") é descartado. Limite sem solução: número de fora digitado sem "+"
+// que pareça celular brasileiro (ex.: Peru) é lido como brasileiro.
+const PRIME_BR_DDDS = new Set(['11','12','13','14','15','16','17','18','19','21','22','24','27','28','31','32','33','34','35','37','38','41','42','43','44','45','46','47','48','49','51','53','54','55','61','62','63','64','65','66','67','68','69','71','73','74','75','77','79','81','82','83','84','85','86','87','88','89','91','92','93','94','95','96','97','98','99']);
+function primeLooksBrLocal(d){
+  if(!PRIME_BR_DDDS.has(d.slice(0,2))) return false;
+  if(d.length===11) return d[2]==='9';
+  if(d.length===10) return d[2]>='2' && d[2]<='9';
+  return false;
 }
-function baZapStartNew(){
+// digitado/guardado -> dígitos com DDI (formato do WhatsApp); '' se não dá pra confiar
+function primeIntlPhone(raw){
+  const t = String(raw||'').trim();
+  let d = t.replace(/\D/g,'');
+  if(!d) return '';
+  if(t.startsWith('+')) return d.length>=8 && d.length<=15 ? d : '';
+  if(t.startsWith('00')){ d = d.slice(2); return d.length>=8 && d.length<=15 ? d : ''; }
+  d = d.replace(/^0+/,'');
+  if(primeLooksBrLocal(d)) return '55'+d;
+  if(d.length>=10 && d.length<=15) return d;
+  return '';
+}
+// mesmo celular brasileiro com e sem o nono dígito (554499445716 e 5544999445716 são a mesma pessoa)
+function primeBrVariants(intl){
+  const m = String(intl).match(/^55(\d{2})(\d{8,9})$/);
+  if(!m || !PRIME_BR_DDDS.has(m[1])) return [intl];
+  const ddd = m[1], rest = m[2];
+  if(rest.length===9 && rest[0]==='9') return [intl, '55'+ddd+rest.slice(1)];
+  if(rest.length===8 && rest[0]>='6') return [intl, '55'+ddd+'9'+rest];
+  return [intl];
+}
+function baZapNormalizePhone(raw){
+  return primeIntlPhone(raw);
+}
+async function baZapStartNew(){
   const input = document.getElementById('ba-zap-new-phone');
   const digits = baZapNormalizePhone(input.value);
-  if(digits.length!==12 && digits.length!==13){ alert('Telefone inválido — digite com DDD (e o 9 na frente, se for celular).'); return; }
+  const isBr = digits.startsWith('55') && PRIME_BR_DDDS.has(digits.slice(2,4));
+  if(!digits || (isBr && digits.length!==12 && digits.length!==13)){ alert('Telefone inválido — digite com DDD (e o 9 na frente, se for celular). Número de outro país: comece com + e o código do país.'); return; }
+  // se o cliente já tem conversa por outra forma do número (com/sem o nono dígito), abre ESSA em vez de criar outra
+  let chatId = `${digits}@c.us`;
+  const ids = primeBrVariants(digits).map(v=>`${v}@c.us`);
+  if(ids.length > 1){
+    const { data } = await sb.from('whatsapp_conversations').select('chat_id').in('chat_id', ids).limit(1);
+    if(data && data[0]) chatId = data[0].chat_id;
+  }
   document.getElementById('ba-zap-new-form').style.display = 'none';
   input.value = '';
-  baZapOpenChat(`${digits}@c.us`, digits);
+  baZapOpenChat(chatId, chatId.split('@')[0]);
 }
 
 // ── Ficha (nome, idade, cortes concluídos, observação do atendimento) ──
@@ -8429,9 +8467,9 @@ function csReportText(rep){
 function csShareReport(){
   const rep = csLastReport;
   if(!rep) return;
-  const raw = (document.getElementById('cs-wa-fone').value||'').replace(/\D/g,'');
-  if(raw.length < 10) return csModalErr('Digite o número com DDD.');
-  const num = raw.length <= 11 ? '55'+raw : raw;
+  const raw = (document.getElementById('cs-wa-fone').value||'').trim();
+  const num = primeIntlPhone(raw);
+  if(!num) return csModalErr('Digite o número com DDD (ou, se for de outro país, com + e o código do país).');
   try{ localStorage.setItem('prime_cs_wa', raw); }catch(e){}
   window.open(`https://wa.me/${num}?text=${encodeURIComponent(csReportText(rep))}`, '_blank');
 }
