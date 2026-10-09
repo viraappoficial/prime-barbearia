@@ -4329,10 +4329,12 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <!-- ZAP (chat do WhatsApp) — 3 colunas: Atendimento (lista) · conversa · Ficha -->
     <div class="screen ba-zap-screen" id="ba-screen-zap" data-state="list">
       <div class="ba-zap-col ba-zap-col-list" id="ba-zap-col-list">
-        <div class="ba-zap-col-head">
+        <div class="ba-zap-col-head" style="flex-wrap:wrap;row-gap:.6rem">
           <div class="ba-slabel" style="margin:0" id="ba-zap-list-label">Atendimento</div>
-          <button class="ba-btn ghost" style="width:auto;max-width:none;margin:0 .5rem 0 0;padding:.5rem .8rem;font-size:.68rem" id="ba-zap-archived-toggle" onclick="baZapToggleArchivedView()">Arquivados</button>
-          <button class="ba-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem" onclick="baZapToggleNew()">+ Nova conversa</button>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto">
+            <button class="ba-btn ghost" style="width:auto;max-width:none;margin:0;padding:.5rem .8rem;font-size:.68rem;white-space:nowrap;flex-shrink:0" id="ba-zap-archived-toggle" onclick="baZapToggleArchivedView()">Arquivados</button>
+            <button class="ba-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;white-space:nowrap;flex-shrink:0" onclick="baZapToggleNew()">+ Nova conversa</button>
+          </div>
         </div>
         <div id="ba-zap-new-form" style="display:none;padding:.9rem 1.2rem;border-bottom:1px solid rgba(198,167,94,.12)">
           <div class="ba-field" style="max-width:100%;margin-bottom:.6rem"><label>Telefone do cliente (com DDD)</label><input type="tel" id="ba-zap-new-phone" placeholder="(11) 91234-5678" onkeydown="if(event.key==='Enter')baZapStartNew()"></div>
