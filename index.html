@@ -11901,6 +11901,43 @@ if(/^staff\./i.test(location.hostname)){
   const rb = document.createElement('meta'); rb.name = 'robots'; rb.content = 'noindex,nofollow'; document.head.appendChild(rb);
   baOpen();
 }
+// ── Link "Confirmar" que o barbeiro recebe no WhatsApp (?confirmar=TOKEN) ──
+// Um toque confirma o agendamento (o banco valida o token: aleatório, vale 7 dias, só confirma) e o
+// cliente já recebe a confirmação pelo WhatsApp. Não precisa de login.
+(function(){
+  let token = null;
+  try{ token = new URLSearchParams(location.search).get('confirmar'); }catch(e){}
+  if(!token) return;
+  try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e){}   // tira o token da barra de endereço
+  const box = document.createElement('div');
+  box.id = 'ba-confirm-link';
+  box.style.cssText = 'position:fixed;inset:0;z-index:3000;background:var(--verde-noite);display:flex;align-items:center;justify-content:center;padding:1.2rem';
+  document.body.appendChild(box);
+  const card = (icon, title, body, retry) => {
+    box.innerHTML = `<div style="max-width:420px;width:100%;background:var(--grafite-card);border:1px solid var(--dourado);border-radius:14px;padding:1.6rem 1.4rem;text-align:center;color:var(--prata)">
+      <div style="font-size:2.4rem;line-height:1;margin-bottom:.6rem">${icon}</div>
+      <div style="font-family:var(--font-display);font-size:1.25rem;color:var(--dourado);margin-bottom:.6rem">${title}</div>
+      <div style="font-size:.9rem;line-height:1.6;margin-bottom:1.2rem">${body}</div>
+      ${retry ? '<button class="ba-btn" style="margin:0 0 .6rem;width:100%" id="ba-confirm-retry">Tentar de novo</button>' : ''}
+      <button class="ba-btn ghost" style="margin:0;width:100%" id="ba-confirm-close">Abrir o app</button></div>`;
+    document.getElementById('ba-confirm-close').onclick = ()=>box.remove();
+    if(retry) document.getElementById('ba-confirm-retry').onclick = run;
+  };
+  const detail = d => `<b>${primeEsc(d.client||'Cliente')}</b><br>${primeEsc(d.day_label||'')} às ${primeEsc(d.time||'')}<br><span style="opacity:.75">${primeEsc((d.services||[]).join(' + '))}</span>`;
+  async function run(){
+    card('⏳', 'Confirmando…', 'Só um instante.');
+    let res;
+    try{ res = await sb.rpc('barber_confirm_by_token', { p_token: token }); }catch(e){ res = { error: e }; }
+    const { data, error } = res;
+    if(error || !data){ console.error('barber_confirm_by_token', error); return card('⚠️', 'Não foi possível confirmar agora', 'Verifique a internet e tente de novo.', true); }
+    if(data.ok && !data.already) return card('✅', 'Agendamento confirmado', `${detail(data)}<br><br><span style="opacity:.75">O cliente já foi avisado pelo WhatsApp.</span>`);
+    if(data.ok) return card('👍', 'Esse agendamento já estava confirmado', detail(data));
+    if(data.reason === 'cancelled') return card('🚫', 'Esse agendamento foi cancelado', 'O cliente ou a equipe cancelou. Não precisa confirmar.');
+    if(data.reason === 'expired') return card('⌛', 'Link vencido', 'Esse link passou da validade. Confirme pela agenda do app.');
+    return card('❓', 'Link inválido', 'Confira se copiou o link inteiro da mensagem.');
+  }
+  run();
+})();
 document.querySelectorAll('[data-open-barber]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();baOpen();}));
 addEventListener('keydown',e=>{if(e.key==='Escape'){baClose();closeBarberProfile();}});
 document.getElementById('barberProfileModal').addEventListener('click',e=>{if(e.target.id==='barberProfileModal')closeBarberProfile();});
