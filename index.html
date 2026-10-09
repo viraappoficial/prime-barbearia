@@ -5770,7 +5770,8 @@ async function baZapRenderThread(){
     if(m.deleted_at){
       return `<div class="ba-zap-bubble ${cls} deleted" data-id="${m.id}">🚫 Mensagem apagada</div>`;
     }
-    const status = m.status==='pending' ? '<span class="st">enviando…</span>'
+    const status = (m.status==='pending' && m.hold_reason) ? `<span class="st held">⏸ em espera · ${primeEsc(baZapHoldText(m.hold_reason))}</span>`
+      : m.status==='pending' ? '<span class="st">enviando…</span>'
       : m.status==='failed' ? `<span class="st failed">não enviada${m.error?' · '+primeEsc(m.error):''}</span>`
       : m.status==='held' ? `<span class="st held">⏸ em espera · ${primeEsc(baZapHoldText(m.hold_reason))}</span>`
       : m.direction==='outbound' ? baZapTicksHtml(m.ack) : '';
@@ -5790,6 +5791,10 @@ function baZapHoldText(reason){
   const map={
     fora_da_janela_24h:'o cliente não fala com o número há mais de 24 h; sai quando ele responder (ou use um modelo aprovado)',
     cliente_pediu_para_parar:'o cliente pediu para não receber mensagens',
+    cuidado_limite_hora:'limite por hora de mensagens a quem não falou com o número (protege o WhatsApp); sai sozinha',
+    cuidado_limite_dia:'limite do dia de mensagens a quem não falou com o número; sai amanhã',
+    cuidado_fora_do_horario:'fora do horário de envio (a quem não falou com o número); sai de manhã',
+    cuidado_whatsapp_restringiu:'o WhatsApp limitou contatos novos; pausado por algumas horas (não reinicie o WhatsApp)',
     modelo_sem_nome_ou_idioma:'modelo sem nome ou idioma'
   };
   return map[reason]||reason||'aguardando';
