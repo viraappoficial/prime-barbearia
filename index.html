@@ -3390,6 +3390,9 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-row .when.failed{color:var(--erro)}
 #barberApp .ba-zap-handoff-badge{display:inline-block;margin-top:.25rem;font-size:.66rem;font-weight:600;color:var(--alerta)}
 #barberApp .ba-zap-assumed-badge{display:inline-block;margin-top:.25rem;padding:.08rem .45rem;border-radius:999px;font-size:.64rem;font-weight:600;background:var(--dourado);color:var(--verde-noite)}
+#barberApp .ba-zap-unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 .3rem;border-radius:999px;background:var(--verde-neon);color:var(--verde-noite);font-size:.7rem;font-weight:700;line-height:1}
+#barberApp .ba-zap-archive-btn{flex:none;width:22px;height:22px;border-radius:50%;border:none;background:none;color:var(--prata-dim);font-size:.75rem;line-height:1;cursor:pointer;opacity:.6}
+#barberApp .ba-zap-archive-btn:hover{opacity:1;background:rgba(198,167,94,.12);color:var(--erro)}
 #barberApp .ba-zap-thread{grid-row:2;min-height:0;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;padding:1rem 1.2rem}
 #barberApp .ba-zap-bubble{max-width:72%;padding:.6rem .85rem;font-size:.86rem;line-height:1.45;border-radius:4px}
 #barberApp .ba-zap-bubble.in{align-self:flex-start;background:var(--grafite-card);border:1px solid var(--hair)}
@@ -3879,6 +3882,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <button class="active" data-tab="agenda" onclick="baTab('agenda')">Agenda</button>
         <button data-tab="atendimento" onclick="baTab('atendimento')">Atendimento</button>
         <button data-tab="zap" onclick="baTab('zap')" id="ba-link-zap" style="display:none">Zap</button>
+        <button data-tab="cadastros" onclick="baTab('cadastros')" id="ba-link-cadastros" style="display:none">Cadastros</button>
         <button data-tab="vendas" onclick="baTab('vendas')">Minhas vendas</button>
         <button data-tab="dashboard" onclick="baTab('dashboard')">Dashboard</button>
         <button data-tab="clientes" onclick="baTab('clientes')">Clientes</button>
@@ -4294,6 +4298,31 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <button class="ba-btn" id="ba-cli-msg-btn" style="max-width:100%">Mandar mensagem no WhatsApp</button>
         <div class="ba-slabel">Histórico com esse cliente</div>
         <div id="ba-cli-historico"></div>
+      </div>
+    </div>
+
+    <!-- CADASTROS — busca geral (qualquer cliente, mesmo sem venda registrada) e edição direta
+         do cadastro. Diferente da aba "Clientes" (que é o CRM por barbeiro, só quem já teve
+         corte concluído) — essa aqui existe pra corrigir dado errado de quem só mandou
+         mensagem no WhatsApp e ainda não foi atendido. -->
+    <div class="screen" id="ba-screen-cadastros">
+      <div class="ba-head"><div><div class="hi">Cadastros</div><div class="name">Clientes</div></div></div>
+      <div class="ba-body">
+        <div id="ba-cad-search-wrap">
+          <div class="ba-field" style="max-width:100%;margin-bottom:.8rem"><input type="text" id="ba-cad-search" placeholder="🔍 Buscar por nome, telefone ou e-mail" oninput="baCadSearch()"></div>
+          <div id="ba-cad-list"><div class="ba-zap-empty">Digite pra buscar.</div></div>
+        </div>
+        <div id="ba-cad-edit" style="display:none">
+          <button class="ba-btn ghost" style="max-width:100%;margin-bottom:1rem" onclick="baCadCloseEdit()">← Voltar à busca</button>
+          <div class="ba-card">
+            <div class="ba-field" style="max-width:100%"><label>Nome</label><input type="text" id="ba-cad-nome"></div>
+            <div class="ba-field" style="max-width:100%"><label>Telefone</label><input type="tel" id="ba-cad-telefone"></div>
+            <div class="ba-field" style="max-width:100%"><label>E-mail</label><input type="email" id="ba-cad-email"></div>
+            <div class="ba-field" style="max-width:100%"><label>Idade</label><input type="number" id="ba-cad-idade"></div>
+            <div class="ba-field" style="max-width:100%"><label>@ do Instagram</label><input type="text" id="ba-cad-instagram"></div>
+          </div>
+          <button class="ba-btn" id="ba-cad-save-btn" style="max-width:100%" onclick="baCadSave()">Salvar</button>
+        </div>
       </div>
     </div>
 
@@ -4792,6 +4821,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       <button class="ba-tab active" data-tab="agenda" onclick="baTab('agenda')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Agenda</span></button>
       <button class="ba-tab" data-tab="atendimento" onclick="baTab('atendimento')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Atender</span></button>
       <button class="ba-tab" data-tab="zap" onclick="baTab('zap')" style="display:none"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><span>Zap</span></button>
+      <button class="ba-tab" data-tab="cadastros" onclick="baTab('cadastros')" style="display:none"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/><path d="M8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3z"/><path d="M8 13c-2.67 0-8 1.34-8 4v2h10"/><path d="M16 13c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45v2h7v-2c0-2.66-5.33-4-8-4z"/></svg><span>Cadastros</span></button>
       <button class="ba-tab" data-tab="vendas" onclick="baTab('vendas')"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/></svg><span>Vendas</span></button>
       <button class="ba-tab" data-tab="dashboard" onclick="baTab('dashboard')"><svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg><span>Painel</span></button>
       <button class="ba-tab" data-tab="clientes" onclick="baTab('clientes')"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-5 7-5s7 1.7 7 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15 13.2c2.7.3 5 1.7 5 4.3v1.5"/></svg><span>Clientes</span></button>
@@ -5021,8 +5051,9 @@ function baTab(tab){
   if((tab==='dashboard'||tab==='clientes'||tab==='vendas') && baCurrentRole==='vendas') tab='agenda';
   if(tab==='caixa' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab==='zap' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
+  if(tab==='cadastros' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab!=='zap') baZapTeardown(); // sai do Zap: para o polling, não deixa rodando em outra aba
-  const m={agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',caixa:'ba-screen-caixa',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao',zap:'ba-screen-zap'};
+  const m={agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',caixa:'ba-screen-caixa',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao',zap:'ba-screen-zap',cadastros:'ba-screen-cadastros'};
   baShow(m[tab]);
   document.querySelectorAll('#barberApp .ba-tab,#barberApp .ba-links button').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   if(tab==='vendas') baRenderVendas();
@@ -5034,6 +5065,68 @@ function baTab(tab){
   if(tab==='atendimento') baRenderAtendimento();
   if(tab==='gestao') baRenderGestao();
   if(tab==='zap') baZapSetup();
+  if(tab==='cadastros') baCadSetup();
+}
+// ══ Cadastros (busca geral de clientes — Vendas/admin) ══
+// Diferente da aba "Clientes" (CRM por barbeiro, só quem já teve corte concluído): aqui busca
+// QUALQUER cliente cadastrado, mesmo sem venda — pra corrigir dado de quem só mandou mensagem
+// no WhatsApp. Escrita passa pela RPC staff_update_client (igual padrão de segurança do resto
+// do app: RLS não libera UPDATE direto em clients pro staff, só a RPC narrow).
+let baCadSearchToken = 0;
+let baCadResults = [];
+function baCadSetup(){
+  document.getElementById('ba-cad-search').value = '';
+  document.getElementById('ba-cad-list').innerHTML = '<div class="ba-zap-empty">Digite pra buscar.</div>';
+  baCadCloseEdit();
+}
+async function baCadSearch(){
+  const q = document.getElementById('ba-cad-search').value.trim();
+  const list = document.getElementById('ba-cad-list');
+  if(!q || q.length < 2){ list.innerHTML = '<div class="ba-zap-empty">Digite pra buscar.</div>'; return; }
+  const myToken = ++baCadSearchToken;
+  const { data, error } = await sb.from('clients').select('id,name,phone,email,age,instagram')
+    .or(`name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`).order('name').limit(20);
+  if(myToken !== baCadSearchToken) return; // busca mais nova já em andamento, descarta esse resultado
+  if(error){ list.innerHTML = '<div class="ba-zap-empty">Não foi possível buscar agora.</div>'; return; }
+  baCadResults = data || [];
+  list.innerHTML = baCadResults.length ? baCadResults.map(c=>
+    `<div class="ba-item" style="cursor:pointer" onclick="baCadOpenEdit('${c.id}')"><div class="ic">${primeEsc((c.name||'?').charAt(0).toUpperCase())}</div><div class="info"><div class="n">${primeEsc(c.name||'(sem nome)')}</div><div class="d">${primeEsc(baZapFormatPhone(c.phone)||c.phone||'')}${c.email?' · '+primeEsc(c.email):''}</div></div></div>`
+  ).join('') : '<div class="ba-zap-empty">Nenhum cliente encontrado.</div>';
+}
+function baCadOpenEdit(id){
+  const c = baCadResults.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('ba-cad-nome').value = c.name || '';
+  document.getElementById('ba-cad-telefone').value = c.phone || '';
+  document.getElementById('ba-cad-email').value = c.email || '';
+  document.getElementById('ba-cad-idade').value = c.age ?? '';
+  document.getElementById('ba-cad-instagram').value = c.instagram || '';
+  document.getElementById('ba-cad-edit').dataset.id = id;
+  document.getElementById('ba-cad-edit').style.display = '';
+  document.getElementById('ba-cad-search-wrap').style.display = 'none';
+}
+function baCadCloseEdit(){
+  document.getElementById('ba-cad-edit').style.display = 'none';
+  document.getElementById('ba-cad-search-wrap').style.display = '';
+}
+async function baCadSave(){
+  const id = document.getElementById('ba-cad-edit').dataset.id;
+  if(!id) return;
+  const btn = document.getElementById('ba-cad-save-btn');
+  btn.disabled = true;
+  const ageVal = document.getElementById('ba-cad-idade').value;
+  const { error } = await sb.rpc('staff_update_client', {
+    p_client_id: id,
+    p_name: document.getElementById('ba-cad-nome').value.trim(),
+    p_phone: document.getElementById('ba-cad-telefone').value.replace(/\D/g,''),
+    p_email: document.getElementById('ba-cad-email').value.trim() || null,
+    p_age: ageVal ? Number(ageVal) : null,
+    p_instagram: document.getElementById('ba-cad-instagram').value.trim().replace(/^@/,'') || null,
+  });
+  btn.disabled = false;
+  if(error){ alert('Não foi possível salvar: ' + error.message); return; }
+  baCadCloseEdit();
+  baCadSearch();
 }
 // ══ Zap (chat do WhatsApp — Vendas/admin) ══
 // Lê/escreve direto em whatsapp_messages/whatsapp_conversations, protegido por RLS (só
@@ -5113,7 +5206,13 @@ async function baRenderZapList(){
   const list = document.getElementById('ba-zap-list');
   if(error){ list.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as conversas agora.</div>'; return; }
   if(!data || !data.length){ list.innerHTML = '<div class="ba-zap-empty">Nenhuma conversa ainda.</div>'; return; }
-  await Promise.all([baZapResolveNames(data.map(c=>c.contact_phone)), baZapResolveWaInfo(data.map(c=>c.chat_id))]);
+  const [, , unreadRes] = await Promise.all([
+    baZapResolveNames(data.map(c=>c.contact_phone)),
+    baZapResolveWaInfo(data.map(c=>c.chat_id)),
+    sb.from('whatsapp_unread_counts').select('chat_id,unread_count'),
+  ]);
+  const unreadByChat = {};
+  (unreadRes.data||[]).forEach(r=>{ unreadByChat[r.chat_id] = r.unread_count; });
   list.innerHTML = data.map(c=>{
     const title = baZapTitleFor(c.chat_id, c.contact_phone);
     const prefix = c.last_direction === 'outbound' ? 'Você: ' : '';
@@ -5124,11 +5223,14 @@ async function baRenderZapList(){
     const info = baZapWaInfoCache[c.chat_id];
     const badge = info && info.handoffRequested ? '<div class="ba-zap-handoff-badge">Atendimento solicitado</div>'
       : info && info.assumedBy ? '<div class="ba-zap-assumed-badge">Assumido</div>' : '';
-    return `<button class="ba-zap-row" onclick="baZapOpenChat('${c.chat_id}','${c.contact_phone||''}')">
+    const unread = unreadByChat[c.chat_id] || 0;
+    const unreadHtml = unread > 0 ? `<div class="ba-zap-unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
+    return `<div class="ba-zap-row" role="button" tabindex="0" onclick="baZapOpenChat('${c.chat_id}','${c.contact_phone||''}')">
       ${baZapAvatarHtml(c.chat_id, title)}
       <div style="min-width:0;flex:1"><div class="nm">${primeEsc(title)}</div><div class="pv">${primeEsc(prefix + c.last_body)}</div>${badge}</div>
-      <div class="when ${whenCls}">${whenTxt}</div>
-    </button>`;
+      <div class="when ${whenCls}" style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">${whenTxt}${unreadHtml}</div>
+      <button class="ba-zap-archive-btn" title="Tirar da lista" onclick="event.stopPropagation(); baZapArchiveChat('${c.chat_id}')">✕</button>
+    </div>`;
   }).join('');
 }
 
@@ -5154,6 +5256,7 @@ async function baZapOpenChat(chatId, phone){
   baZapUpdateAssumeBtn(chatId);
   baZapSetState('thread');
   baZapRenderThread();
+  sb.rpc('mark_chat_read', { p_chat_id: chatId }); // zera o contador de não lidas — não bloqueia a abertura do chat
 }
 // botão de cabeçalho: "Assumir" pausa a URA pra esse número (ela fica calada até devolver);
 // "Devolver pro bot" reativa. Qualquer vendas/admin pode alternar — a equipe compartilha a fila.
@@ -5195,11 +5298,19 @@ async function baZapEndAttendance(){
   baZapRenderThread();
 }
 function baZapBackToList(){
+  if(baZapCurrentChat) sb.rpc('mark_chat_read', { p_chat_id: baZapCurrentChat }); // pega quem chegou enquanto a conversa tava aberta
   baZapCurrentChat = null;
   baZapCurrentPhone = null;
   document.getElementById('ba-screen-zap').classList.remove('ficha-open');
   baZapSetState('list');
   baRenderZapList();
+}
+// "Tirar da lista" (arquivar): some da lista sem apagar nada — mensagem nova faz voltar sozinha
+// (view whatsapp_conversations já trata isso). Se o chat tirado era o aberto, fecha a conversa.
+async function baZapArchiveChat(chatId){
+  const { error } = await sb.rpc('archive_whatsapp_chat', { p_chat_id: chatId });
+  if(error){ alert('Não foi possível tirar da lista agora.'); return; }
+  if(baZapCurrentChat === chatId) baZapBackToList(); else baRenderZapList();
 }
 
 // ── Nova conversa ──
@@ -10951,6 +11062,11 @@ function baEnter(barber){
   // cortando cabelo. Proteção de verdade é a RLS de whatsapp_messages (só vendas/admin
   // leem/escrevem); isto aqui é só pra não oferecer um botão que ia falhar silenciosamente.
   document.querySelectorAll('#barberApp [data-tab="zap"]').forEach(el=>{
+    el.style.display = (isVendas || isAdmin) ? '' : 'none';
+  });
+  // Cadastros (editar dado de cliente) é a mesma régua do Zap — RLS de verdade fica na RPC
+  // staff_update_client, isto aqui só evita mostrar um botão que ia falhar silenciosamente.
+  document.querySelectorAll('#barberApp [data-tab="cadastros"]').forEach(el=>{
     el.style.display = (isVendas || isAdmin) ? '' : 'none';
   });
   csModalClose(); csLastReport = null;
