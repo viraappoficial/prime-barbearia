@@ -117,6 +117,7 @@
     let primeSwRefreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if(primeSwRefreshing) return;
+      if(document.getElementById('ba-confirm-link')) return;   // confirmando um agendamento: não interrompe
       if(document.getElementById('ca-signup-link')) return;   // cliente preenchendo o cadastro: não perde o que digitou
       primeSwRefreshing = true;
       window.location.reload();
@@ -11961,7 +11962,13 @@ if(/^staff\./i.test(location.hostname)){
 (function(){
   let token = null;
   try{ token = new URLSearchParams(location.search).get('confirmar'); }catch(e){}
+  // O site recarrega sozinho na primeira visita do navegador (service worker assume o controle). Como o token sai da
+  // barra de endereço, guarda ele na sessão pra a confirmação continuar depois do recarregamento.
+  const TOKEN_KEY = 'prime_confirmar_token';
+  if(token){ try{ sessionStorage.setItem(TOKEN_KEY, token); }catch(e){} }
+  else { try{ token = sessionStorage.getItem(TOKEN_KEY); }catch(e){} }
   if(!token) return;
+  const clearToken = () => { try{ sessionStorage.removeItem(TOKEN_KEY); }catch(e){} };
   try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e){}   // tira o token da barra de endereço
   const box = document.createElement('div');
   box.id = 'ba-confirm-link';
@@ -11974,7 +11981,7 @@ if(/^staff\./i.test(location.hostname)){
       <div style="font-size:.9rem;line-height:1.6;margin-bottom:1.2rem">${body}</div>
       ${retry ? '<button class="ba-btn" style="margin:0 0 .6rem;width:100%" id="ba-confirm-retry">Tentar de novo</button>' : ''}
       <button class="ba-btn ghost" style="margin:0;width:100%" id="ba-confirm-close">Abrir o app</button></div>`;
-    document.getElementById('ba-confirm-close').onclick = ()=>box.remove();
+    document.getElementById('ba-confirm-close').onclick = ()=>{ clearToken(); box.remove(); };
     if(retry) document.getElementById('ba-confirm-retry').onclick = run;
   };
   const detail = d => `<b>${primeEsc(d.client||'Cliente')}</b><br>${primeEsc(d.day_label||'')} às ${primeEsc(d.time||'')}<br><span style="opacity:.75">${primeEsc((d.services||[]).join(' + '))}</span>`;
@@ -11984,6 +11991,7 @@ if(/^staff\./i.test(location.hostname)){
     try{ res = await sb.rpc('barber_confirm_by_token', { p_token: token }); }catch(e){ res = { error: e }; }
     const { data, error } = res;
     if(error || !data){ console.error('barber_confirm_by_token', error); return card('⚠️', 'Não foi possível confirmar agora', 'Verifique a internet e tente de novo.', true); }
+    clearToken();   // o banco respondeu (confirmou, já estava, cancelado, vencido ou inválido): o link não precisa mais ser guardado
     if(data.ok && !data.already) return card('✅', 'Agendamento confirmado', `${detail(data)}<br><br><span style="opacity:.75">O cliente já foi avisado pelo WhatsApp.</span>`);
     if(data.ok) return card('👍', 'Esse agendamento já estava confirmado', detail(data));
     if(data.reason === 'cancelled') return card('🚫', 'Esse agendamento foi cancelado', 'O cliente ou a equipe cancelou. Não precisa confirmar.');
