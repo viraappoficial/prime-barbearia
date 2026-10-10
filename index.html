@@ -12068,7 +12068,7 @@ if(/^staff\./i.test(location.hostname)){
       <label style="font-size:.78rem;display:block;margin-bottom:.7rem">Nome<input id="cs-nome" type="text" autocomplete="name" value="${primeEsc(nome)}" style="${inputStyle}"></label>
       <label style="font-size:.78rem;display:block;margin-bottom:.7rem">E-mail<input id="cs-email" type="email" autocomplete="email" value="${primeEsc(email)}" style="${inputStyle}"></label>
       <label style="font-size:.78rem;display:block;margin-bottom:.7rem">Senha${mode==='login'?' (a da sua conta)':' (mínimo 6 caracteres)'}<input id="cs-pass" type="password" autocomplete="${mode==='login'?'current-password':'new-password'}" style="${inputStyle}"></label>
-      <label style="font-size:.78rem;display:block;margin-bottom:.9rem">Telefone (do seu WhatsApp)<input id="cs-phone" type="text" value="${primeEsc(phoneMask(phoneLocal(info.phone)))}" readonly style="${inputStyle};opacity:.7"></label>
+      <label style="font-size:.78rem;display:block;margin-bottom:.9rem">${mode==='login' ? 'Telefone da sua conta (pode alterar)' : 'Telefone (do seu WhatsApp)'}<input id="cs-phone" type="text" inputmode="tel" value="${primeEsc(mode==='login' && saved('cs-phone') ? saved('cs-phone') : phoneMask(phoneLocal(info.phone)))}" ${mode==='login' ? '' : 'readonly'} style="${inputStyle}${mode==='login' ? '' : ';opacity:.7'}">${mode==='login' ? '<span style="display:block;opacity:.7;margin-top:.3rem">Ao entrar, sua conta passa a usar este telefone. Assim da próxima vez o WhatsApp já te reconhece.</span>' : ''}</label>
       ${mode==='signup' ? `<label style="display:flex;align-items:flex-start;gap:.6rem;font-size:.78rem;color:var(--prata-dim);margin-bottom:1rem;cursor:pointer;line-height:1.5">
         <input type="checkbox" id="cs-consent" style="width:16px;height:16px;flex:none;margin-top:.15rem;accent-color:var(--verde-neon)">
         <span>Li e concordo com a <a href="#" onclick="event.stopPropagation();openPrivacyModal();return false" style="color:var(--verde-neon)">Política de Privacidade</a>, incluindo o uso dos meus dados pra viabilizar o agendamento e o envio da confirmação e do lembrete dos meus agendamentos por WhatsApp.</span></label>` : ''}
@@ -12088,6 +12088,14 @@ if(/^staff\./i.test(location.hostname)){
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return form('Digite um e-mail válido.');
     if(pass.length < 6) return form('A senha precisa ter pelo menos 6 caracteres.');
     if(mode === 'signup' && !(consent && consent.checked)) return form('Pra continuar, marque que leu e concorda com a Política de Privacidade.');
+    let newPhone = null;
+    if(mode === 'login'){
+      const typed = (document.getElementById('cs-phone').value || '').trim();
+      const d = typed.replace(/\D/g, '');
+      if(d.length < 10) return form('Digite o telefone com DDD.');
+      // só dígitos, no formato local do Brasil (é assim que o WhatsApp acha a conta); só vira internacional com "+" ou número fora do padrão
+      newPhone = typed.startsWith('+') ? '+' + d : (d.length === 10 || d.length === 11) ? d : (d.startsWith('55') && (d.length === 12 || d.length === 13)) ? d.slice(2) : '+' + d;
+    }
     busy = true;
     const btn = document.getElementById('cs-submit'); btn.disabled = true; btn.textContent = 'Confirmando…';
     try{
@@ -12115,6 +12123,12 @@ if(/^staff\./i.test(location.hostname)){
         try{ await sb.rpc('link_precadastro'); }catch(e){}
       } else {
         acc = { id: row.id, name: row.name, email: row.email, phone: row.phone, age: row.age, instagram: row.instagram, favoriteBarber: row.favorite_barber, referralCode: row.referral_code };
+        // a pessoa pode ter escrito de outro número: a conta passa a usar o que ela confirmou no campo
+        if(newPhone && (row.phone || '').replace(/\D/g, '') !== newPhone.replace(/\D/g, '')){
+          const up = await sb.from('clients').update({ phone: newPhone }).eq('id', uid);
+          if(up.error) console.error('clients.update phone', up.error);
+          else acc.phone = newPhone;
+        }
       }
       primeAccountCache = acc;
       let res;
