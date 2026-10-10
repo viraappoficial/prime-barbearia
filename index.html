@@ -117,6 +117,7 @@
     let primeSwRefreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if(primeSwRefreshing) return;
+      if(document.getElementById('ca-signup-link')) return;   // cliente preenchendo o cadastro: não perde o que digitou
       primeSwRefreshing = true;
       window.location.reload();
     });
@@ -11998,7 +11999,13 @@ if(/^staff\./i.test(location.hostname)){
 (function(){
   let token = null;
   try{ token = new URLSearchParams(location.search).get('cadastro'); }catch(e){}
+  // O site recarrega sozinho quando o service worker assume o controle (primeira visita do navegador). Como o token sai
+  // da barra de endereço, guarda ele na sessão pra o modal voltar depois do recarregamento.
+  const TOKEN_KEY = 'prime_cadastro_token';
+  if(token){ try{ sessionStorage.setItem(TOKEN_KEY, token); }catch(e){} }
+  else { try{ token = sessionStorage.getItem(TOKEN_KEY); }catch(e){} }
   if(!token) return;
+  const clearToken = () => { try{ sessionStorage.removeItem(TOKEN_KEY); }catch(e){} };
   try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e){}   // tira o token da barra de endereço
   const box = document.createElement('div');
   box.id = 'ca-signup-link';
@@ -12014,7 +12021,7 @@ if(/^staff\./i.test(location.hostname)){
       <div style="font-size:.9rem;line-height:1.6;margin-bottom:1.2rem">${body}</div>
       ${btn ? `<button class="ba-btn" style="margin:0 0 .6rem;width:100%" id="cs-btn">${btn.label}</button>` : ''}
       <button class="ba-btn ghost" style="margin:0;width:100%" id="cs-close">Abrir o app</button></div>`);
-    document.getElementById('cs-close').onclick = ()=>{ box.remove(); if(primeAccountCache) caEnter(); };
+    document.getElementById('cs-close').onclick = ()=>{ clearToken(); box.remove(); if(primeAccountCache) caEnter(); };
     if(btn) document.getElementById('cs-btn').onclick = btn.run;
   };
   const phoneLocal = d => (d.startsWith('55') && (d.length === 12 || d.length === 13)) ? d.slice(2) : '+' + d;
@@ -12032,7 +12039,7 @@ if(/^staff\./i.test(location.hostname)){
     try{ res = await sb.rpc('signup_link_info', { p_token: token }); }catch(e){ res = { error: e }; }
     const { data, error } = res;
     if(error || !data){ console.error('signup_link_info', error); return card('⚠️', 'Não foi possível abrir agora', 'Verifique a internet e tente de novo.', { label:'Tentar de novo', run: load }); }
-    if(!data.ok) return card(...endCard(data.reason));
+    if(!data.ok){ clearToken(); return card(...endCard(data.reason)); }
     info = data;
     form();
   }
@@ -12107,6 +12114,7 @@ if(/^staff\./i.test(location.hostname)){
       const { data: conf, error: cerr } = res;
       busy = false;
       if(cerr || !conf){ console.error('signup_link_confirm', cerr); return card('⚠️', 'Cadastro feito, mas faltou confirmar', 'Seu cadastro foi criado. Verifique a internet e tente de novo.', { label:'Confirmar agora', run: async ()=>{ const r = await sb.rpc('signup_link_confirm', { p_token: token }); (r.data && r.data.ok) ? card('✅', 'Agendamento confirmado', detail(r.data)) : card('⚠️', 'Não foi possível confirmar', 'Fale com a barbearia pelo WhatsApp.'); } }); }
+      clearToken();
       if(conf.ok) return card('✅', 'Tudo certo!', `Seu cadastro foi feito e o agendamento foi enviado ao barbeiro.<br><br>${detail(conf)}<br><br><span style="opacity:.75">Quando o barbeiro confirmar, você recebe o aviso pelo WhatsApp.</span>`);
       if(conf.reason === 'used') return card('👍', 'Esse link já foi usado', 'Seu agendamento já estava confirmado por aqui.');
       return card(...endCard(conf.reason));
