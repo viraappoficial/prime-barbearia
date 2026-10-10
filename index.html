@@ -10458,24 +10458,27 @@ async function baZapAlertCheck(){
   if(baZapAlertBusy || (baCurrentRole!=='admin' && baCurrentRole!=='vendas')) return;
   baZapAlertBusy = true;
   try{
-    const { data, error } = await sb.from('whatsapp_messages')
-      .select('id,chat_id,contact_phone,body,created_at')
-      .eq('direction','inbound').order('created_at',{ascending:false}).limit(20);
+    // Só avisa quando o cliente PEDE ATENDENTE (handoff) e ninguém assumiu ainda. Mensagem comum não faz som nem notificação
+    // (o contador de não lidas do Zap continua normal). O aviso de agendamento novo é outro (baAlertCheck).
+    const { data, error } = await sb.from('whatsapp_contacts')
+      .select('chat_id,wa_name,handoff_requested_at')
+      .eq('handoff_requested', true).is('assumed_by', null)
+      .order('handoff_requested_at',{ascending:false,nullsFirst:false}).limit(20);
     if(error){ console.error('baZapAlertCheck', error); return; }
-    const rows = data || [];
-    if(baZapAlertSeen === null){ baZapAlertSeen = new Set(rows.map(r=>r.id)); return; } // primeira leitura: só marca o que já existe
-    const novos = rows.filter(r=>!baZapAlertSeen.has(r.id));
-    rows.forEach(r=>baZapAlertSeen.add(r.id));
+    const rows = (data||[]).map(r=>({ ...r, key: r.chat_id+'|'+(r.handoff_requested_at||'') }));
+    if(baZapAlertSeen === null){ baZapAlertSeen = new Set(rows.map(r=>r.key)); return; } // primeira leitura: só marca o que já existe
+    const novos = rows.filter(r=>!baZapAlertSeen.has(r.key));
+    rows.forEach(r=>baZapAlertSeen.add(r.key));
     if(!novos.length) return;
     baPlayZapAlertSound();
-    const title = novos.length>1 ? `${novos.length} mensagens novas no WhatsApp` : 'Mensagem nova no WhatsApp';
-    const linha = r=>{
+    const nomeDe = r=>{
       const info = baZapWaInfoCache[r.chat_id];
-      const nome = (info && info.name) || baZapFormatPhone(r.contact_phone) || r.chat_id;
-      return `<b>${primeEsc(nome)}</b><br><span style="opacity:.75">${primeEsc((r.body||'').slice(0,80))}</span>`;
+      return (info && info.name) || r.wa_name || baZapFormatPhone(String(r.chat_id).split('@')[0]) || r.chat_id;
     };
+    const title = novos.length>1 ? `${novos.length} clientes pediram atendente` : 'Cliente pediu atendente';
+    const linha = r=>`<b>${primeEsc(nomeDe(r))}</b><br><span style="opacity:.75">Está esperando alguém da equipe assumir</span>`;
     baAlertToast(`<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">${title}</div>${novos.slice(0,3).map(linha).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.1);margin:.5rem 0">')}`, ()=>baTab('zap'));
-    novos.slice(0,3).forEach(r=>baAlertSystemNotif('Mensagem no WhatsApp', (r.body||'').slice(0,100), 'zap-'+r.id));
+    novos.slice(0,3).forEach(r=>baAlertSystemNotif('Cliente pediu atendente', `${nomeDe(r)} está esperando alguém da equipe`, 'zap-handoff-'+r.chat_id));
     const zapScreen = document.getElementById('ba-screen-zap');
     if(zapScreen && zapScreen.classList.contains('active') && typeof baRenderZapList==='function' && !baZapCurrentChat) baRenderZapList();
   } finally { baZapAlertBusy = false; }
@@ -10488,7 +10491,7 @@ function baZapAlertStart(){
   baZapAlertTimer = setInterval(baZapAlertCheck, 20000);
   try{
     baZapAlertChannel = sb.channel('prime-zap-alert')
-      .on('postgres_changes', { event:'INSERT', schema:'public', table:'whatsapp_messages', filter:'direction=eq.inbound' }, ()=>baZapAlertCheck())
+      .on('postgres_changes', { event:'*', schema:'public', table:'whatsapp_contacts' }, ()=>baZapAlertCheck())
       .subscribe();
   }catch(e){ console.error('baZapAlertStart/realtime', e); }
   baRenderZapAlertConfig();
@@ -10502,7 +10505,7 @@ function baRenderZapAlertConfig(){
   if(baCurrentRole!=='admin' && baCurrentRole!=='vendas'){ box.innerHTML = ''; return; }
   const cur = baZapSoundId(), muted = baZapAlertMuted();
   box.innerHTML = `<div class="ba-slabel" style="margin-top:0">Notificações do WhatsApp (Zap)</div>
-    <p style="color:var(--prata-dim);font-size:.8rem;margin:0 0 .9rem">Som separado do aviso de agendamento, pra dar pra diferenciar sem olhar a tela. Vale na hora, neste aparelho.</p>
+    <p style="color:var(--prata-dim);font-size:.8rem;margin:0 0 .9rem">Avisa só quando um cliente <b>pede atendente</b> e ninguém assumiu. Mensagem comum não faz som nem notificação. Som separado do aviso de agendamento. Vale na hora, neste aparelho.</p>
     <button class="ba-btn ghost" style="max-width:100%;margin-bottom:.9rem" onclick="baZapAlertToggleMute()">Som do WhatsApp: ${muted ? 'desligado' : 'ligado'}</button>
     ${BA_SOUNDS.map(x=>`<div class="ba-sound-row" data-sound="${x.id}" style="display:flex;align-items:center;gap:.6rem;padding:.65rem .75rem;margin-bottom:.5rem;border:1px solid ${x.id===cur ? 'var(--dourado)' : 'var(--hair, rgba(255,255,255,.12))'};border-radius:10px;background:${x.id===cur ? 'rgba(198,167,94,.10)' : 'transparent'}">
       <button style="all:unset;flex:1;cursor:pointer" onclick="baZapAlertPickSound('${x.id}')" aria-label="Usar o som ${x.name}">
@@ -10522,8 +10525,8 @@ function baZapAlertToggleMute(){
 }
 function baZapAlertTest(){
   baPlayZapAlertSound(true);
-  baAlertToast('<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">Teste</div><b>Assim aparece uma mensagem nova no WhatsApp</b><br><span style="opacity:.75">Se você ouviu o som, está tudo certo.</span>');
-  baAlertSystemNotif('Teste de aviso', 'Assim aparece uma mensagem nova no WhatsApp.', 'zap-teste');
+  baAlertToast('<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">Teste</div><b>Assim aparece quando um cliente pede atendente</b><br><span style="opacity:.75">Se você ouviu o som, está tudo certo.</span>');
+  baAlertSystemNotif('Teste de aviso', 'Assim aparece quando um cliente pede atendente.', 'zap-teste');
 }
 // iOS/Chrome só liberam som e notificação depois de um toque na tela: no primeiro toque do staff libera os dois
 document.addEventListener('pointerdown', ()=>{
