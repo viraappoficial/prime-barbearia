@@ -11991,6 +11991,132 @@ if(/^staff\./i.test(location.hostname)){
   }
   run();
 })();
+// ── Link de cadastro rápido (?cadastro=TOKEN) ──
+// Quem agenda pela URA do WhatsApp sem ter conta recebe esse link: o modal mostra o agendamento e pede o cadastro
+// rápido (nome, e-mail, senha; o telefone já vem do WhatsApp). Ao concluir, o agendamento passa a ser da conta e o
+// barbeiro é avisado. O token é o segredo (o banco valida: aleatório, vale poucos dias, uso único).
+(function(){
+  let token = null;
+  try{ token = new URLSearchParams(location.search).get('cadastro'); }catch(e){}
+  if(!token) return;
+  try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e){}   // tira o token da barra de endereço
+  const box = document.createElement('div');
+  box.id = 'ca-signup-link';
+  box.style.cssText = 'position:fixed;inset:0;z-index:3000;background:var(--verde-noite);display:flex;align-items:flex-start;justify-content:center;padding:1.2rem;overflow-y:auto';
+  document.body.appendChild(box);
+  const st = document.createElement('style');   // .ba-btn só tem estilo dentro do #barberApp; aqui o modal é independente
+  st.textContent = '#ca-signup-link .ba-btn{display:block;width:100%;padding:.9rem 1rem;border:none;border-radius:8px;background:var(--dourado);color:#1a1506;font-family:var(--font-body);font-weight:600;font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}#ca-signup-link .ba-btn.ghost{background:none;border:1px solid var(--dourado-dim);color:var(--prata-dim)}#ca-signup-link .ba-btn:disabled{opacity:.6;cursor:default}#ca-signup-link input:focus{outline:2px solid var(--verde-neon);outline-offset:1px}';
+  box.appendChild(st);
+  const wrap = inner => { box.innerHTML = `<div style="max-width:440px;width:100%;margin:auto;background:var(--grafite-card);border:1px solid var(--dourado);border-radius:14px;padding:1.6rem 1.4rem;color:var(--prata)">${inner}</div>`; box.appendChild(st); };
+  const card = (icon, title, body, btn) => {
+    wrap(`<div style="text-align:center"><div style="font-size:2.4rem;line-height:1;margin-bottom:.6rem">${icon}</div>
+      <div style="font-family:var(--font-display);font-size:1.25rem;color:var(--dourado);margin-bottom:.6rem">${title}</div>
+      <div style="font-size:.9rem;line-height:1.6;margin-bottom:1.2rem">${body}</div>
+      ${btn ? `<button class="ba-btn" style="margin:0 0 .6rem;width:100%" id="cs-btn">${btn.label}</button>` : ''}
+      <button class="ba-btn ghost" style="margin:0;width:100%" id="cs-close">Abrir o app</button></div>`);
+    document.getElementById('cs-close').onclick = ()=>{ box.remove(); if(primeAccountCache) caEnter(); };
+    if(btn) document.getElementById('cs-btn').onclick = btn.run;
+  };
+  const phoneLocal = d => (d.startsWith('55') && (d.length === 12 || d.length === 13)) ? d.slice(2) : '+' + d;
+  const phoneMask = v => {
+    const d = v.replace(/\D/g, '');
+    if(v.startsWith('+')) return v;
+    return d.length === 11 ? `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}` : v;
+  };
+  const detail = d => `<b>${primeEsc((d.services||[]).join(' + '))}</b><br>${primeEsc(d.day_label||'')} às ${primeEsc(d.time||'')}${d.barber ? '<br><span style="opacity:.75">com ' + primeEsc(d.barber) + '</span>' : ''}`;
+  let info = null, mode = 'signup', busy = false;
+
+  async function load(){
+    card('⏳', 'Abrindo seu agendamento…', 'Só um instante.');
+    let res;
+    try{ res = await sb.rpc('signup_link_info', { p_token: token }); }catch(e){ res = { error: e }; }
+    const { data, error } = res;
+    if(error || !data){ console.error('signup_link_info', error); return card('⚠️', 'Não foi possível abrir agora', 'Verifique a internet e tente de novo.', { label:'Tentar de novo', run: load }); }
+    if(!data.ok) return card(...endCard(data.reason));
+    info = data;
+    form();
+  }
+  function endCard(reason){
+    if(reason === 'used') return ['👍', 'Esse link já foi usado', 'Seu cadastro e seu agendamento já estão confirmados por aqui.'];
+    if(reason === 'cancelled') return ['🚫', 'Esse agendamento foi cancelado', 'Se ainda quiser, é só agendar de novo pelo WhatsApp ou pelo site.'];
+    if(reason === 'expired') return ['⌛', 'Link vencido', 'Esse link passou da validade. Agende de novo pelo WhatsApp ou pelo site.'];
+    return ['❓', 'Link inválido', 'Confira se copiou o link inteiro da mensagem.'];
+  }
+  const inputStyle = 'width:100%;padding:.7rem .8rem;border-radius:8px;border:1px solid var(--dourado);background:var(--verde-noite);color:var(--prata);font-size:.95rem;margin-top:.3rem';
+  function form(msg){
+    const saved = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+    const nome = saved('cs-nome') || ((info.client_name || '').replace(/\D/g, '').length > 6 ? '' : (info.client_name || ''));
+    const email = saved('cs-email');
+    wrap(`<div style="font-family:var(--font-display);font-size:1.25rem;color:var(--dourado);margin-bottom:.4rem">Falta só um passo</div>
+      <div style="font-size:.9rem;line-height:1.6;margin-bottom:1rem">Para confirmar seu atendimento, faça seu cadastro rápido:</div>
+      <div style="background:var(--verde-noite);border:1px solid var(--dourado);border-radius:10px;padding:.8rem .9rem;font-size:.9rem;line-height:1.6;margin-bottom:1rem">${detail(info)}</div>
+      <label style="font-size:.78rem;display:block;margin-bottom:.7rem">Nome<input id="cs-nome" type="text" autocomplete="name" value="${primeEsc(nome)}" style="${inputStyle}"></label>
+      <label style="font-size:.78rem;display:block;margin-bottom:.7rem">E-mail<input id="cs-email" type="email" autocomplete="email" value="${primeEsc(email)}" style="${inputStyle}"></label>
+      <label style="font-size:.78rem;display:block;margin-bottom:.7rem">Senha${mode==='login'?' (a da sua conta)':' (mínimo 6 caracteres)'}<input id="cs-pass" type="password" autocomplete="${mode==='login'?'current-password':'new-password'}" style="${inputStyle}"></label>
+      <label style="font-size:.78rem;display:block;margin-bottom:.9rem">Telefone (do seu WhatsApp)<input id="cs-phone" type="text" value="${primeEsc(phoneMask(phoneLocal(info.phone)))}" readonly style="${inputStyle};opacity:.7"></label>
+      ${mode==='signup' ? `<label style="display:flex;align-items:flex-start;gap:.6rem;font-size:.78rem;color:var(--prata-dim);margin-bottom:1rem;cursor:pointer;line-height:1.5">
+        <input type="checkbox" id="cs-consent" style="width:16px;height:16px;flex:none;margin-top:.15rem;accent-color:var(--verde-neon)">
+        <span>Li e concordo com a <a href="#" onclick="event.stopPropagation();openPrivacyModal();return false" style="color:var(--verde-neon)">Política de Privacidade</a>, incluindo o uso dos meus dados pra viabilizar o agendamento e o envio da confirmação e do lembrete dos meus agendamentos por WhatsApp.</span></label>` : ''}
+      <div id="cs-err" style="color:var(--erro);font-size:.82rem;line-height:1.5;margin-bottom:.8rem;${msg?'':'display:none'}">${primeEsc(msg||'')}</div>
+      <button class="ba-btn" style="margin:0 0 .6rem;width:100%" id="cs-submit">${mode==='login' ? 'Entrar e confirmar' : 'Cadastrar e confirmar'}</button>
+      <button class="ba-btn ghost" style="margin:0;width:100%" id="cs-swap">${mode==='login' ? 'Quero criar uma conta nova' : 'Já tenho conta'}</button>`);
+    document.getElementById('cs-submit').onclick = submit;
+    document.getElementById('cs-swap').onclick = ()=>{ mode = mode === 'login' ? 'signup' : 'login'; form(); };
+  }
+  async function submit(){
+    if(busy) return;
+    const nome = document.getElementById('cs-nome').value.trim();
+    const email = document.getElementById('cs-email').value.trim();
+    const pass = document.getElementById('cs-pass').value;
+    const consent = document.getElementById('cs-consent');
+    if(mode === 'signup' && !nome) return form('Digite seu nome.');
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return form('Digite um e-mail válido.');
+    if(pass.length < 6) return form('A senha precisa ter pelo menos 6 caracteres.');
+    if(mode === 'signup' && !(consent && consent.checked)) return form('Pra continuar, marque que leu e concorda com a Política de Privacidade.');
+    busy = true;
+    const btn = document.getElementById('cs-submit'); btn.disabled = true; btn.textContent = 'Confirmando…';
+    try{
+      let uid = null;
+      if(mode === 'signup'){
+        const { data, error } = await sb.auth.signUp({ email, password: pass });
+        if(error){
+          if(/already|registered|exists/i.test(error.message || '')){ mode = 'login'; busy = false; return form('Esse e-mail já tem conta. Digite a senha dela pra entrar e confirmar o agendamento.'); }
+          console.error('signUp', error); busy = false; return form('Não foi possível cadastrar agora. Tente de novo.');
+        }
+        if(!data.session){ busy = false; return card('📧', 'Confirme seu e-mail', 'Enviamos um e-mail de confirmação. Depois de confirmar, abra o link do WhatsApp de novo pra concluir.'); }
+        uid = data.user.id;
+      } else {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+        if(error){ busy = false; return form('E-mail ou senha incorretos.'); }
+        uid = data.user.id;
+      }
+      const { data: row } = await sb.from('clients').select('*').eq('id', uid).maybeSingle();
+      let acc;
+      if(!row){
+        const phone = phoneLocal(info.phone);
+        const ins = await sb.from('clients').insert({ id: uid, email, name: nome, phone, age: null, instagram: null });
+        if(ins.error){ console.error('clients.insert', ins.error); busy = false; return form('Não foi possível concluir o cadastro. Tente de novo.'); }
+        acc = { id: uid, name: nome, email, phone, age: null, instagram: null };
+        try{ await sb.rpc('link_precadastro'); }catch(e){}
+      } else {
+        acc = { id: row.id, name: row.name, email: row.email, phone: row.phone, age: row.age, instagram: row.instagram, favoriteBarber: row.favorite_barber, referralCode: row.referral_code };
+      }
+      primeAccountCache = acc;
+      let res;
+      try{ res = await sb.rpc('signup_link_confirm', { p_token: token }); }catch(e){ res = { error: e }; }
+      const { data: conf, error: cerr } = res;
+      busy = false;
+      if(cerr || !conf){ console.error('signup_link_confirm', cerr); return card('⚠️', 'Cadastro feito, mas faltou confirmar', 'Seu cadastro foi criado. Verifique a internet e tente de novo.', { label:'Confirmar agora', run: async ()=>{ const r = await sb.rpc('signup_link_confirm', { p_token: token }); (r.data && r.data.ok) ? card('✅', 'Agendamento confirmado', detail(r.data)) : card('⚠️', 'Não foi possível confirmar', 'Fale com a barbearia pelo WhatsApp.'); } }); }
+      if(conf.ok) return card('✅', 'Tudo certo!', `Seu cadastro foi feito e o agendamento foi enviado ao barbeiro.<br><br>${detail(conf)}<br><br><span style="opacity:.75">Quando o barbeiro confirmar, você recebe o aviso pelo WhatsApp.</span>`);
+      if(conf.reason === 'used') return card('👍', 'Esse link já foi usado', 'Seu agendamento já estava confirmado por aqui.');
+      return card(...endCard(conf.reason));
+    }catch(e){
+      console.error('cadastro por link', e); busy = false;
+      return form('Algo deu errado. Verifique a internet e tente de novo.');
+    }
+  }
+  load();
+})();
 document.querySelectorAll('[data-open-barber]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();baOpen();}));
 addEventListener('keydown',e=>{if(e.key==='Escape'){baClose();closeBarberProfile();}});
 document.getElementById('barberProfileModal').addEventListener('click',e=>{if(e.target.id==='barberProfileModal')closeBarberProfile();});
