@@ -3625,6 +3625,14 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .at-total-row input{width:110px;text-align:right;background:transparent;border:none;color:var(--dourado-claro);font-family:var(--font-display);font-size:1.15rem;font-weight:600}
 #barberApp .at-total-row input:focus{outline:none}
 #barberApp .at-success{color:var(--verde-neon);font-size:.82rem;margin-bottom:.8rem}
+.cs-est-item{width:100%;display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:.7rem;align-items:center;text-align:left;background:none;border:0;border-bottom:1px solid var(--hair);padding:.7rem .1rem;min-height:56px;color:var(--prata);cursor:pointer;font-family:var(--font-body)}
+.cs-est-item:last-child{border-bottom:0}
+.cs-est-h{font-family:var(--font-display);color:var(--prata-dim);font-size:.9rem}
+.cs-est-n b{display:block;font-weight:400;font-size:.98rem}
+.cs-est-n small{display:block;color:var(--prata-dim);font-size:.74rem}
+.cs-est-v{font-family:var(--font-display);font-size:.98rem}
+.cs-est-sel{border:1px solid var(--dourado);background:rgba(198,167,94,.1);border-radius:8px;padding:.6rem .8rem;margin:.6rem 0}
+.cs-est-total{font-family:var(--font-display);font-size:1.2rem;color:var(--dourado-claro);margin-top:.2rem}
 /* ── Atendimento como PDV ── */
 #barberApp .pdv-sec{border:1px solid var(--hair);border-radius:10px;background:var(--grafite-card);padding:.9rem;margin-bottom:.8rem}
 #barberApp .pdv-lb{font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--dourado);margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem}
@@ -7117,6 +7125,8 @@ async function baExportDREPDF(){
   const logo = baReportLogoSrc();
   const geradoEm = baFormatDate(primeLocalDate());
   const despesasRows = d.despesasOperacionais.map(e=>`<tr><td>${e.name}</td><td class="muted">${BA_EXPENSE_CATEGORY_LABEL[e.category]||'Outros'}</td><td class="num">${baFormatMoney(e.value)}</td></tr>`).join('');
+  vendasHtml += table(`Estornos (${(rep.estornos||[]).length})`, ['Hora','Cliente','Itens','Motivo','Valor'],
+    (rep.estornos||[]).map(e=>`<tr><td class="nowrap">${csFmtTime(e.at)}</td><td>${primeEsc(e.client||'Cliente')}</td><td class="muted">${(e.items||[]).map(i=>primeEsc(i.service)).join('<br>')}</td><td class="muted">${primeEsc(e.reason)}${e.note ? ' — '+primeEsc(e.note) : ''}<br>por ${primeEsc(e.reversed_by_name||'—')}, confirmado ${primeEsc(e.approved_by_name||'—')}</td><td class="num">− ${csMoney(e.total)}</td></tr>`));
   document.getElementById('ba-report-print').innerHTML = `
     <div class="rp-head">
       <div class="rp-logo-badge">${logo}</div>
@@ -8148,6 +8158,9 @@ const CS_ERR = {
   BAD_BANK: 'Escolha uma conta bancária.',
   BAD_ORIGEM: 'Escolha de onde vem o suprimento.',
   NOT_ALLOWED: 'Você não tem permissão pra isso.',
+  NOT_FOUND: 'Essa venda não está mais no caixa aberto (talvez já tenha sido estornada).',
+  FIADO_PAGO: 'Essa venda foi a prazo e o fiado já foi pago, então não dá pra estornar por aqui.',
+  BAD_REASON: 'Informe o motivo do estorno.',
   NOT_STAFF: 'Sua sessão expirou. Entre de novo.'
 };
 function csErrMsg(err){
@@ -8255,7 +8268,9 @@ function csSummaryHtml(rep){
   h += row('Abertura (contado)', csMoney(s.opening_amount));
   const od = s.opening_difference!=null ? Number(s.opening_difference) : 0;
   if(Math.abs(od)>=0.005) h += row(od<0 ? 'Falta na abertura' : 'Sobra na abertura', csMoney(Math.abs(od)), od<0 ? 'cs-neg' : 'cs-pos');
-  h += row('+ Vendas em dinheiro', csMoney(bm.dinheiro||0));
+  const estDin = Number(rep.estornos_dinheiro)||0;
+  h += row('+ Vendas em dinheiro', csMoney((bm.dinheiro||0) + estDin));   // as estornadas já saíram do banco: soma de volta pra mostrar o bruto e o estorno separados
+  if(estDin>0.004) h += row('− Estornos em dinheiro', csMoney(estDin), 'cs-neg');
   h += row('+ Suprimentos', csMoney(csSumSuprimentos(rep)));
   h += row('− Sangrias', csMoney(csSumSangrias(rep)));
   h += row('= Esperado em dinheiro', csMoney(rep.expected_cash), 'cs-total');
@@ -8280,7 +8295,18 @@ function csSummaryHtml(rep){
     h += '<div class="cs-slabel">Por operador (quem registrou)</div><div class="cs-block">'
       + rep.by_operator.map(b=>row(primeEsc(b.name||'—'), csMoney(b.total))).join('') + '</div>';
   }
+  h += csEstornosHtml(rep);
   return h;
+}
+// estornos do caixa: quem, quando, por quê e quanto (o dinheiro esperado já vem sem eles)
+function csEstornosHtml(rep){
+  const es = rep.estornos || [];
+  if(!es.length) return '';
+  return `<div class="cs-slabel">Estornos (${es.length}) · ${csMoney(rep.estornos_total)}</div><div class="cs-block">`
+    + es.map(e=>`<div class="cs-venda"><div class="cs-row"><span>${csFmtTime(e.at)} · ${primeEsc(e.client||'Cliente')}</span><b class="cs-neg">− ${csMoney(e.total)}</b></div>
+      <div class="cs-muted">${(e.items||[]).map(i=>primeEsc(i.service)+(Number(i.qty)>1?' ×'+Number(i.qty):'')).join(' + ')||'—'}</div>
+      <div class="cs-muted">${(e.payments||[]).map(p=>primeEsc(csPayText(p))).join(' · ')}</div>
+      <div class="cs-muted">${primeEsc(e.reason)}${e.note ? ' — '+primeEsc(e.note) : ''} · estornado por ${primeEsc(e.reversed_by_name||'—')}, confirmado por ${primeEsc(e.approved_by_name||'—')}</div></div>`).join('') + '</div>';
 }
 function csNotasHtml(rep){
   const notas = rep.notas || [];
@@ -8406,6 +8432,7 @@ async function csRenderScreen(){
       ${csIsOwnerOrAdmin(st) ? `<div class="cs-actions">
         <button class="ba-btn ghost" onclick="csOpenSangriaModal()">Sangria</button>
         <button class="ba-btn ghost" onclick="csOpenSuprimentoModal()">Suprimento</button>
+        <button class="ba-btn ghost" onclick="csOpenEstornoModal()">Estornar venda</button>
         <button class="ba-btn" onclick="csOpenCloseModal()">Fechar caixa</button>
       </div>` : ''}</div>`;
     if(rep) html += '<div class="cs-slabel">Resumo do turno</div>' + csSummaryHtml(rep)
@@ -8500,6 +8527,55 @@ function csDoSangria(){
   csRunWithAdmin({subtitle:'Toda sangria precisa da confirmação de um admin.', confirmLabel:'Confirmar sangria'},
     c => c.rpc('cash_session_sangria', { p_operator: baCurrentBarberId, p_value: value, p_destino: destino, p_bank_account_id: bankId, p_note: note }),
     async ()=>{ csModalClose(); await csRenderScreen(); });
+}
+
+// ── estorno de venda ──
+// lista as vendas do caixa aberto, pede motivo e a senha de um admin; o banco (sale_reverse) faz tudo ou nada
+let csEstornoVendas = [], csEstornoSel = null;
+async function csOpenEstornoModal(){
+  if(!csIsOwnerOrAdmin(csState)){ alert(CS_ERR.NOT_SESSION_OWNER); return; }
+  const st = csState || await csFetchState();
+  if(!st || !st.open){ alert(CS_ERR.NO_OPEN_SESSION); return; }
+  csModalOpen('<p class="cs-muted" style="padding:1.4rem 0;text-align:center">Carregando vendas…</p>');
+  const rep = await csFetchReport(st.session.id);
+  if(!rep){ csModalOpen('<button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button><p class="cs-err" style="display:block;margin-top:1.4rem">Não foi possível carregar as vendas do caixa.</p>'); return; }
+  csEstornoVendas = (rep.vendas||[]).slice().reverse();     // mais recentes primeiro
+  csEstornoList();
+}
+function csEstornoList(){
+  csEstornoSel = null;
+  const vs = csEstornoVendas;
+  csModalOpen(`<button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
+    <h3>Estornar venda</h3>
+    <p class="cs-sub">Escolha a venda do caixa aberto. A venda inteira é cancelada e o estorno fica no relatório.</p>
+    ${vs.length ? vs.map((v,i)=>`<button type="button" class="cs-est-item" onclick="csEstornoPick(${i})">
+        <span class="cs-est-h">${csFmtTime(v.late ? v.at : (v.sold_at||v.at))}</span>
+        <span class="cs-est-n"><b>${primeEsc(v.client||'Cliente')}</b><small>${(v.items||[]).map(it=>primeEsc(it.service)+(Number(it.qty)>1?' ×'+Number(it.qty):'')).join(' + ')||'—'} · ${(v.payments||[]).map(p=>primeEsc(csMethodLabel(p.method))).join(' + ')}</small></span>
+        <span class="cs-est-v">${csMoney(v.paid)}</span></button>`).join('') : '<p class="cs-muted" style="padding:1.2rem 0">Não há vendas neste caixa pra estornar.</p>'}`);
+}
+function csEstornoPick(i){
+  const v = csEstornoVendas[i]; if(!v) return;
+  csEstornoSel = v;
+  const din = (v.payments||[]).filter(p=>p.method==='dinheiro').reduce((a,p)=>a+Number(p.value),0);
+  csModalOpen(`<button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
+    <h3>Confirmar estorno</h3>
+    <div class="cs-est-sel"><b>${primeEsc(v.client||'Cliente')}</b> · ${csFmtTime(v.late ? v.at : (v.sold_at||v.at))}
+      <div class="cs-muted">${(v.items||[]).map(it=>primeEsc(it.service)+(Number(it.qty)>1?' ×'+Number(it.qty):'')).join(' + ')||'—'} · ${(v.payments||[]).map(p=>primeEsc(csPayText(p))).join(' · ')}</div>
+      <div class="cs-est-total">${csMoney(v.paid)}</div></div>
+    <div class="cs-warn">A venda inteira será cancelada${din>0.004 ? `. <b>${csMoney(din)} em dinheiro sai do caixa</b>` : ' (nenhum dinheiro sai do caixa)'}. Produtos voltam ao estoque. Isso fica registrado no relatório e não dá pra desfazer.</div>
+    <div class="cs-field"><label>Motivo</label><select id="cs-est-motivo">
+      <option>Erro de lançamento</option><option>Cliente desistiu</option><option>Forma de pagamento errada</option><option>Atendimento de teste</option><option>Outro</option></select></div>
+    <div class="cs-field"><label>Observação (opcional)</label><input type="text" id="cs-est-nota" maxlength="300" placeholder="Ex.: lancei no cliente errado"></div>
+    <p class="cs-err" id="cs-err" style="display:none"></p>
+    <div class="cs-btns"><button class="btn btn-primary" onclick="csDoEstorno()">Estornar com o admin</button><button class="btn btn-ghost" onclick="csEstornoList()">Voltar</button></div>`);
+}
+function csDoEstorno(){
+  const v = csEstornoSel; if(!v) return;
+  const reason = document.getElementById('cs-est-motivo').value;
+  const note = document.getElementById('cs-est-nota').value.trim() || null;
+  csRunWithAdmin({subtitle:'Todo estorno precisa da confirmação de um admin.', confirmLabel:'Confirmar estorno', danger:true},
+    c => c.rpc('sale_reverse', { p_operator: baCurrentBarberId, p_nota_id: v.nota_id, p_reason: reason, p_note: note }),
+    async ()=>{ csModalClose(); csEstornoSel = null; await csRenderScreen(); });
 }
 
 // ── suprimento ──
@@ -8656,7 +8732,9 @@ function csReportText(rep){
   L.push(`Abertura: ${money(s.opening_amount)}`);
   const od = s.opening_difference!=null ? Number(s.opening_difference) : 0;
   if(Math.abs(od)>=0.005) L.push(`   ${od<0 ? '⚠️ Falta' : 'Sobra'} na abertura: ${money(Math.abs(od))}`);
-  L.push(`+ Vendas em dinheiro: ${money(bm.dinheiro||0)}`);
+  const estDin = Number(rep.estornos_dinheiro)||0;
+  L.push(`+ Vendas em dinheiro: ${money((bm.dinheiro||0) + estDin)}`);
+  if(estDin>0.004) L.push(`− Estornos em dinheiro: ${money(estDin)}`);
   if(sup) L.push(`+ Suprimentos: ${money(sup)}`);
   if(sang) L.push(`− Sangrias: ${money(sang)}`);
   L.push(`*= Esperado: ${money(rep.expected_cash)}*`);
@@ -8709,6 +8787,14 @@ function csReportText(rep){
     rep.produtos.forEach(p=>L.push(`• ${p.name} × ${Number(p.qty)}: ${money(p.total)}`));
   }
 
+  if((rep.estornos||[]).length){
+    L.push(''); L.push(sep); L.push(`*↩️ ESTORNOS (${rep.estornos.length}) · ${money(rep.estornos_total)}*`);
+    rep.estornos.forEach(e=>{
+      L.push(`*${csFmtTime(e.at)}* ${e.client||'Cliente'} · *− ${money(e.total)}*`);
+      L.push(`   ${(e.items||[]).map(i=>i.service).join(' + ')||'—'} · ${e.reason}${e.note ? ' — '+e.note : ''} (por ${e.reversed_by_name||'—'}, confirmado ${e.approved_by_name||'—'})`);
+    });
+  }
+
   // ── detalhe (uma venda = 2 linhas) ──
   if((rep.vendas||[]).length){
     const vs = rep.vendas, MAX = 60;
@@ -8748,7 +8834,8 @@ function csPrintReport(){
   const d = s.closed_at ? Number(s.difference) : null;
   const stat = (lbl,val,hl)=>`<div class="rp-stat${hl?' highlight':''}"><div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
   let stats = stat('Abertura (contado)', csMoney(s.opening_amount))
-    + stat('Vendas em dinheiro', csMoney(bm.dinheiro||0))
+    + stat('Vendas em dinheiro', csMoney((bm.dinheiro||0) + (Number(rep.estornos_dinheiro)||0)))
+    + (Number(rep.estornos_dinheiro)>0.004 ? stat('Estornos em dinheiro', '− '+csMoney(rep.estornos_dinheiro)) : '')
     + stat('Suprimentos', csMoney(csSumSuprimentos(rep)))
     + stat('Sangrias', csMoney(csSumSangrias(rep)))
     + stat('Esperado em dinheiro', csMoney(rep.expected_cash), true);
