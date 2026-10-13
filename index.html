@@ -1870,14 +1870,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
 <!-- MODAL: forma de pagamento (split) ao finalizar venda -->
 <div class="modal-backdrop" id="baPagamentoModal" role="dialog" aria-modal="true" style="z-index:1200" onclick="if(event.target===this)baClosePagamentoModal()">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto">
     <button class="close" aria-label="Fechar" onclick="baClosePagamentoModal()">✕</button>
-    <h3>Forma de pagamento</h3>
-    <p style="color:var(--prata-dim);font-size:.85rem;margin:.6rem 0 1rem">Total da venda: <b id="ba-pgto-total" style="color:var(--prata)"></b></p>
+    <h3>Receber <b id="ba-pgto-total" style="color:var(--dourado-claro);font-weight:500"></b></h3>
+    <p id="ba-pgto-sub" style="color:var(--prata-dim);font-size:.85rem;margin:.3rem 0 .6rem"></p>
     <div id="ba-pgto-linhas"></div>
-    <button class="btn btn-ghost" style="padding:.55rem 1.1rem;font-size:.72rem;letter-spacing:.1em;margin-top:.2rem" onclick="baPgtoAddLinha()">+ Adicionar forma</button>
-    <div id="ba-pgto-resumo"></div>
-    <p style="display:none"><span id="ba-pgto-restante-label">Restante a distribuir:</span> <b id="ba-pgto-restante"></b></p>
     <p id="ba-pgto-err" style="color:var(--erro);font-size:.82rem;margin:.6rem 0;display:none"></p>
     <button class="btn btn-primary" id="ba-pgto-confirm" style="width:100%;margin-top:.4rem" onclick="baPgtoConfirmar()">Confirmar</button>
   </div>
@@ -3719,6 +3716,23 @@ addEventListener('resize', caApplyMode, {passive:true});
 #baPagamentoModal .pg-resumo .ok b{color:var(--verde-neon);font-weight:500}
 #baPagamentoModal .pg-troco{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--verde-neon);border-radius:8px;padding:.7rem .9rem;margin:.6rem 0;background:rgba(53,197,88,.08);color:var(--prata)}
 #baPagamentoModal .pg-troco b{font-family:var(--font-display);font-size:1.4rem;color:var(--verde-neon);font-weight:500}
+#baPagamentoModal .pg-sub{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dourado);margin:.9rem 0 .4rem}
+#baPagamentoModal .pg-lanc{display:flex;align-items:center;justify-content:space-between;gap:.6rem;border:1px solid var(--hair);border-radius:8px;padding:.55rem .75rem;margin-bottom:.35rem;background:var(--grafite-card)}
+#baPagamentoModal .pg-lanc b{font-weight:400}
+#baPagamentoModal .pg-lanc small{display:block;color:var(--prata-dim);font-size:.72rem}
+#baPagamentoModal .pg-x{background:none;border:0;color:var(--erro);cursor:pointer;font-size:.95rem;padding:0 .3rem;min-height:32px}
+#baPagamentoModal .pg-chips{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.7rem}
+#baPagamentoModal .pg-chips button{min-height:48px;border:1px solid var(--hair);border-radius:8px;background:none;color:var(--prata);font-family:var(--font-body);font-size:.88rem;cursor:pointer}
+#baPagamentoModal .pg-chips button.on{border-color:var(--dourado);background:rgba(198,167,94,.1);color:var(--dourado-claro)}
+#baPagamentoModal .pg-lb{display:block;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--prata-dim);margin:.4rem 0 .25rem}
+#baPagamentoModal .pg-lb span{text-transform:none;letter-spacing:0}
+#baPagamentoModal .pg-in{width:100%;min-height:46px;border:1px solid var(--hair);border-radius:6px;background:var(--verde-noite);color:var(--prata);padding:0 .8rem;font-family:var(--font-body);font-size:.95rem;box-sizing:border-box}
+#baPagamentoModal .pg-row{display:flex;gap:.4rem;margin-top:.5rem}
+#baPagamentoModal .pg-row .pg-in{flex:1;min-width:0}
+#baPagamentoModal .pg-nota{font-size:.8rem;color:var(--prata-dim);margin:.3rem 0}
+#baPagamentoModal .pg-nota b{color:var(--erro);font-weight:400}
+#baPagamentoModal .pg-nota.er{color:var(--erro)}
+#baPagamentoModal .pg-lancar{width:100%;margin-top:.5rem;min-height:46px}
 #baPagamentoModal .pg-rapido{display:flex;gap:.35rem;flex-wrap:wrap;margin:.35rem 0 0}
 #baPagamentoModal .pg-rapido span{flex-basis:100%;font-size:.68rem;color:var(--prata-dim)}
 #baPagamentoModal .pg-rapido button{min-height:36px;padding:0 .8rem;border:1px solid var(--hair);border-radius:99px;background:none;color:var(--prata);font-family:var(--font-body);font-size:.78rem;cursor:pointer}
@@ -10304,10 +10318,12 @@ function baPgtoDefaultVencimento(){
 }
 function baOpenPagamentoModal(notaId, total, onConfirm, opts){
   const o = opts || {};
-  baPgtoState = { notaId, total, onConfirm, clientName: o.clientName || 'Cliente', linhas: [{method:'dinheiro', value: total, parcelas:1, nsu:'', bandeira:'', dueDate:''}] };
+  baPgtoState = { notaId, total, onConfirm, clientName: o.clientName || 'Cliente', linhas: [], draft: null };
   document.getElementById('ba-pgto-total').textContent = baFormatMoney(total);
+  document.getElementById('ba-pgto-sub').textContent = baPgtoState.clientName;
   document.getElementById('ba-pgto-err').style.display = 'none';
-  baPgtoRenderLinhas();
+  baPgtoNewDraft('dinheiro');
+  baPgtoRender();
   document.getElementById('baPagamentoModal').classList.add('open');
 }
 function baClosePagamentoModal(){
@@ -10315,77 +10331,60 @@ function baClosePagamentoModal(){
   baPgtoState = null;
   if(typeof baPdvRestoreActing==='function') baPdvRestoreActing();   // venda do PDV cancelada: volta o "em nome de"
 }
-function baPgtoInputStyle(extra){
-  // altura fixa pq <input type="date"> tem espaçamento nativo do navegador (ícone/spinner) que não
-  // bate com select/text mesmo com o mesmo padding — sem isso a linha fica com os campos torto
-  return `background:var(--verde-noite);border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:0 .7rem;height:2.5rem;box-sizing:border-box;font-family:var(--font-body);font-size:.82rem;border-radius:4px${extra?';'+extra:''}`;
+const baPgtoFmt = v => (Math.round((v||0)*100)/100).toFixed(2).replace('.',',');
+// rascunho = a forma de pagamento que está sendo montada agora (só vira "lançada" quando toca em Lançar)
+function baPgtoNewDraft(method){
+  const falta = baPgtoState ? baPgtoTotals().restante : 0;
+  baPgtoState.draft = { method, value: baPgtoFmt(falta), parcelas: 1, nsu: '', bandeira: '', dueDate: method==='a_prazo' ? baPgtoDefaultVencimento() : '' };
 }
-function baPgtoRenderLinhas(){
-  const box = document.getElementById('ba-pgto-linhas');
-  box.innerHTML = baPgtoState.linhas.map((l, i)=>{
-    const showNsu = ['debito','credito','pix_qrs'].includes(l.method);
-    const showBandeira = ['debito','credito'].includes(l.method);
-    const showParcelas = l.method==='credito';
-    const showVencimento = l.method==='a_prazo';
-    const removeBtn = baPgtoState.linhas.length>1
-      ? `<button type="button" onclick="baPgtoRemoveLinha(${i})" style="background:none;border:none;color:var(--prata-dim);cursor:pointer;font-size:1rem;padding:0 .3rem" aria-label="Remover forma">✕</button>`
-      : '';
-    return `<div style="margin-bottom:.5rem">
-      <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
-        <select onchange="baPgtoSetField(${i},'method',this.value)" style="${baPgtoInputStyle('flex:1;min-width:130px')}">
-          ${BA_PGTO_METODOS.map(m=>`<option value="${m.v}" ${l.method===m.v?'selected':''}>${m.l}</option>`).join('')}
-        </select>
-        <input type="text" inputmode="decimal" value="${l.value?l.value.toFixed(2).replace('.',','):''}" placeholder="R$" oninput="baPgtoSetField(${i},'value',this.value)" style="${baPgtoInputStyle('flex:1;min-width:80px')}">
-        ${showParcelas ? `<select onchange="baPgtoSetField(${i},'parcelas',this.value)" style="${baPgtoInputStyle('flex:1;min-width:70px')}">
-          ${[1,2,3].map(n=>`<option value="${n}" ${Number(l.parcelas)===n?'selected':''}>${n}x</option>`).join('')}
-        </select>` : ''}
-        ${showBandeira ? `<select onchange="baPgtoSetField(${i},'bandeira',this.value)" style="${baPgtoInputStyle('flex:1;min-width:100px')}">
-          ${BA_PGTO_BANDEIRAS.map(b=>`<option value="${b}" ${l.bandeira===b?'selected':''}>${b||'Bandeira'}</option>`).join('')}
-        </select>` : ''}
-        ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
-        ${removeBtn}
-      </div>
-      ${l.method==='dinheiro' ? `<div class="pg-rapido"><span>Cliente entregou</span><button type="button" onclick="baPgtoQuickCash(${i},'x')">Exato</button>${[20,50,100,200].map(n=>`<button type="button" onclick="baPgtoQuickCash(${i},${n})">R$ ${n}</button>`).join('')}</div>` : ''}
-      ${showVencimento ? `<div style="margin-top:.35rem">
-        <label style="font-size:.68rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Vencimento</label>
-        <input type="date" value="${l.dueDate||''}" onchange="baPgtoSetField(${i},'dueDate',this.value)" style="${baPgtoInputStyle('width:100%;max-width:220px')}">
-      </div>` : ''}
-    </div>`;
-  }).join('');
-  baPgtoRecalc();
+function baPgtoSetMethod(m){ baPgtoNewDraft(m); baPgtoRender(); }
+function baPgtoDraftSet(field, val){
+  const d = baPgtoState.draft;
+  d[field] = field==='parcelas' ? Number(val) : val;
+  baPgtoPreview();
 }
-function baPgtoSetField(i, field, val){
-  const l = baPgtoState.linhas[i];
-  if(field==='method'){
-    l.method = val;
-    l.parcelas = val==='credito' ? (l.parcelas||1) : null;
-    if(!['debito','credito','pix_qrs'].includes(val)) l.nsu = '';
-    if(!['debito','credito'].includes(val)) l.bandeira = '';
-    if(val==='a_prazo' && !l.dueDate) l.dueDate = baPgtoDefaultVencimento();
-    if(val!=='a_prazo') l.dueDate = '';
-    baPgtoRenderLinhas();
-    return;
+// atalho de valor: "Exato"/"Valor restante" = o que falta; "Metade"; ou nota de dinheiro (R$ 20/50/100/200)
+function baPgtoQuick(q){
+  const falta = baPgtoTotals().restante;
+  baPgtoState.draft.value = baPgtoFmt(q==='x' ? falta : q==='m' ? falta/2 : Number(q));
+  const el = document.getElementById('pg-valor'); if(el) el.value = baPgtoState.draft.value;
+  baPgtoPreview();
+}
+// troco / aviso ao vivo enquanto digita (não redesenha o formulário, pra não perder o foco)
+function baPgtoPreview(){
+  const el = document.getElementById('pg-prev'); if(!el || !baPgtoState) return;
+  const d = baPgtoState.draft, v = baAtParseMoney(d.value), falta = baPgtoTotals().restante;
+  let h = '';
+  if(v>0){
+    if(d.method==='dinheiro'){
+      h = v >= falta - 0.005
+        ? `<div class="pg-troco"><span>Troco</span><b>${baFormatMoney(Math.max(0, v-falta))}</b></div>`
+        : `<div class="pg-nota">Parcial: ainda faltam <b>${baFormatMoney(falta-v)}</b> depois deste valor.</div>`;
+    } else if(v > falta + 0.005){
+      h = `<div class="pg-nota er">Passa do que falta (${baFormatMoney(falta)}).</div>`;
+    } else if(v < falta - 0.005){
+      h = `<div class="pg-nota">Ainda faltam <b>${baFormatMoney(falta-v)}</b> depois deste valor.</div>`;
+    }
   }
-  if(field==='value') l.value = baAtParseMoney(val);
-  else if(field==='parcelas') l.parcelas = Number(val);
-  else l[field] = val;
-  baPgtoRecalc();
+  el.innerHTML = h;
 }
-// atalho de dinheiro: "Exato" = o que ainda falta pagar (fora esta linha); R$ 20/50/100/200 = nota que o cliente entregou
-function baPgtoQuickCash(i, q){
-  const outras = baPgtoState.linhas.reduce((s,l,j)=>j===i ? s : s+(l.value||0), 0);
-  baPgtoState.linhas[i].value = q==='x' ? Math.max(0, Math.round((baPgtoState.total-outras)*100)/100) : q;
-  baPgtoRenderLinhas();
+function baPgtoLancar(){
+  const errEl = document.getElementById('ba-pgto-err'); errEl.style.display = 'none';
+  const d = baPgtoState.draft, v = baAtParseMoney(d.value), falta = baPgtoTotals().restante;
+  const fail = m => { errEl.textContent = m; errEl.style.display = 'block'; };
+  if(v<=0) return fail('Informe o valor desta forma de pagamento.');
+  if(d.method!=='dinheiro' && v > falta + 0.005) return fail(`Passa do que falta (${baFormatMoney(falta)}).`);
+  if(d.method==='a_prazo' && !d.dueDate) return fail('Informe o vencimento da forma "A Prazo".');
+  baPgtoState.linhas.push({ method:d.method, value:Math.round(v*100)/100, parcelas: d.method==='credito' ? (d.parcelas||1) : null,
+    nsu: ['debito','credito','pix_qrs'].includes(d.method) ? d.nsu.trim() : '', bandeira: ['debito','credito'].includes(d.method) ? d.bandeira : '',
+    dueDate: d.method==='a_prazo' ? d.dueDate : '' });
+  baPgtoNewDraft(baPgtoTotals().restante > 0.005 ? d.method : 'dinheiro');
+  baPgtoRender();
 }
-function baPgtoAddLinha(){
-  const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
-  const restante = Math.max(0, baPgtoState.total - distribuido);
-  baPgtoState.linhas.push({method:'dinheiro', value: restante, parcelas:1, nsu:'', bandeira:'', dueDate:''});
-  baPgtoRenderLinhas();
-}
-function baPgtoRemoveLinha(i){
+function baPgtoRemove(i){
   baPgtoState.linhas.splice(i,1);
-  baPgtoRenderLinhas();
+  baPgtoNewDraft(baPgtoState.draft.method);
+  baPgtoRender();
 }
 // troco só existe quando o excedente é em dinheiro (cartão/pix nunca "sobra" — se sobrasse
 // seria erro de digitação, não troco de verdade)
@@ -10395,23 +10394,45 @@ function baPgtoTotals(){
   const restante = Math.max(0, baPgtoState.total - distribuido);
   return { distribuido, troco, restante };
 }
-function baPgtoRecalc(){
+function baPgtoRender(){
+  const st = baPgtoState, box = document.getElementById('ba-pgto-linhas');
   const { distribuido, troco, restante } = baPgtoTotals();
-  const rs = document.getElementById('ba-pgto-resumo');
-  if(rs) rs.innerHTML = `<div class="pg-resumo"><div><span>Total</span><span>${baFormatMoney(baPgtoState.total)}</span></div><div><span>Pago</span><span>${baFormatMoney(Math.min(distribuido, baPgtoState.total))}</span></div>`
-    + (restante > 0.005 ? `<div class="falta"><span>Falta</span><b>${baFormatMoney(restante)}</b></div>` : `<div class="ok"><span>Pagamento completo</span><b>✓</b></div>`) + '</div>'
-    + (troco > 0.005 ? `<div class="pg-troco"><span>Devolver de troco</span><b>${baFormatMoney(troco)}</b></div>` : '');
-  const lbl = document.getElementById('ba-pgto-restante-label');
-  const el = document.getElementById('ba-pgto-restante');
-  if(troco > 0.005){
-    lbl.textContent = 'Troco:';
-    el.textContent = baFormatMoney(troco);
-    el.style.color = 'var(--verde-neon)';
-  } else {
-    lbl.textContent = 'Restante a distribuir:';
-    el.textContent = baFormatMoney(restante);
-    el.style.color = restante < 0.005 ? 'var(--verde-neon)' : 'var(--dourado)';
+  const lbl = m => (BA_PGTO_METODOS.find(x=>x.v===m)||{}).l || m;
+  let h = '';
+  if(st.linhas.length){
+    h += '<div class="pg-sub">Pagamentos lançados</div>' + st.linhas.map((l,i)=>{
+      const det = [];
+      if(l.method==='credito' && l.parcelas>1) det.push(l.parcelas+'x');
+      if(l.bandeira) det.push(l.bandeira);
+      if(l.nsu) det.push('NSU '+l.nsu);
+      if(l.method==='a_prazo' && l.dueDate) det.push('vence '+baFormatDate(l.dueDate));
+      return `<div class="pg-lanc"><span><b>${lbl(l.method)}</b>${det.length?`<small>${primeEsc(det.join(' · '))}</small>`:''}</span><span><b>${baFormatMoney(l.value)}</b><button type="button" class="pg-x" onclick="baPgtoRemove(${i})" aria-label="Remover">✕</button></span></div>`;
+    }).join('');
   }
+  h += `<div class="pg-resumo"><div><span>Total</span><span>${baFormatMoney(st.total)}</span></div><div><span>Pago</span><span>${baFormatMoney(Math.min(distribuido, st.total))}</span></div>`
+    + (restante > 0.005 ? `<div class="falta"><span>Falta</span><b>${baFormatMoney(restante)}</b></div>` : `<div class="ok"><span>Pagamento completo</span><b>✓</b></div>`) + '</div>';
+  if(restante <= 0.005 && troco > 0.005) h += `<div class="pg-troco"><span>Devolver de troco</span><b>${baFormatMoney(troco)}</b></div>`;
+  if(restante > 0.005){
+    const d = st.draft, m = d.method;
+    h += `<div class="pg-sub">${st.linhas.length ? 'Outra forma de pagamento' : 'Forma de pagamento'}</div>
+      <div class="pg-chips">${BA_PGTO_METODOS.map(x=>`<button type="button" class="${x.v===m?'on':''}" onclick="baPgtoSetMethod('${x.v}')">${x.l}</button>`).join('')}</div>
+      <label class="pg-lb" for="pg-valor">${m==='dinheiro' ? 'Cliente entregou' : `Valor nesta forma <span>(máx. ${baFormatMoney(restante)})</span>`}</label>
+      <input class="pg-in" id="pg-valor" type="text" inputmode="decimal" value="${d.value}" oninput="baPgtoDraftSet('value',this.value)">
+      <div class="pg-rapido">${m==='dinheiro'
+        ? `<button type="button" onclick="baPgtoQuick('x')">Exato</button>${[20,50,100,200].map(n=>`<button type="button" onclick="baPgtoQuick(${n})">R$ ${n}</button>`).join('')}`
+        : `<button type="button" onclick="baPgtoQuick('x')">Valor restante</button><button type="button" onclick="baPgtoQuick('m')">Metade</button>`}</div>`;
+    if(['debito','credito','pix_qrs'].includes(m)){
+      h += '<div class="pg-row">'
+        + (m==='credito' ? `<select class="pg-in" onchange="baPgtoDraftSet('parcelas',this.value)">${[1,2,3].map(n=>`<option value="${n}" ${Number(d.parcelas)===n?'selected':''}>${n}x</option>`).join('')}</select>` : '')
+        + (m!=='pix_qrs' ? `<select class="pg-in" onchange="baPgtoDraftSet('bandeira',this.value)">${BA_PGTO_BANDEIRAS.map(b=>`<option value="${b}" ${d.bandeira===b?'selected':''}>${b||'Bandeira'}</option>`).join('')}</select>` : '')
+        + `<input class="pg-in" type="text" placeholder="NSU" value="${primeEsc(d.nsu)}" oninput="baPgtoDraftSet('nsu',this.value)"></div>`;
+    }
+    if(m==='a_prazo') h += `<label class="pg-lb" for="pg-venc">Vencimento</label><input class="pg-in" id="pg-venc" type="date" value="${d.dueDate}" onchange="baPgtoDraftSet('dueDate',this.value)">`;
+    h += `<div id="pg-prev"></div><button type="button" class="btn btn-ghost pg-lancar" onclick="baPgtoLancar()">Lançar ${lbl(m)}</button>`;
+  }
+  box.innerHTML = h;
+  document.getElementById('ba-pgto-confirm').disabled = restante > 0.005;
+  baPgtoPreview();
 }
 // reduz as linhas de dinheiro pelo troco antes de gravar — só o valor que ficou de fato
 // no caixa entra em sale_payments/fiado_charges, não o valor bruto recebido do cliente
