@@ -3468,6 +3468,22 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp:not(.desktop) .ba-zap-screen[data-state="list"] .ba-zap-col-list{display:flex}
 #barberApp:not(.desktop) .ba-zap-screen[data-state="thread"] .ba-zap-col-main{display:grid}
 #barberApp:not(.desktop) .ba-zap-screen.ficha-open[data-state="ficha"] .ba-zap-col-ficha{display:flex}
+/* campo de escrever no celular: ícones e botão menores pra sobrar largura pro texto; 16px evita o zoom automático do iPhone ao tocar no campo */
+/* conversa aberta no celular = tela cheia, sem a barra de abas (como no WhatsApp); a caixa de escrever fica no pé da tela */
+#barberApp.ba-in-thread:not(.desktop) .ba-tabbar{display:none!important}
+#barberApp.ba-in-thread:not(.desktop) .ba-zap-col{bottom:0}
+#barberApp.ba-in-thread:not(.desktop) .ba-zap-compose{padding-bottom:calc(.6rem + env(safe-area-inset-bottom))}
+/* botões do cabeçalho da conversa menores (cabem os 4 numa linha) */
+#barberApp:not(.desktop) .ba-zap-col-head .ba-btn{padding:.35rem .65rem!important;font-size:.58rem!important;letter-spacing:.1em}
+#barberApp:not(.desktop) .ba-zap-col-main>.ba-zap-col-head{padding:.7rem .9rem;row-gap:.4rem!important}
+/* enviar redondo com seta (como no WhatsApp) e campo em pílula */
+#barberApp:not(.desktop) #ba-zap-send-btn{font-size:0;width:44px;height:44px;padding:0;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;letter-spacing:0}
+#barberApp:not(.desktop) #ba-zap-send-btn::before{content:"➤";font-size:1.15rem;color:var(--verde-noite)}
+#barberApp:not(.desktop) .ba-zap-compose textarea{border-radius:22px;padding:.75rem 1rem;min-height:44px}
+#barberApp:not(.desktop) .ba-zap-compose{padding:.7rem .8rem;gap:.35rem}
+#barberApp:not(.desktop) .ba-zap-tools{gap:0}
+#barberApp:not(.desktop) .ba-zap-icon-btn{padding:.3rem;font-size:1rem}
+#barberApp:not(.desktop) .ba-zap-compose textarea{font-size:16px;line-height:1.3;min-width:0}
 #barberApp:not(.desktop) .ba-zap-col-head .ba-zap-back{display:inline-flex;width:auto;max-width:none;margin:0;padding:.4rem .7rem .4rem 0;font-size:.68rem;border:none;background:none}
 #barberApp .ba-cli-row{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;padding:.6rem 0;border-bottom:1px solid rgba(198,167,94,.12)}
 #barberApp .ba-cli-row:last-child{border-bottom:none}
@@ -3847,7 +3863,7 @@ addEventListener('resize', caApplyMode, {passive:true});
 /* muitas abas (o administrador tem até 10): a barra rola de lado em vez de espremer os nomes uns nos outros e cortar a última */
 #barberApp .ba-tabbar{overflow-x:auto;overflow-y:hidden;justify-content:flex-start;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 #barberApp .ba-tabbar::-webkit-scrollbar{display:none}
-#barberApp .ba-tab{flex:1 0 auto;min-width:4.6rem;padding-left:.4rem;padding-right:.4rem}
+#barberApp .ba-tab{flex:1 0 auto;min-width:0;padding-left:.3rem;padding-right:.3rem;letter-spacing:.03em}
 #barberApp.desktop .phone{max-width:none;width:100%;left:0;transform:none;flex-direction:column}
 #barberApp.desktop .ba-close{display:none}
 #barberApp.desktop .ba-tabbar{display:none!important}
@@ -4407,7 +4423,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
               <button type="button" class="ba-zap-icon-btn" id="ba-zap-mic-btn" onclick="baZapToggleRecording()" title="Gravar áudio">🎤</button>
               <span id="ba-zap-rec-timer" style="display:none">● 0:00</span>
             </div>
-            <textarea id="ba-zap-input" placeholder="Digite uma mensagem…" rows="1" maxlength="4000" oninput="baZapAutoGrow(this)" onkeydown="baZapInputKeydown(event)" onpaste="baZapHandlePaste(event)"></textarea>
+            <textarea id="ba-zap-input" placeholder="Mensagem…" rows="1" maxlength="4000" oninput="baZapAutoGrow(this)" onkeydown="baZapInputKeydown(event)" onpaste="baZapHandlePaste(event)"></textarea>
             <button class="ba-btn" id="ba-zap-send-btn" onclick="baZapSend()">Enviar</button>
             <div class="ba-zap-emoji-pop" id="ba-zap-emoji-pop" style="display:none"></div>
             <div class="ba-zap-attach-menu" id="ba-zap-attach-menu" style="display:none">
@@ -5067,6 +5083,17 @@ function baAddDays(iso, days){
 
 function baShow(id){document.querySelectorAll('#barberApp .screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function baOpen(){document.getElementById('barberApp').classList.add('open');document.body.style.overflow='hidden'}
+// teclado aberto no celular: o painel acompanha a área realmente visível (senão a página do site aparece por baixo da barra)
+(function(){
+  const vv=window.visualViewport; if(!vv) return;
+  function fit(){
+    const app=document.getElementById('barberApp'); if(!app) return;
+    const reset=()=>{ app.style.removeProperty('top'); app.style.removeProperty('bottom'); app.style.removeProperty('height'); };
+    if(!app.classList.contains('open') || app.classList.contains('desktop') || vv.height >= window.innerHeight-80){ reset(); return; }
+    app.style.top=vv.offsetTop+'px'; app.style.bottom='auto'; app.style.height=vv.height+'px';
+  }
+  vv.addEventListener('resize',fit); vv.addEventListener('scroll',fit);
+})();
 function baClose(){ if(document.documentElement.classList.contains('staff-host')) return; document.getElementById('barberApp').classList.remove('open');document.body.style.overflow=''}
 
 // seletor de barbeiro nas telas de Agenda/Atendimento — só aparece pra conta role='vendas'.
@@ -5129,6 +5156,7 @@ function baTab(tab){
   if(tab==='zap' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab==='cadastros' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab!=='zap') baZapTeardown(); // sai do Zap: para o polling, não deixa rodando em outra aba
+  if(tab!=='zap') document.getElementById('barberApp').classList.remove('ba-in-thread');
   const m={agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',caixa:'ba-screen-caixa',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao',zap:'ba-screen-zap',cadastros:'ba-screen-cadastros'};
   baShow(m[tab]);
   document.querySelectorAll('#barberApp .ba-tab,#barberApp .ba-links button').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
@@ -5337,6 +5365,7 @@ async function baRenderZapList(){
 // a Ficha é a 3ª coluna que entra/sai com a classe 'ficha-open')
 function baZapSetState(state){
   document.getElementById('ba-screen-zap').dataset.state = state;
+  document.getElementById('barberApp').classList.toggle('ba-in-thread', state==='thread' || state==='ficha'); // conversa aberta no celular: some a barra de abas (igual ao WhatsApp)
 }
 
 async function baZapOpenChat(chatId, phone){
