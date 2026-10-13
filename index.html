@@ -7268,7 +7268,7 @@ async function baRenderSemCorteList(){
       <div class="ic">${f.client_name.charAt(0)}</div>
       <div class="info"><div class="n">${f.client_name}</div><div class="d">Sem cortar há ${days} dias · último corte ${baFormatDate(f.last_cut_date)}</div></div>
       <div style="display:flex;gap:.5rem;align-items:center;margin-top:.4rem;width:100%;justify-content:flex-end">
-        <a href="https://wa.me/${(f.client_phone||'').replace(/\D/g,'')}?text=${msg}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="ba-btn" style="width:auto;max-width:none;padding:.35rem .7rem;margin:0;font-size:.68rem">Mandar mensagem no WhatsApp</a>
+        <a href="https://wa.me/${primeIntlPhone(f.client_phone)}?text=${msg}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="ba-btn" style="width:auto;max-width:none;padding:.35rem .7rem;margin:0;font-size:.68rem">Mandar mensagem no WhatsApp</a>
         ${contactBtn}
       </div>
     </div>`;
@@ -7384,7 +7384,7 @@ async function baOpenClientDetail(name){
   }).join('') : '<p style="color:var(--prata-dim);padding:1rem 0">Sem histórico ainda.</p>';
   document.getElementById('ba-cli-msg-btn').onclick = ()=>{
     const msg = `Olá ${client.name}! Aqui é o ${baCurrentBarber} da Prime Barbearia. Faz um tempinho que não te vejo por aqui — bora marcar um novo horário?`;
-    window.open(`https://wa.me/${client.phone}?text=${encodeURIComponent(msg)}`,'_blank');
+    window.open(`https://wa.me/${primeIntlPhone(client.phone)}?text=${encodeURIComponent(msg)}`,'_blank');
   };
   baRenderSumiu(client, lastSale);
   baRenderBrinde(client);
@@ -8941,7 +8941,7 @@ async function baEnviarFaturaWhatsApp(invoiceId){
   const { data: client } = await sb.from('clients').select('phone').ilike('name', invoice.client_name).limit(1).maybeSingle();
   const msg = `Olá, ${invoice.client_name}! Aqui é da Prime Barbearia. Você tem uma fatura em aberto de *${baFormatMoney(invoice.total)}* referente a atendimentos a prazo. Pode combinar o pagamento com a gente quando puder. Obrigado! 🙏`;
   if(client && client.phone){
-    window.open(`https://wa.me/${client.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${primeIntlPhone(client.phone)}?text=${encodeURIComponent(msg)}`, '_blank');
   } else if(navigator.clipboard){
     await navigator.clipboard.writeText(msg);
     alert('Não achei o telefone desse cliente cadastrado. Copiei a mensagem — é só colar no WhatsApp.');
@@ -9872,7 +9872,7 @@ async function baRenderLembretesAmanha(){
   wrap.innerHTML = `<div class="ba-slabel" style="margin-top:.4rem">Amanhã você tem ${appts.length} agendamento${appts.length!==1?'s':''}${pendentes?` · ${pendentes} sem lembrete`:''}</div>` +
     appts.map(a=>{
       const msg = encodeURIComponent(baLembreteMsg(a));
-      const waNum = a.phone ? a.phone.replace(/\D/g,'') : '';
+      const waNum = primeIntlPhone(a.phone);
       const actionBtn = a.reminderSentAt
         ? `<span style="color:var(--verde-neon);font-size:.72rem">✓ Lembrete enviado</span>`
         : waNum
@@ -9902,7 +9902,7 @@ async function baRenderWaitlist(){
   wrap.innerHTML = `<div class="ba-slabel" style="margin-top:.4rem">Lista de espera (${rows.length})</div>` +
     rows.map(r=>{
       const msg = encodeURIComponent(`Oi, ${(r.client_name||'').split(' ')[0]||''}! Abriu um horário no dia ${baFormatDate(r.desired_day)} na Prime Barbearia — quer aproveitar? Responde aqui que já encaixo você!`);
-      const waNum = r.client_phone ? r.client_phone.replace(/\D/g,'') : '';
+      const waNum = primeIntlPhone(r.client_phone);
       const avisarBtn = waNum
         ? `<a href="https://wa.me/${waNum}?text=${msg}" target="_blank" rel="noopener" class="ba-btn" style="width:auto;max-width:none;padding:.3rem .6rem;margin:0;font-size:.64rem" onclick="baMarcarWaitlistNotificado(${r.id})">Avisar</a>`
         : `<span style="color:var(--prata-dim);font-size:.68rem">Sem telefone</span>`;
@@ -10839,7 +10839,7 @@ async function baExecuteCancel(id){
     phone = cli && cli.phone;
   }
   const msg = `Oi ${ap.name||''}! Infelizmente precisei cancelar seu horário de ${ap.dayLabel} às ${ap.time} na Prime Barbearia. Bora marcar de novo? 🙏`;
-  const waNum = phone ? phone.replace(/\D/g,'') : '';
+  const waNum = primeIntlPhone(phone);
   window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
   baBuildAgendaTimes();
 }
@@ -10920,7 +10920,7 @@ document.getElementById('baRemarcarConfirm').addEventListener('click', async ()=
     phone = cli && cli.phone;
   }
   const msg = `Oi ${clientName||''}! Seu horário na Prime Barbearia que era ${oldLabel} foi remarcado para ${dayLabel} às ${time}. Qualquer coisa é só chamar 🙏`;
-  const waNum = phone ? phone.replace(/\D/g,'') : '';
+  const waNum = primeIntlPhone(phone);
   window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
   baCloseRemarcar();
   baBuildAgendaTimes();
@@ -11076,9 +11076,7 @@ async function baAlterarConfirm(){
       text:`Atendimento transferido pra você: ${ap.name||'Cliente'} · ${quando} · ${(patch.services||ap.services||[]).join(' + ')}.`});
   }
   const msg = `Oi ${ap.name||''}! Seu agendamento na Prime Barbearia (${quando}) foi atualizado: ${partes.join(' e ')}. Qualquer coisa é só chamar 🙏`;
-  // telefone do cadastro vem sem DDI (44999445716): sem o 55 o wa.me entende como outro país
-  let waNum = phone ? phone.replace(/\D/g,'') : '';
-  if(waNum && !waNum.startsWith('55') && (waNum.length===10 || waNum.length===11)) waNum = '55' + waNum;
+  const waNum = primeIntlPhone(phone); // telefone do cadastro vem sem DDI: sem o 55 o wa.me entende como outro país
   window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
   baCloseAlterar();
   baBuildAgendaTimes();
