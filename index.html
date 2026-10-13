@@ -11926,7 +11926,7 @@ function baPdvRenderItems(){
 // ── finalizar: monta as linhas de venda e abre o modal de pagamento (dividido / troco) ──
 async function baAtRegistrar(){
   const errEl = baPdvEl('at-err'), p = baPdv;
-  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; baPdvEl('at-success').style.display = 'none'; };
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; baPdvEl('at-success').style.display = 'none'; errEl.scrollIntoView({behavior:'smooth', block:'center'}); };   // o aviso fica abaixo da comanda: leva a tela até ele
   errEl.style.display = 'none';
   if(!p) return;
   if(!p.barberId) return fail('Escolha o barbeiro desta venda.');
