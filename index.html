@@ -3688,6 +3688,8 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .pdv-tot.final{color:var(--prata);font-family:var(--font-display);font-size:1.35rem;padding-top:.45rem}
 #barberApp .pdv-tot.final b{color:var(--dourado-claro);font-weight:500}
 #barberApp .pdv-bar{position:sticky;bottom:5.4rem;margin:.8rem 0 0;padding:.7rem .9rem;background:#101510;border:1px solid var(--dourado);border-radius:10px;box-shadow:0 -10px 24px rgba(0,0,0,.55),0 8px 24px rgba(0,0,0,.4);display:flex;gap:.8rem;align-items:center;justify-content:space-between;z-index:5}
+#barberApp .pdv-bar{flex-wrap:wrap}
+#barberApp .pdv-bar-err{flex-basis:100%;color:var(--erro);font-size:.85rem;line-height:1.35;border-bottom:1px solid var(--hair);padding-bottom:.5rem}
 #barberApp .pdv-bar-t small{display:block;color:var(--prata-dim);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase}
 #barberApp .pdv-bar-t b{font-family:var(--font-display);font-size:1.3rem;color:var(--dourado-claro);font-weight:500}
 #barberApp .pdv-bar .ba-btn{width:auto;max-width:none;margin:0;padding:.8rem 1.6rem}
@@ -4268,6 +4270,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <p class="at-success" id="at-success" style="display:none">Atendimento registrado ✓</p>
 
         <div class="pdv-bar">
+          <div class="pdv-bar-err" id="pdv-bar-err" role="alert" style="display:none"></div>
           <div class="pdv-bar-t"><small id="pdv-bar-n">0 itens</small><b id="pdv-bar-v">R$ 0,00</b></div>
           <button class="ba-btn" id="ba-at-registrar-btn" type="button" onclick="baAtRegistrar()">Finalizar</button>
         </div>
@@ -11926,8 +11929,8 @@ function baPdvRenderItems(){
 // ── finalizar: monta as linhas de venda e abre o modal de pagamento (dividido / troco) ──
 async function baAtRegistrar(){
   const errEl = baPdvEl('at-err'), p = baPdv;
-  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; baPdvEl('at-success').style.display = 'none'; errEl.scrollIntoView({behavior:'smooth', block:'center'}); };   // o aviso fica abaixo da comanda: leva a tela até ele
-  errEl.style.display = 'none';
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; baPdvEl('at-success').style.display = 'none'; const be = baPdvEl('pdv-bar-err'); be.textContent = msg; be.style.display = 'block'; };   // o aviso fica abaixo da comanda: leva a tela até ele
+  errEl.style.display = 'none'; baPdvEl('pdv-bar-err').style.display = 'none';
   if(!p) return;
   if(!p.barberId) return fail('Escolha o barbeiro desta venda.');
   if(!p.client) { baPdvEl('pdv-sec-cli').scrollIntoView({behavior:'smooth',block:'center'}); return fail('Escolha ou cadastre o cliente.'); }
@@ -11993,6 +11996,11 @@ async function baAtRegistrar(){
       const ok = baPdvEl('at-success'); ok.style.display = 'block';
       setTimeout(()=>{ ok.style.display = 'none'; }, 3000);
     }, {clientName:c.name});
+  } catch(e) {
+    // qualquer falha antes do pagamento aparecia como "não acontece nada": agora mostra o motivo
+    console.error('baAtRegistrar', e);
+    opened = false;
+    fail('Não foi possível finalizar: ' + ((e && e.message) || e));
   } finally {
     if(regBtn){ regBtn.disabled = false; regBtn.classList.remove('btn-loading'); }
     if(!opened) baPdvRestoreActing();   // com o modal aberto, quem restaura é o fechamento/confirmação do pagamento
