@@ -5359,8 +5359,7 @@ function baSetActingBarber(id){
 }
 function baTab(tab){
   if(tab==='gestao' && baCurrentRole!=='admin') tab='perfil';
-  // vendas não atende cliente: não tem Agenda nem as abas de barbeiro — cai em Atendimento
-  if((tab==='agenda'||tab==='dashboard'||tab==='clientes'||tab==='vendas') && baCurrentRole==='vendas') tab='atendimento';
+  if((tab==='dashboard'||tab==='clientes'||tab==='vendas') && baCurrentRole==='vendas') tab='agenda';
   if(tab==='caixa' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab==='zap' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab==='cadastros' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
@@ -12078,11 +12077,9 @@ function baEnter(barber){
   if(bloqueioBtn) bloqueioBtn.style.display = isVendas ? 'none' : '';
   baMenuUser(barber.name, barber.role);
   try{ baMenuToggle(localStorage.getItem('primeMenuRec')==='1'); }catch(e){}
-  // a aba Agenda é de quem atende (barbeiro e admin); vendas não tem
-  document.querySelectorAll('#barberApp [data-tab="agenda"]').forEach(el=>{ el.style.display = isVendas ? 'none' : ''; });
   baMenuGroups();
   document.getElementById('ba-tabbar').style.display='';
-  baTab(isVendas ? 'atendimento' : 'agenda');
+  baTab('agenda');
 }
 // ── menu lateral (computador): grupos só aparecem se tiver aba visível pro perfil; recolher guarda a escolha ──
 function baMenuGroups(){
