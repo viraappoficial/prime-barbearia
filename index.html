@@ -1876,7 +1876,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <p style="color:var(--prata-dim);font-size:.85rem;margin:.6rem 0 1rem">Total da venda: <b id="ba-pgto-total" style="color:var(--prata)"></b></p>
     <div id="ba-pgto-linhas"></div>
     <button class="btn btn-ghost" style="padding:.55rem 1.1rem;font-size:.72rem;letter-spacing:.1em;margin-top:.2rem" onclick="baPgtoAddLinha()">+ Adicionar forma</button>
-    <p style="font-size:.8rem;color:var(--prata-dim);margin-top:.9rem"><span id="ba-pgto-restante-label">Restante a distribuir:</span> <b id="ba-pgto-restante" style="color:var(--dourado)"></b></p>
+    <div id="ba-pgto-resumo"></div>
+    <p style="display:none"><span id="ba-pgto-restante-label">Restante a distribuir:</span> <b id="ba-pgto-restante"></b></p>
     <p id="ba-pgto-err" style="color:var(--erro);font-size:.82rem;margin:.6rem 0;display:none"></p>
     <button class="btn btn-primary" id="ba-pgto-confirm" style="width:100%;margin-top:.4rem" onclick="baPgtoConfirmar()">Confirmar</button>
   </div>
@@ -3627,6 +3628,96 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .at-total-row input{width:110px;text-align:right;background:transparent;border:none;color:var(--dourado-claro);font-family:var(--font-display);font-size:1.15rem;font-weight:600}
 #barberApp .at-total-row input:focus{outline:none}
 #barberApp .at-success{color:var(--verde-neon);font-size:.82rem;margin-bottom:.8rem}
+/* ── Atendimento como PDV ── */
+#barberApp .pdv-sec{border:1px solid var(--hair);border-radius:10px;background:var(--grafite-card);padding:.9rem;margin-bottom:.8rem}
+#barberApp .pdv-lb{font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--dourado);margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+#barberApp .pdv-lb em{font-style:normal;color:var(--prata-dim);letter-spacing:.02em;text-transform:none;font-size:.74rem}
+#barberApp .pdv-in,#barberApp .pdv-qd select,#barberApp .pdv-qd input,#barberApp .pdv-f input{width:100%;min-height:46px;border:1px solid var(--hair);border-radius:6px;background:var(--verde-noite);color:var(--prata);padding:0 .8rem;font-family:var(--font-body);font-size:.95rem;box-sizing:border-box}
+#barberApp .pdv-in:focus,#barberApp .pdv-qd select:focus,#barberApp .pdv-qd input:focus,#barberApp .pdv-f input:focus{outline:2px solid var(--dourado);outline-offset:1px}
+#barberApp .pdv-qd{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+#barberApp .pdv-qd label{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--prata-dim);display:block}
+#barberApp .pdv-qd select,#barberApp .pdv-qd input{margin-top:.25rem;text-transform:none;letter-spacing:0}
+#barberApp .pdv-dur{margin-top:.5rem;color:var(--prata-dim);font-size:.8rem}
+#barberApp .pdv-dur b{color:var(--dourado-claro);font-weight:400}
+#barberApp .pdv-dur.er{color:var(--erro)}
+#barberApp .pdv-res{border:1px solid var(--hair);border-radius:6px;margin-top:.4rem;overflow:hidden}
+#barberApp .pdv-res button{display:flex;justify-content:space-between;align-items:center;gap:.6rem;width:100%;min-height:46px;padding:.3rem .8rem;background:var(--grafite-card);color:var(--prata);border:0;border-bottom:1px solid var(--hair);text-align:left;font-family:var(--font-body);font-size:.9rem;cursor:pointer}
+#barberApp .pdv-res button:last-child{border-bottom:0}
+#barberApp .pdv-res button span{color:var(--prata-dim);font-size:.76rem;text-align:right}
+#barberApp .pdv-res .novo{color:var(--dourado-claro)}
+#barberApp .pdv-hint{color:var(--prata-dim);font-size:.8rem;margin-top:.5rem}
+#barberApp .pdv-cli{display:flex;justify-content:space-between;align-items:center;gap:.6rem;border:1px solid var(--dourado);border-radius:8px;padding:.7rem .9rem;background:rgba(198,167,94,.08)}
+#barberApp .pdv-cli b{font-weight:400;font-size:1.05rem;display:block}
+#barberApp .pdv-cli span{color:var(--prata-dim);font-size:.8rem}
+#barberApp .pdv-tag{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--dourado);color:var(--dourado);border-radius:3px;padding:0 .35rem;margin-left:.4rem;vertical-align:middle}
+#barberApp .pdv-last{margin-top:.55rem;font-size:.82rem;color:var(--prata-dim)}
+#barberApp .pdv-last b{color:var(--prata);font-weight:400}
+#barberApp .pdv-lk{background:none;border:0;color:var(--prata-dim);text-decoration:underline;cursor:pointer;font-family:var(--font-body);font-size:.78rem;min-height:36px;padding:0 .3rem}
+#barberApp .pdv-f{display:grid;gap:.6rem}
+#barberApp .pdv-f .ba-btn{margin:0;max-width:none}
+#barberApp .pdv-tabs{display:flex;gap:.4rem;margin-bottom:.6rem}
+#barberApp .pdv-tabs button{flex:1;min-height:44px;border:1px solid var(--hair);border-radius:6px;background:none;color:var(--prata-dim);font-family:var(--font-body);cursor:pointer}
+#barberApp .pdv-tabs button.on{border-color:var(--dourado);color:var(--dourado-claro);background:rgba(198,167,94,.08)}
+#barberApp .pdv-cat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin-top:.6rem}
+#barberApp .pdv-cat button{min-height:60px;text-align:left;padding:.5rem .8rem;border:1px solid var(--hair);border-radius:8px;background:var(--grafite);position:relative;overflow:hidden;color:var(--prata);font-family:var(--font-body);cursor:pointer}
+#barberApp .pdv-cat button::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,var(--dourado))}
+#barberApp .pdv-cat button b{display:block;font-weight:400;font-size:.9rem;line-height:1.2}
+#barberApp .pdv-cat button span{color:var(--dourado-claro);font-size:.82rem}
+#barberApp .pdv-cat button small{color:var(--prata-dim);font-size:.68rem;margin-left:.3rem}
+#barberApp .pdv-cat .vazio{grid-column:1/-1;color:var(--prata-dim);text-align:center;padding:1rem 0;border:0;min-height:0}
+#barberApp .pdv-th{display:none}
+#barberApp .pdv-it{border:1px solid var(--hair);border-radius:8px;background:var(--grafite);padding:.7rem;margin-bottom:.5rem;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.35rem .6rem;align-items:center}
+#barberApp .pdv-it .cod{display:none}
+#barberApp .pdv-it .nm b{font-weight:400;font-size:1rem;display:block}
+#barberApp .pdv-it .tp{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;display:inline-block;border:1px solid var(--hair);border-radius:3px;padding:0 .35rem;color:var(--prata-dim)}
+#barberApp .pdv-it .tp.s{color:var(--dourado);border-color:rgba(198,167,94,.4)}
+#barberApp .pdv-it .tp.p{color:#8FA6C7;border-color:rgba(143,166,199,.4)}
+#barberApp .pdv-it .pc{color:var(--prata-dim);font-size:.82rem}
+#barberApp .pdv-it .tl{font-family:var(--font-display);font-size:1.05rem;text-align:right;color:var(--dourado-claro)}
+#barberApp .pdv-it .ct{grid-column:1/-1;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+#barberApp .pdv-it .qt{display:flex;align-items:center;gap:.6rem}
+#barberApp .pdv-it .qt button{width:38px;height:38px;border:1px solid var(--hair);border-radius:50%;background:none;color:var(--prata);font-size:1.1rem;cursor:pointer}
+#barberApp .pdv-it .ds{width:64px;min-height:38px;text-align:right;padding:0 .5rem;border:1px solid var(--hair);border-radius:6px;background:var(--verde-noite);color:var(--prata);font-family:var(--font-body)}
+#barberApp .pdv-it .dl{color:var(--prata-dim);font-size:.72rem}
+#barberApp .pdv-it .x{margin-left:auto;border:0;background:none;color:var(--erro);font-size:.78rem;cursor:pointer;padding:0 .4rem;min-height:38px}
+#barberApp .pdv-it.novo{animation:pdvFl 1.2s}
+@keyframes pdvFl{0%{background:rgba(198,167,94,.35)}100%{background:var(--grafite)}}
+#barberApp .pdv-vazio{color:var(--prata-dim);text-align:center;padding:1.4rem 0;border:1px dashed var(--hair);border-radius:8px}
+#barberApp .pdv-foot{margin-top:.7rem}
+#barberApp .pdv-tot{display:flex;justify-content:space-between;color:var(--prata-dim);padding:.12rem 0;font-size:.85rem}
+#barberApp .pdv-tot.final{color:var(--prata);font-family:var(--font-display);font-size:1.35rem;padding-top:.45rem}
+#barberApp .pdv-tot.final b{color:var(--dourado-claro);font-weight:500}
+#barberApp .pdv-bar{position:sticky;bottom:5.1rem;margin:.6rem -1.3rem 0;padding:.7rem 1.3rem .9rem;background:rgba(11,20,13,.97);border-top:1px solid var(--dourado);display:flex;gap:.8rem;align-items:center;justify-content:space-between;z-index:5}
+#barberApp .pdv-bar-t small{display:block;color:var(--prata-dim);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase}
+#barberApp .pdv-bar-t b{font-family:var(--font-display);font-size:1.3rem;color:var(--dourado-claro);font-weight:500}
+#barberApp .pdv-bar .ba-btn{width:auto;max-width:none;margin:0;padding:.8rem 1.6rem}
+#barberApp.desktop .pdv-bar{bottom:0;margin:.6rem calc(-1 * max(2rem, (100% - 1180px)/2)) -3rem;padding-left:max(2rem, calc((100% - 1180px)/2));padding-right:max(2rem, calc((100% - 1180px)/2))}
+#barberApp.desktop .pdv-qd{grid-template-columns:1.4fr 1fr 1fr 1fr}
+#barberApp.desktop .pdv-cat{grid-template-columns:repeat(4,minmax(0,1fr))}
+#barberApp.desktop .pdv-th,#barberApp.desktop .pdv-it{grid-template-columns:70px minmax(0,1fr) 110px 130px 90px 120px 40px;gap:0 .6rem}
+#barberApp.desktop .pdv-th{display:grid;padding:.6rem .9rem;border:1px solid var(--hair);border-bottom:0;border-radius:8px 8px 0 0;background:var(--verde-noite);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--prata-dim)}
+#barberApp.desktop .pdv-th .r{text-align:right}#barberApp.desktop .pdv-th .c{text-align:center}
+#barberApp.desktop #pdv-itens{border:1px solid var(--hair);border-radius:0 0 8px 8px;min-height:120px}
+#barberApp.desktop .pdv-it{border:0;border-bottom:1px solid var(--hair);border-radius:0;margin:0;background:none;padding:.7rem .9rem}
+#barberApp.desktop .pdv-it .cod{display:block;color:var(--prata-dim);font-size:.85rem}
+#barberApp.desktop .pdv-it .pc{text-align:right;font-size:.95rem;color:var(--prata)}
+#barberApp.desktop .pdv-it .ct{display:contents}
+#barberApp.desktop .pdv-it .qt{justify-content:center}
+#barberApp.desktop .pdv-it .ds{justify-self:end}
+#barberApp.desktop .pdv-it .dl{display:none}
+#barberApp.desktop .pdv-it .x{order:10;margin:0;font-size:1.1rem}
+#barberApp.desktop .pdv-vazio{border:0;border-radius:0}
+#barberApp.desktop .pdv-foot{width:360px;margin-left:auto}
+/* pagamento: resumo e atalhos de dinheiro */
+#baPagamentoModal .pg-resumo{border:1px solid var(--hair);border-radius:8px;padding:.6rem .8rem;margin:.8rem 0;background:var(--verde-noite)}
+#baPagamentoModal .pg-resumo div{display:flex;justify-content:space-between;color:var(--prata-dim);font-size:.85rem;padding:.1rem 0}
+#baPagamentoModal .pg-resumo .falta b{color:var(--erro);font-weight:500}
+#baPagamentoModal .pg-resumo .ok b{color:var(--verde-neon);font-weight:500}
+#baPagamentoModal .pg-troco{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--verde-neon);border-radius:8px;padding:.7rem .9rem;margin:.6rem 0;background:rgba(53,197,88,.08);color:var(--prata)}
+#baPagamentoModal .pg-troco b{font-family:var(--font-display);font-size:1.4rem;color:var(--verde-neon);font-weight:500}
+#baPagamentoModal .pg-rapido{display:flex;gap:.35rem;flex-wrap:wrap;margin:.35rem 0 0}
+#baPagamentoModal .pg-rapido span{flex-basis:100%;font-size:.68rem;color:var(--prata-dim)}
+#baPagamentoModal .pg-rapido button{min-height:36px;padding:0 .8rem;border:1px solid var(--hair);border-radius:99px;background:none;color:var(--prata);font-family:var(--font-body);font-size:.78rem;cursor:pointer}
 
 /* ── carrinho ao vivo (atendimento em andamento) ── */
 #barberApp .cart-header{background:var(--grafite-card);border:1px solid var(--alerta);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
@@ -4127,66 +4218,59 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       </div>
     </div>
 
-    <!-- ATENDIMENTO (venda avulsa / balcão) -->
+    <!-- ATENDIMENTO (PDV: venda de balcão / atendimento de porta) -->
     <div class="screen" id="ba-screen-atendimento">
       <div class="ba-head"><div><div class="hi">Registrar</div><div class="name">Atendimento</div></div></div>
-      <div class="ba-body">
+      <div class="ba-body pdv">
         <div id="ba-vendas-picker-at" style="display:none"></div>
         <div id="ba-at-caixa-banner" style="display:none"></div>
-        <div class="ba-slabel" style="margin-top:0">Cliente</div>
-        <div class="seg" id="at-client-seg">
-          <div class="seg-btn active" data-mode="buscar">Buscar existente</div>
-          <div class="seg-btn" data-mode="novo">+ Novo cliente</div>
-        </div>
 
-        <div id="at-buscar-block">
-          <div class="ba-field" style="max-width:100%"><input type="text" id="at-search" placeholder="Buscar por nome ou @..." oninput="baAtSearchClient()" autocomplete="off"></div>
-          <div class="ba-enc-results" id="at-search-results"></div>
-          <div id="at-selected-client" style="display:none;margin-bottom:.6rem"></div>
-        </div>
+        <section class="pdv-sec" id="pdv-sec-cli">
+          <div class="pdv-lb">1 · Cliente <em>busque por nome ou telefone</em></div>
+          <div id="pdv-cli"></div>
+        </section>
 
-        <div id="at-novo-block" style="display:none">
-          <div style="display:flex;gap:.6rem">
-            <div class="ba-field" style="flex:1"><label>Nome</label><input type="text" id="at-new-name" placeholder="Nome completo"></div>
-            <div class="ba-field" style="flex:1"><label>Telefone</label><input type="tel" id="at-new-phone" placeholder="(44) 90000-0000"></div>
+        <section class="pdv-sec">
+          <div class="pdv-lb">2 · Quando e quem <em>já vem preenchido, pode editar</em></div>
+          <div class="pdv-qd">
+            <label>Barbeiro<select id="pdv-bar" onchange="baPdvSetBarber(this.value)"></select></label>
+            <label>Data<input type="date" id="pdv-date" oninput="baPdvSetWhen()"></label>
+            <label>Início<input type="time" id="pdv-ini" oninput="baPdvSetWhen()"></label>
+            <label>Fim<input type="time" id="pdv-fim" oninput="baPdvSetWhen()"></label>
           </div>
-        </div>
+          <div class="pdv-dur" id="pdv-dur"></div>
+        </section>
 
-        <div class="ba-slabel">Serviço <span style="text-transform:none;letter-spacing:0;color:var(--prata-dim)">(opcional — pode ser só produto)</span></div>
-        <div class="ba-svc-grid" id="at-svc-grid"></div>
+        <section class="pdv-sec">
+          <div class="pdv-lb">3 · Adicionar <em>toque pra incluir na comanda</em></div>
+          <div class="pdv-tabs" id="pdv-tabs">
+            <button type="button" class="on" data-t="s" onclick="baPdvTab('s')">Serviços</button>
+            <button type="button" data-t="p" onclick="baPdvTab('p')">Produtos</button>
+          </div>
+          <input type="text" class="pdv-in" id="pdv-busca" placeholder="Buscar serviço ou produto…" autocomplete="off" oninput="baPdvCatalog()">
+          <div class="pdv-cat" id="pdv-cat"></div>
+        </section>
 
-        <div class="at-total-row">
-          <span class="lbl">Valor do serviço</span>
-          <input type="text" id="at-total-value" inputmode="decimal" oninput="baAtValorChanged()">
-        </div>
-        <div class="at-total-row">
-          <span class="lbl">Desconto (%)</span>
-          <input type="text" id="at-desconto" inputmode="decimal" placeholder="0" oninput="baAtDescontoChanged()">
-        </div>
-
-        <div class="ba-slabel">Produtos</div>
-        <div class="ba-field" style="max-width:100%"><input type="text" id="at-prod-search" placeholder="Buscar produto..." oninput="baAtSearchProduct()" autocomplete="off"></div>
-        <div class="ba-enc-results" id="at-prod-results"></div>
-        <div id="at-prod-cart"></div>
-
-        <div class="total-summary">
-          <div class="ts-row"><span>Serviço</span><span id="at-sum-servico">R$ 0,00</span></div>
-          <div class="ts-row"><span>Produtos</span><span id="at-sum-produtos">R$ 0,00</span></div>
-          <div class="ts-row final"><span>Total da nota</span><span class="val" id="at-sum-total">R$ 0,00</span></div>
-        </div>
-
-        <div class="ba-slabel">Quando</div>
-        <div style="display:flex;gap:.6rem">
-          <div class="ba-field" style="flex:1"><label>Data</label><input type="date" id="at-date"></div>
-          <div class="ba-field" style="flex:1"><label>Horário que terminou</label><input type="time" id="at-time"></div>
-        </div>
+        <section class="pdv-sec pdv-cmd">
+          <div class="pdv-lb">4 · Comanda <span><em id="pdv-nit">0 itens</em> <button type="button" class="pdv-lk" onclick="baPdvClear()">Limpar tudo</button></span></div>
+          <div class="pdv-th"><span>Cód.</span><span>Item</span><span class="r">Preço</span><span class="c">Qtde</span><span class="r">Desc. %</span><span class="r">Total</span><span></span></div>
+          <div id="pdv-itens"></div>
+          <div class="pdv-foot">
+            <div class="pdv-tot"><span>Total bruto</span><span id="pdv-bruto">R$ 0,00</span></div>
+            <div class="pdv-tot"><span>Desconto</span><span id="pdv-desc">R$ 0,00</span></div>
+            <div class="pdv-tot final"><span>Total líquido</span><b id="pdv-liq">R$ 0,00</b></div>
+          </div>
+        </section>
 
         <label class="field-lbl" for="at-notes">Observação (opcional)</label>
         <textarea id="at-notes" class="obs-textarea" placeholder="Alguma preferência ou detalhe..." style="margin-bottom:.6rem"></textarea>
-
         <p class="ba-err" id="at-err" style="display:none;margin-bottom:.6rem"></p>
         <p class="at-success" id="at-success" style="display:none">Atendimento registrado ✓</p>
-        <button class="ba-btn" id="ba-at-registrar-btn" style="max-width:100%" onclick="baAtRegistrar()">Registrar atendimento</button>
+
+        <div class="pdv-bar">
+          <div class="pdv-bar-t"><small id="pdv-bar-n">0 itens</small><b id="pdv-bar-v">R$ 0,00</b></div>
+          <button class="ba-btn" id="ba-at-registrar-btn" type="button" onclick="baAtRegistrar()">Finalizar</button>
+        </div>
       </div>
     </div>
 
@@ -5139,7 +5223,7 @@ async function baFetchMyCrmClients(barberId = baActingBarberId){
 async function baFindRealClientId(name, phone, email){
   let q = sb.from('clients').select('id');
   if(email) q = q.eq('email', email);
-  else if(phone) q = q.eq('phone', phone);
+  else if(phone) q = q.in('phone', baZapLocalPhoneCandidates(phone).filter(x=>/^\d+$/.test(x)));   // com/sem 55 e com/sem o 9
   else q = q.ilike('name', name);
   const { data } = await q.limit(1).maybeSingle();
   return data ? data.id : null;
@@ -10207,6 +10291,7 @@ function baOpenPagamentoModal(notaId, total, onConfirm, opts){
 function baClosePagamentoModal(){
   document.getElementById('baPagamentoModal').classList.remove('open');
   baPgtoState = null;
+  if(typeof baPdvRestoreActing==='function') baPdvRestoreActing();   // venda do PDV cancelada: volta o "em nome de"
 }
 function baPgtoInputStyle(extra){
   // altura fixa pq <input type="date"> tem espaçamento nativo do navegador (ícone/spinner) que não
@@ -10238,6 +10323,7 @@ function baPgtoRenderLinhas(){
         ${showNsu ? `<input type="text" value="${l.nsu||''}" placeholder="NSU" oninput="baPgtoSetField(${i},'nsu',this.value)" style="${baPgtoInputStyle('flex:1;min-width:90px')}">` : ''}
         ${removeBtn}
       </div>
+      ${l.method==='dinheiro' ? `<div class="pg-rapido"><span>Cliente entregou</span><button type="button" onclick="baPgtoQuickCash(${i},'x')">Exato</button>${[20,50,100,200].map(n=>`<button type="button" onclick="baPgtoQuickCash(${i},${n})">R$ ${n}</button>`).join('')}</div>` : ''}
       ${showVencimento ? `<div style="margin-top:.35rem">
         <label style="font-size:.68rem;color:var(--prata-dim);display:block;margin-bottom:.2rem">Vencimento</label>
         <input type="date" value="${l.dueDate||''}" onchange="baPgtoSetField(${i},'dueDate',this.value)" style="${baPgtoInputStyle('width:100%;max-width:220px')}">
@@ -10263,6 +10349,12 @@ function baPgtoSetField(i, field, val){
   else l[field] = val;
   baPgtoRecalc();
 }
+// atalho de dinheiro: "Exato" = o que ainda falta pagar (fora esta linha); R$ 20/50/100/200 = nota que o cliente entregou
+function baPgtoQuickCash(i, q){
+  const outras = baPgtoState.linhas.reduce((s,l,j)=>j===i ? s : s+(l.value||0), 0);
+  baPgtoState.linhas[i].value = q==='x' ? Math.max(0, Math.round((baPgtoState.total-outras)*100)/100) : q;
+  baPgtoRenderLinhas();
+}
 function baPgtoAddLinha(){
   const distribuido = baPgtoState.linhas.reduce((s,l)=>s+(l.value||0),0);
   const restante = Math.max(0, baPgtoState.total - distribuido);
@@ -10282,7 +10374,11 @@ function baPgtoTotals(){
   return { distribuido, troco, restante };
 }
 function baPgtoRecalc(){
-  const { troco, restante } = baPgtoTotals();
+  const { distribuido, troco, restante } = baPgtoTotals();
+  const rs = document.getElementById('ba-pgto-resumo');
+  if(rs) rs.innerHTML = `<div class="pg-resumo"><div><span>Total</span><span>${baFormatMoney(baPgtoState.total)}</span></div><div><span>Pago</span><span>${baFormatMoney(Math.min(distribuido, baPgtoState.total))}</span></div>`
+    + (restante > 0.005 ? `<div class="falta"><span>Falta</span><b>${baFormatMoney(restante)}</b></div>` : `<div class="ok"><span>Pagamento completo</span><b>✓</b></div>`) + '</div>'
+    + (troco > 0.005 ? `<div class="pg-troco"><span>Devolver de troco</span><b>${baFormatMoney(troco)}</b></div>` : '');
   const lbl = document.getElementById('ba-pgto-restante-label');
   const el = document.getElementById('ba-pgto-restante');
   if(troco > 0.005){
@@ -10369,7 +10465,7 @@ async function baPgtoConfirmar(){
     await baInsertFiadoCharges(notaId, baActingBarberId, clientName, linhas);
   } finally {
     btn.disabled = false; btn.classList.remove('btn-loading');
-    if(concluido) baPgtoState = null;
+    if(concluido){ baPgtoState = null; if(typeof baPdvRestoreActing==='function') baPdvRestoreActing(); }
   }
 }
 async function baInsertFiadoCharges(notaId, barberId, clientName, linhas){
@@ -11505,123 +11601,7 @@ async function baSaveEncaixe(){
   if(typeof renderMyAppointments==='function') renderMyAppointments();
 }
 
-// ══ Atendimento (venda avulsa / balcão) ══
-let baAtSelectedClient = null;
-let baAtMode = 'buscar';
-
-let baAtCart = [];
-function baAtResetFields(){
-  baAtSelectedClient = null;
-  baAtMode = 'buscar';
-  baAtCart = [];
-  document.querySelectorAll('#at-client-seg .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode==='buscar'));
-  document.getElementById('at-buscar-block').style.display = 'block';
-  document.getElementById('at-novo-block').style.display = 'none';
-  document.getElementById('at-search').value = '';
-  document.getElementById('at-search-results').innerHTML = '';
-  document.getElementById('at-selected-client').style.display = 'none';
-  document.getElementById('at-selected-client').innerHTML = '';
-  document.getElementById('at-new-name').value = '';
-  document.getElementById('at-new-phone').value = '';
-  document.getElementById('at-err').style.display = 'none';
-  document.getElementById('at-prod-search').value = '';
-  document.getElementById('at-prod-results').innerHTML = '';
-  document.getElementById('at-notes').value = '';
-  document.getElementById('at-desconto').value = '0';
-
-  document.getElementById('at-svc-grid').innerHTML = primeGroupedSvcHtml(s=>
-    `<div class="ba-svc-chip" onclick="this.classList.toggle('selected');this.querySelector('input').checked=this.classList.contains('selected');baAtUpdateTotal()">
-      <input type="checkbox" class="at-svc" value="${s.name}">
-      <span class="ba-svc-chip-label">${s.name}<span class="ba-svc-chip-price">${primeFormatPriceDisplay(s.price)}</span></span>
-    </div>`);
-  baAtUpdateTotal();
-  baAtRenderCart();
-
-  const now = new Date();
-  document.getElementById('at-date').value = primeLocalDate(now);
-  document.getElementById('at-time').value = now.toTimeString().slice(0,5);
-}
-function baRenderAtendimento(){
-  baRenderVendasPicker('ba-vendas-picker-at', '#ba-screen-atendimento .ba-head .name');
-  csRenderSaleBanner();
-  baAtResetFields();
-  document.getElementById('at-success').style.display = 'none';
-}
-
-const baAtClientSegEl = document.getElementById('at-client-seg');
-if(baAtClientSegEl) baAtClientSegEl.addEventListener('click', e=>{
-  const btn = e.target.closest('.seg-btn');
-  if(!btn) return;
-  baAtMode = btn.dataset.mode;
-  document.querySelectorAll('#at-client-seg .seg-btn').forEach(b=>b.classList.toggle('active', b===btn));
-  document.getElementById('at-buscar-block').style.display = baAtMode==='buscar' ? 'block' : 'none';
-  document.getElementById('at-novo-block').style.display = baAtMode==='novo' ? 'block' : 'none';
-});
-
-let baAtSearchResults = [];
-let baAtSearchToken = 0;
-async function baAtSearchClient(){
-  const q = document.getElementById('at-search').value.trim();
-  const box = document.getElementById('at-search-results');
-  if(!q || q.length < 2){ box.innerHTML=''; return; }
-  const myToken = ++baAtSearchToken;
-  // busca na tabela real de clientes cadastrados (nome, @ ou e-mail)...
-  const { data, error } = await sb.from('clients').select('id,name,phone,email,instagram')
-    .or(`name.ilike.%${q}%,instagram.ilike.%${q}%,email.ilike.%${q}%`).limit(5);
-  if(myToken !== baAtSearchToken) return; // resultado desatualizado, uma busca mais nova já está em andamento
-  if(error){ console.error('baAtSearchClient', error); return; }
-  // ...e também na carteira deste barbeiro, pra achar cliente de balcão sem conta cadastrado antes
-  // (senão fica invisível pra busca pra sempre — era exatamente o bug que travava o Atendimento)
-  const myClients = await baFetchMyCrmClients();
-  const qLower = q.toLowerCase();
-  const walkins = myClients.filter(c=>!c.clientId && c.name.toLowerCase().includes(qLower));
-  const fromClients = (data||[]).map(c=>({key:'c:'+c.id, id:c.id, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram}));
-  const fromWallet = walkins.map(c=>({key:'w:'+c.id, id:null, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram, walkin:true}));
-  baAtSearchResults = [...fromClients, ...fromWallet];
-  box.innerHTML = baAtSearchResults.length ? baAtSearchResults.map(c=>
-    `<div class="ba-enc-result" onclick="baAtSelectClient('${c.key}')">
-      ${c.name} <span class="enc-sub">${c.walkin ? 'sem cadastro' : (c.instagram||'')} · ${c.email||''}</span>
-    </div>`
-  ).join('') : '<div style="padding:.4rem .6rem;color:var(--prata-dim);font-size:.82rem">Nenhum cliente encontrado</div>';
-}
-function baAtSelectClient(key){
-  const client = baAtSearchResults.find(c=>c.key===key);
-  if(!client) return;
-  baAtSelectedClient = client;
-  document.getElementById('at-search').value = '';
-  document.getElementById('at-search-results').innerHTML = '';
-  document.getElementById('at-selected-client').style.display = 'block';
-  document.getElementById('at-selected-client').innerHTML =
-    `<div class="ba-card" style="padding:.6rem .8rem;margin:0;display:flex;align-items:center;justify-content:space-between">
-      <div><strong style="color:var(--prata)">${client.name}</strong> <span style="font-size:.78rem;color:var(--prata-dim)">${client.instagram||''}</span></div>
-      <button style="background:none;border:none;color:#E5574B;cursor:pointer;font-size:.85rem" onclick="baAtClearClient()">✕</button>
-    </div>`;
-}
-function baAtClearClient(){
-  baAtSelectedClient = null;
-  document.getElementById('at-selected-client').style.display = 'none';
-  document.getElementById('at-selected-client').innerHTML = '';
-}
-
-let baAtPrecoTabela = 0;
-function baAtUpdateTotal(){
-  const checked = [...document.querySelectorAll('.at-svc:checked')].map(x=>x.value);
-  const descontoPct = baParseSignedPct(document.getElementById('at-desconto').value);
-  baAtPrecoTabela = checked.reduce((s,name)=>s+(SVC_PRICES[name]||0),0);
-  document.getElementById('at-total-value').value = baFormatMoney(baValorFromDescontoPct(baAtPrecoTabela, descontoPct));
-  baAtRenderCart();
-}
-function baAtValorChanged(){
-  const valor = baAtParseMoney(document.getElementById('at-total-value').value);
-  const pct = baDescontoPctFromValor(baAtPrecoTabela, valor);
-  document.getElementById('at-desconto').value = pct.toFixed(1).replace('.',',');
-  baAtRenderCart();
-}
-function baAtDescontoChanged(){
-  const pct = baParseSignedPct(document.getElementById('at-desconto').value);
-  document.getElementById('at-total-value').value = baValorFromDescontoPct(baAtPrecoTabela, pct).toFixed(2).replace('.',',');
-  baAtRenderCart();
-}
+// ══ Atendimento (PDV: venda de balcão / atendimento de porta) ══
 function baAtParseMoney(str){
   const cleaned = (str||'').replace(/[^\d,]/g,'').replace(',','.');
   return parseFloat(cleaned) || 0;
@@ -11631,168 +11611,369 @@ function baAtParseMoney(str){
 function baAtNormalizePhone(raw){
   return (raw||'').replace(/\D/g,'');
 }
+// telefone digitado (com ou sem DDI/máscara) -> só dígitos SEM o 55, que é como clients.phone é guardado
+function baPdvLocalPhone(raw){
+  const intl = primeIntlPhone(raw);
+  if(intl && intl.startsWith('55') && intl.length>=12 && PRIME_BR_DDDS.has(intl.slice(2,4))) return intl.slice(2);
+  return baAtNormalizePhone(raw).replace(/^0+/,'');
+}
+function baPdvFmtPhone(p){
+  const d = String(p||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');
+  if(d.length===11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if(d.length===10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return p || '';
+}
+const baPdvEl = id => document.getElementById(id);
+const baPdvPad = n => String(n).padStart(2,'0');
+const baPdvHM = d => baPdvPad(d.getHours())+':'+baPdvPad(d.getMinutes());
+const baPdvMins = v => { const p=(v||'').split(':'); return (+p[0])*60 + (+p[1]); };
+const baPdvR2 = v => Math.round(v*100)/100;
 
-function baAtSearchProduct(){
-  const q = document.getElementById('at-prod-search').value.trim().toLowerCase();
-  const box = document.getElementById('at-prod-results');
-  if(!q || q.length<2){ box.innerHTML=''; return; }
-  const matches = baGetProducts().filter(p=>p.stock>0 && p.name.toLowerCase().includes(q)).slice(0,6);
-  box.innerHTML = matches.length ? matches.map(p=>
-    `<div class="ba-enc-result" onclick="baAtAddProduct(${p.id})">${p.name} <span class="enc-sub">${baFormatMoney(p.price)} · ${p.stock} un.</span></div>`
-  ).join('') : '<div style="padding:.4rem .6rem;color:var(--prata-dim);font-size:.82rem">Nenhum produto disponível</div>';
+let baPdv = null;           // venda em montagem
+let baPdvPrevActing;        // barbeiro "em nome de" antes da venda — undefined = nada a restaurar
+let baPdvTimer = null, baPdvTok = 0, baPdvLastTok = 0;
+
+function baPdvNew(){
+  const n = new Date(), i = new Date(n.getTime()-45*60000);
+  // início "45 min atrás" não pode cair no dia anterior: perto da meia-noite trava em 00:00
+  const ini = i.getDate()===n.getDate() ? baPdvHM(i) : '00:00';
+  return { client:null, items:[], tab:'s', date:primeLocalDate(n), start:ini, end:baPdvHM(n),
+    barberId: baActingBarberId || null, q:'', results:[], form:null, last:null, flash:-1 };
 }
-function baAtAddProduct(productId){
-  const product = baGetProducts().find(p=>p.id===productId);
-  if(!product) return;
-  const existing = baAtCart.find(i=>i.productId===productId);
-  const currentQty = existing ? existing.qty : 0;
-  if(currentQty+1 > product.stock) return;
-  if(existing) existing.qty++;
-  else baAtCart.push({productId, qty:1});
-  document.getElementById('at-prod-search').value = '';
-  document.getElementById('at-prod-results').innerHTML = '';
-  baAtRenderCart();
+function baPdvAct(){      // a venda inteira (carteira, vendas, pagamentos) sai no nome do barbeiro escolhido
+  if(baPdvPrevActing===undefined) baPdvPrevActing = baActingBarberId;
+  baActingBarberId = baPdv.barberId;
 }
-function baAtChangeQty(productId, delta){
-  const item = baAtCart.find(i=>i.productId===productId);
-  if(!item) return;
-  const product = baGetProducts().find(p=>p.id===productId);
-  const maxStock = product ? product.stock : item.qty;
-  item.qty = Math.max(1, Math.min(maxStock, item.qty+delta));
-  baAtRenderCart();
-}
-function baAtRemoveProduct(productId){
-  baAtCart = baAtCart.filter(i=>i.productId!==productId);
-  baAtRenderCart();
-}
-function baAtRenderCart(){
-  const products = baGetProducts();
-  const enriched = baAtCart.map(i=>{
-    const p = products.find(x=>x.id===i.productId);
-    return { productId:i.productId, qty:i.qty, name: p?p.name:'Produto removido', price: p?p.price:0 };
-  });
-  document.getElementById('at-prod-cart').innerHTML = enriched.length ? enriched.map(i=>`
-    <div class="cart-item-row">
-      <span class="cart-item-name">${i.name}</span>
-      <div class="cart-item-qty">
-        <button class="qty-btn" onclick="baAtChangeQty(${i.productId},-1)">−</button>
-        <span class="qty-val">${i.qty}</span>
-        <button class="qty-btn" onclick="baAtChangeQty(${i.productId},1)">+</button>
-      </div>
-      <span class="cart-item-subtotal">${baFormatMoney(i.price*i.qty)}</span>
-      <button class="cart-item-remove" onclick="baAtRemoveProduct(${i.productId})">✕</button>
-    </div>
-  `).join('') : '<div class="cart-empty">Nenhum produto adicionado</div>';
-  const servico = baAtParseMoney(document.getElementById('at-total-value').value);
-  const produtos = enriched.reduce((s,i)=>s+i.price*i.qty,0);
-  document.getElementById('at-sum-servico').textContent = baFormatMoney(servico);
-  document.getElementById('at-sum-produtos').textContent = baFormatMoney(produtos);
-  document.getElementById('at-sum-total').textContent = baFormatMoney(servico+produtos);
+function baPdvRestoreActing(){
+  if(baPdvPrevActing===undefined) return;
+  baActingBarberId = baPdvPrevActing; baPdvPrevActing = undefined;
 }
 
-async function baAtRegistrar(){
-  const errEl = document.getElementById('at-err');
-  const fail = msg => { errEl.textContent=msg; errEl.style.display='block'; document.getElementById('at-success').style.display='none'; };
-  errEl.style.display='none';
-  if(!baActingBarberId) return fail('Escolha um barbeiro em "Atendendo em nome de" antes de registrar.');
-  // trava o botão até abrir o modal de pagamento — evita duplo toque criando o cliente/agendamento
-  // retroativo duas vezes antes do modal (o modal em si já tem sua própria trava, em baPgtoConfirmar)
-  const regBtn = document.getElementById('ba-at-registrar-btn');
-  if(regBtn && regBtn.disabled) return;
-  if(regBtn){ regBtn.disabled = true; regBtn.classList.add('btn-loading'); }
+function baRenderAtendimento(){
+  csRenderSaleBanner();
+  baPdvPrevActing = undefined;
+  baPdv = baPdvNew();
+  baPdvFillBarbers();
+  baPdvEl('pdv-date').value = baPdv.date; baPdvEl('pdv-ini').value = baPdv.start; baPdvEl('pdv-fim').value = baPdv.end;
+  baPdvEl('pdv-busca').value = ''; baPdvEl('at-notes').value = '';
+  baPdvEl('at-err').style.display = 'none'; baPdvEl('at-success').style.display = 'none';
+  baPdvTab('s'); baPdvWhenCheck(); baPdvRenderClient(); baPdvRenderItems();
+}
+function baPdvFillBarbers(){
+  const sel = baPdvEl('pdv-bar');
+  const canPick = baCurrentRole==='admin' || baCurrentRole==='vendas';
+  let list = primeGetBarberRoster();
+  if(!canPick) list = list.filter(b=>b.id===baCurrentBarberId);
+  if(baPdv.barberId && !list.some(b=>b.id===baPdv.barberId)) list = [{id:baPdv.barberId, name:baCurrentBarber||'Eu'}, ...list];
+  sel.innerHTML = (baPdv.barberId ? '' : '<option value="">Escolha o barbeiro</option>')
+    + list.map(b=>`<option value="${b.id}">${primeEsc(b.name)}</option>`).join('');
+  sel.value = baPdv.barberId || '';
+  sel.disabled = !canPick;
+}
+function baPdvSetBarber(id){
+  baPdv.barberId = id || null;
+  if(baCurrentRole==='vendas') baActingBarberId = baPdv.barberId;   // mesmo efeito do antigo "Atendendo em nome de"
+  if(baPdv.client) baPdvLoadLast();
+}
+function baPdvSetWhen(){
+  baPdv.date = baPdvEl('pdv-date').value; baPdv.start = baPdvEl('pdv-ini').value; baPdv.end = baPdvEl('pdv-fim').value;
+  baPdvWhenCheck();
+}
+function baPdvWhenCheck(){
+  const d = baPdvMins(baPdv.end) - baPdvMins(baPdv.start), el = baPdvEl('pdv-dur');
+  const ok = !!baPdv.date && !!baPdv.start && !!baPdv.end && d>0;
+  el.className = 'pdv-dur' + (ok ? '' : ' er');
+  el.innerHTML = ok ? `Duração: <b>${d} min</b> · registrado como <b>${baPdv.start} → ${baPdv.end}</b>` : 'O fim precisa ser depois do início.';
+  return ok ? d : 0;
+}
+
+// ── cliente: busca (nome ou telefone) · cadastro rápido · última visita ──
+function baPdvRenderClient(){
+  const box = baPdvEl('pdv-cli'), p = baPdv;
+  if(p.client){
+    const c = p.client;
+    const tag = c.isNew ? 'novo' : (c.id ? 'cadastrado' : 'sem conta');
+    box.innerHTML = `<div class="pdv-cli"><div><b>${primeEsc(c.name)}<span class="pdv-tag">${tag}</span></b><span>${primeEsc(baPdvFmtPhone(c.phone)||'sem telefone')}</span></div><button type="button" class="pdv-lk" onclick="baPdvClearClient()">Trocar</button></div>
+      <div class="pdv-last" id="pdv-last">${p.last===null ? 'Buscando última visita…' : p.last}</div>`;
+    return;
+  }
+  if(p.form){
+    const f = p.form;
+    box.innerHTML = `<div class="pdv-f">
+      ${f.note ? `<div class="pdv-hint" style="margin:0">${primeEsc(f.note)}</div>` : ''}
+      <input type="text" id="pdv-nn" placeholder="Nome completo" value="${primeEsc(f.name)}" autocomplete="off">
+      <input type="tel" id="pdv-nt" inputmode="tel" placeholder="Telefone (44) 90000-0000" value="${primeEsc(f.phone)}" autocomplete="off">
+      <p class="ba-err" id="pdv-ferr" style="display:none;margin:0"></p>
+      <div id="pdv-dup"></div>
+      <button type="button" class="ba-btn" id="pdv-fsave" onclick="baPdvSaveNew()">Salvar cliente</button>
+      <button type="button" class="pdv-lk" onclick="baPdv.form=null;baPdvRenderClient()">Voltar</button></div>`;
+    return;
+  }
+  box.innerHTML = `<input type="text" class="pdv-in" id="pdv-q" placeholder="Digite o nome ou o telefone" value="${primeEsc(p.q)}" autocomplete="off" oninput="baPdvOnSearch(this.value)">
+    <div id="pdv-res"></div>`;
+  baPdvRenderResults();
+}
+function baPdvOnSearch(v){
+  baPdv.q = v;
+  clearTimeout(baPdvTimer);
+  baPdvTimer = setTimeout(baPdvSearch, 250);
+}
+async function baPdvSearch(){
+  const q = baPdv.q.trim(), tok = ++baPdvTok;
+  if(q.length<2){ baPdv.results = []; baPdvRenderResults(); return; }
+  const digits = q.replace(/\D/g,'');
+  const safe = q.replace(/[,()%*\\]/g,' ').trim();
+  const ors = [`name.ilike.%${safe}%`, `email.ilike.%${safe}%`, `instagram.ilike.%${safe}%`];
+  if(digits.length>=4){
+    ors.push(`phone.ilike.%${digits}%`);
+    if(digits.length>6 && digits.startsWith('55')) ors.push(`phone.ilike.%${digits.slice(2)}%`);
+    if(digits.length>=10){ const c = baZapLocalPhoneCandidates(digits).filter(x=>/^\d+$/.test(x)); if(c.length) ors.push(`phone.in.(${c.join(',')})`); }
+  }
+  let res = [];
   try{
-  const gateCx = await csGateForSale();
-  if(!gateCx.ok) return fail(gateCx.msg);
-
-  let clientName;
-  if(baAtMode==='buscar'){
-    if(!baAtSelectedClient) return fail('Selecione um cliente.');
-    clientName = baAtSelectedClient.name;
-    // primeira vez que ESSE barbeiro atende esse cliente: cria o vínculo na carteira dele (crm_clients),
-    // já puxando o client_id real — sem isso o cliente não aparece na lista de Clientes desse barbeiro
-    const myClients = await baFetchMyCrmClients();
-    const already = myClients.some(c=> c.clientId === baAtSelectedClient.id || c.name.toLowerCase()===baAtSelectedClient.name.toLowerCase());
-    if(!already){
-      await baCreateCrmClient({
-        name: baAtSelectedClient.name, phone: baAtSelectedClient.phone||null,
-        email: baAtSelectedClient.email||null, instagram: baAtSelectedClient.instagram||null
+    const { data, error } = await sb.from('clients').select('id,name,phone,email,instagram').or(ors.join(',')).limit(6);
+    if(error) throw error;
+    res = (data||[]).map(c=>({id:c.id, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram, src:'conta'}));
+    // clientes de balcão (sem conta) já na carteira do barbeiro escolhido
+    const mine = await baFetchMyCrmClients(baPdv.barberId);
+    const ql = q.toLowerCase();
+    mine.filter(c=>!c.clientId && (c.name.toLowerCase().includes(ql) || (digits.length>=4 && String(c.phone||'').replace(/\D/g,'').includes(digits))))
+      .forEach(c=>res.push({id:null, crmId:c.id, name:c.name, phone:c.phone, email:c.email, instagram:c.instagram, src:'balcao'}));
+    // quem só falou no WhatsApp (sem conta): o número do contato é o vínculo — só vendas/admin leem os contatos
+    if((baCurrentRole==='admin'||baCurrentRole==='vendas') && (digits.length>=4 || safe.length>=3)){
+      const wOrs = [];
+      if(digits.length>=4) wOrs.push(`chat_id.ilike.%${digits}%`);
+      if(safe.length>=3) wOrs.push(`wa_name.ilike.%${safe}%`);
+      const { data: wc } = await sb.from('whatsapp_contacts').select('chat_id,wa_name').or(wOrs.join(',')).limit(5);
+      (wc||[]).forEach(w=>{
+        if(!/@c\.us$/.test(w.chat_id||'')) return;
+        const phone = baPdvLocalPhone(w.chat_id.split('@')[0]);
+        const cands = baZapLocalPhoneCandidates(phone);
+        if(res.some(r=>r.phone && cands.includes(String(r.phone).replace(/\D/g,'')))) return;
+        res.push({id:null, name:w.wa_name||'', phone, src:'whatsapp'});
       });
     }
-  } else {
-    const name = document.getElementById('at-new-name').value.trim();
-    const phoneRaw = document.getElementById('at-new-phone').value.trim();
-    if(!name) return fail('Digite o nome do cliente.');
-    if(phoneRaw.replace(/\D/g,'').length<10) return fail('Digite um telefone válido.');
-    const phone = baAtNormalizePhone(phoneRaw);
-    // nome repetido na carteira não é erro — é o mesmo cliente de balcão de uma tentativa anterior
-    // (ex: atendimento cadastrado mas não finalizado). Reaproveita em vez de travar o barbeiro sem saída.
-    const myClients = await baFetchMyCrmClients();
-    const existing = myClients.find(c=>c.name.toLowerCase()===name.toLowerCase());
-    if(existing){
-      baAtSelectedClient = { id: existing.clientId||null, name: existing.name, phone: existing.phone, email: existing.email, instagram: existing.instagram };
-    } else {
-      await baCreateCrmClient({name, phone});
-      baAtSelectedClient = { id:null, name, phone, email:null, instagram:null };
-    }
-    clientName = name;
+  }catch(e){ console.error('baPdvSearch', e); }
+  if(tok!==baPdvTok) return;       // chegou uma busca mais nova
+  baPdv.results = res;
+  baPdvRenderResults();
+}
+function baPdvRenderResults(){
+  const box = baPdvEl('pdv-res'); if(!box) return;
+  const q = baPdv.q.trim();
+  if(q.length<2){ box.innerHTML = '<div class="pdv-hint">Comece a digitar. Se não achar, cadastra na hora.</div>'; return; }
+  const tagOf = r => r.src==='conta' ? '' : r.src==='balcao' ? ' · sem conta' : ' · WhatsApp';
+  box.innerHTML = '<div class="pdv-res">' + baPdv.results.map((r,i)=>
+    `<button type="button" onclick="baPdvPick(${i})">${primeEsc(r.name||baPdvFmtPhone(r.phone))}<span>${primeEsc(baPdvFmtPhone(r.phone))}${tagOf(r)}</span></button>`).join('')
+    + `<button type="button" class="novo" onclick="baPdvNewForm()">+ Cadastrar “${primeEsc(q)}” como novo cliente<span></span></button></div>`;
+}
+function baPdvPick(i){
+  const r = baPdv.results[i]; if(!r) return;
+  if(r.src==='whatsapp'){
+    baPdv.form = {name:r.name, phone:baPdvFmtPhone(r.phone), note:'Contato do WhatsApp sem cadastro: confirme o nome pra salvar como cliente.'};
+    baPdvRenderClient(); return;
   }
+  baPdv.client = {id:r.id, crmId:r.crmId||null, name:r.name, phone:r.phone, email:r.email, instagram:r.instagram};
+  baPdv.q = ''; baPdv.results = []; baPdvLoadLast(); baPdvRenderClient();
+}
+function baPdvClearClient(){ baPdv.client = null; baPdv.last = null; baPdv.q = ''; baPdv.results = []; baPdvRenderClient(); }
+function baPdvNewForm(){
+  const q = baPdv.q.trim(), digits = q.replace(/\D/g,'');
+  baPdv.form = digits.length>=8 && !/[a-zA-ZÀ-ÿ]/.test(q) ? {name:'', phone:q, note:''} : {name:q, phone:'', note:''};
+  baPdvRenderClient();
+  const el = baPdvEl(baPdv.form.name ? 'pdv-nt' : 'pdv-nn'); if(el) el.focus();
+}
+async function baPdvSaveNew(){
+  const errEl = baPdvEl('pdv-ferr'), dupEl = baPdvEl('pdv-dup');
+  const fail = m => { errEl.textContent = m; errEl.style.display = 'block'; };
+  errEl.style.display = 'none'; dupEl.innerHTML = '';
+  const name = baPdvEl('pdv-nn').value.trim(), phone = baPdvLocalPhone(baPdvEl('pdv-nt').value);
+  if(name.length<2) return fail('Digite o nome do cliente.');
+  if(phone.length<10) return fail('Digite um telefone válido, com DDD.');
+  if(!baPdv.barberId) return fail('Escolha o barbeiro antes de cadastrar.');
+  const btn = baPdvEl('pdv-fsave'); btn.disabled = true;
+  try{
+    // já existe alguém com esse telefone? (com/sem 55 e com/sem o 9) — usa o cadastro que existe, não duplica
+    const cands = baZapLocalPhoneCandidates(phone).filter(x=>/^\d+$/.test(x));
+    const { data: ex } = await sb.from('clients').select('id,name,phone,email,instagram').in('phone', cands).limit(1);
+    let found = ex && ex[0] ? {id:ex[0].id, name:ex[0].name, phone:ex[0].phone, email:ex[0].email, instagram:ex[0].instagram} : null;
+    if(!found){
+      const mine = await baFetchMyCrmClients(baPdv.barberId);
+      const w = mine.find(c=>!c.clientId && cands.includes(String(c.phone||'').replace(/\D/g,'')));
+      if(w) found = {id:null, crmId:w.id, name:w.name, phone:w.phone, email:w.email, instagram:w.instagram};
+    }
+    if(found){
+      baPdv.client = found; baPdv.form = null; baPdv.q = ''; baPdvLoadLast(); baPdvRenderClient(); return;
+    }
+    baPdvAct();
+    let crm;
+    try{ crm = await baCreateCrmClient({name, phone}); } finally { baPdvRestoreActing(); }
+    if(!crm) return fail('Não foi possível cadastrar o cliente. Tente de novo.');
+    // baCreateCrmClient já procura uma conta real com esse telefone e vincula (client_id)
+    baPdv.client = {id:crm.clientId||null, crmId:crm.id, name, phone, isNew:true};
+    baPdv.form = null; baPdv.q = '';
+    baPdvLoadLast(); baPdvRenderClient();
+  } finally { if(btn) btn.disabled = false; }
+}
+async function baPdvLoadLast(){
+  const c = baPdv.client; if(!c) return;
+  const tok = ++baPdvLastTok;
+  baPdv.last = null;
+  const paint = html => { if(tok!==baPdvLastTok) return; baPdv.last = html; const el = baPdvEl('pdv-last'); if(el) el.innerHTML = html; };
+  let line = null;
+  try{
+    if(c.id){
+      const { data } = await sb.from('appointments').select('day,services,barber_id').eq('client_id', c.id).eq('status','concluido')
+        .order('day',{ascending:false}).order('time',{ascending:false}).limit(1);
+      if(data && data[0]) line = {day:data[0].day, what:(data[0].services||[]).join(' + '), who:apBarberName({barberId:data[0].barber_id})};
+    }
+    if(!line && baPdv.barberId){
+      const sales = await baFetchClientSales(c.name, baPdv.barberId);
+      sales.sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+      if(sales[0]) line = {day:sales[0].date, what:sales[0].service, who:apBarberName({barberId:sales[0].barberId})};
+    }
+  }catch(e){ console.error('baPdvLoadLast', e); }
+  paint(line ? `Última visita: <b>${baFormatDate(line.day)}</b> · ${primeEsc(line.what)} · com ${primeEsc(line.who)}`
+             : 'Nenhum atendimento anterior encontrado.');
+}
 
-  const svcs = [...document.querySelectorAll('.at-svc:checked')].map(x=>x.value);
-  const svcValue = baAtParseMoney(document.getElementById('at-total-value').value);
-  if(!svcs.length && !baAtCart.length) return fail('Selecione um serviço ou adicione um produto.');
-  if(svcs.length && (!svcValue || svcValue<=0)) return fail('Informe um valor válido pro serviço.');
-  const date = document.getElementById('at-date').value;
-  if(!date) return fail('Informe a data.');
-  const time = document.getElementById('at-time').value;
-  if(!time) return fail('Informe o horário.');
-  const notes = document.getElementById('at-notes').value.trim() || null;
-
-  // atendimento com serviço pra cliente com conta vinculada também vira um agendamento já concluído
-  // por trás — assim entra no histórico/fidelidade do cliente igual qualquer outro atendimento, e
-  // reaproveita o mesmo campo de observação sem precisar de estrutura nova
-  const linkedClientId = baAtMode==='buscar' && baAtSelectedClient ? baAtSelectedClient.id : null;
-  let retroApptId = null;
-  if(svcs.length && linkedClientId){
-    const d = new Date(date+'T12:00:00');
-    const dayLabel = `${DIAS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-    const appt = await primeCreateAppointment({
-      services: svcs, day: date, dayLabel, time, duration: 30, notes,
-      name: clientName, clientId: linkedClientId, clientEmail: baAtSelectedClient.email || null,
-      barberId: baActingBarberId, status: 'concluido'
+// ── catálogo e comanda ──
+function baPdvTab(t){
+  baPdv.tab = t;
+  document.querySelectorAll('#pdv-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  baPdvCatalog();
+}
+function baPdvCatalog(){
+  const q = baPdvEl('pdv-busca').value.trim().toLowerCase(), box = baPdvEl('pdv-cat');
+  let h = '';
+  if(baPdv.tab==='s'){
+    Object.keys(SVC_PRICES).filter(n=>n.toLowerCase().includes(q)).forEach(n=>{
+      h += `<button type="button" style="--c:${SVC_COLORS[n]||'var(--dourado)'}" onclick="baPdvAddSvc(this.dataset.n)" data-n="${primeEsc(n)}"><b>${primeEsc(n)}</b><span>${baFormatMoney(SVC_PRICES[n])}</span></button>`;
     });
-    if(appt) retroApptId = appt.id;
+  } else {
+    baGetProducts().filter(p=>p.stock>0 && p.name.toLowerCase().includes(q)).forEach(p=>{
+      h += `<button type="button" onclick="baPdvAddProd(${p.id})"><b>${primeEsc(p.name)}</b><span>${baFormatMoney(p.price)}<small>${p.stock} un.</small></span></button>`;
+    });
   }
+  box.innerHTML = h || '<div class="vazio">Nada encontrado</div>';
+}
+function baPdvAddSvc(name){
+  const i = baPdv.items.findIndex(x=>x.kind==='s' && x.name===name);
+  if(i>=0){ baPdv.flash = i; baPdvRenderItems(); return; }      // serviço entra uma vez só
+  baPdv.items.push({kind:'s', name, price:SVC_PRICES[name]||0, qty:1, disc:0, cod:'S'+baPdvPad(baPdv.items.length+1)});
+  baPdv.flash = baPdv.items.length-1; baPdvRenderItems();
+}
+function baPdvAddProd(id){
+  const p = baGetProducts().find(x=>x.id===id); if(!p) return;
+  const i = baPdv.items.findIndex(x=>x.kind==='p' && x.productId===id);
+  if(i>=0){ if(baPdv.items[i].qty+1 > p.stock) return; baPdv.items[i].qty++; baPdv.flash = i; }
+  else { baPdv.items.push({kind:'p', productId:id, name:p.name, price:p.price, qty:1, disc:0, cod:p.code||('P'+String(id).padStart(3,'0'))}); baPdv.flash = baPdv.items.length-1; }
+  baPdvRenderItems();
+}
+function baPdvQty(i, d){
+  const it = baPdv.items[i]; if(!it) return;
+  if(it.kind==='p'){
+    const p = baGetProducts().find(x=>x.id===it.productId);
+    it.qty = Math.min(p ? p.stock : it.qty, it.qty + d);
+  }
+  if(it.qty<1 || d<=-99) baPdv.items.splice(i,1);
+  baPdvRenderItems();
+}
+function baPdvSetDisc(i, v){ const it = baPdv.items[i]; if(!it) return; it.disc = Math.min(100, baParseSignedPct(v)); baPdvRenderItems(); }
+function baPdvClear(){ baPdv.items = []; baPdvRenderItems(); }
+const baPdvItemTotal = it => baPdvR2(baValorFromDescontoPct(it.price*it.qty, it.disc||0));
+function baPdvRenderItems(){
+  const p = baPdv;
+  baPdvEl('pdv-itens').innerHTML = p.items.length ? p.items.map((it,i)=>`
+    <div class="pdv-it${i===p.flash?' novo':''}"><span class="cod">${it.cod}</span>
+      <div class="nm"><b>${primeEsc(it.name)}</b><span class="tp ${it.kind}">${it.kind==='s'?'Serviço':'Produto'}</span></div>
+      <span class="pc">${baFormatMoney(it.price)}</span>
+      <div class="ct"><span class="qt">${it.kind==='p' ? `<button type="button" onclick="baPdvQty(${i},-1)" aria-label="menos">−</button><b style="min-width:1.2rem;text-align:center;font-weight:400">${it.qty}</b><button type="button" onclick="baPdvQty(${i},1)" aria-label="mais">+</button>` : '<b style="font-weight:400;min-width:1.2rem;text-align:center">1</b>'}</span>
+        <span class="dl">Desc. %</span><input class="ds" inputmode="decimal" value="${it.disc?String(it.disc).replace('.',','):''}" placeholder="0" onchange="baPdvSetDisc(${i},this.value)">
+        <button type="button" class="x" onclick="baPdvQty(${i},-99)" aria-label="Remover">✕</button></div>
+      <span class="tl">${baFormatMoney(baPdvItemTotal(it))}</span></div>`).join('')
+    : '<div class="pdv-vazio">Nenhum item ainda. Toque num serviço ou produto acima.</div>';
+  p.flash = -1;
+  const bruto = p.items.reduce((s,x)=>s+x.price*x.qty,0), liq = p.items.reduce((s,x)=>s+baPdvItemTotal(x),0);
+  const n = p.items.reduce((s,x)=>s+x.qty,0), lbl = n+(n===1?' item':' itens');
+  baPdvEl('pdv-bruto').textContent = baFormatMoney(bruto);
+  baPdvEl('pdv-desc').textContent = baFormatMoney(baPdvR2(bruto-liq));
+  baPdvEl('pdv-liq').textContent = baFormatMoney(liq);
+  baPdvEl('pdv-nit').textContent = lbl; baPdvEl('pdv-bar-n').textContent = lbl; baPdvEl('pdv-bar-v').textContent = baFormatMoney(liq);
+}
 
-  const products = baGetProducts();
-  const notaId = primeNextId();
-  const rows = [];
-  if(svcs.length){
-    rows.push({barberId: baActingBarberId, client:clientName, service:svcs.join(' + '), value:svcValue, date, time, notaId, appointmentId: retroApptId});
-  }
-  for(const item of baAtCart){
-    const p = products.find(x=>x.id===item.productId);
-    if(!p) continue;
-    rows.push({barberId: baActingBarberId, client:clientName, service:p.name, value:p.price*item.qty, qty:item.qty, date, time, notaId, type:'produto',
-      category: p.category||'Outros', cost: (p.cost||0)*item.qty});
-  }
-  const totalAt = rows.reduce((s,r)=>s+r.value, 0);
+// ── finalizar: monta as linhas de venda e abre o modal de pagamento (dividido / troco) ──
+async function baAtRegistrar(){
+  const errEl = baPdvEl('at-err'), p = baPdv;
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; baPdvEl('at-success').style.display = 'none'; };
+  errEl.style.display = 'none';
+  if(!p) return;
+  if(!p.barberId) return fail('Escolha o barbeiro desta venda.');
+  if(!p.client) { baPdvEl('pdv-sec-cli').scrollIntoView({behavior:'smooth',block:'center'}); return fail('Escolha ou cadastre o cliente.'); }
+  if(!p.items.length) return fail('Adicione um serviço ou produto.');
+  const dur = baPdvWhenCheck();
+  if(!dur) return fail('Confira data, início e fim: o fim precisa ser depois do início.');
+  const regBtn = baPdvEl('ba-at-registrar-btn');
+  if(regBtn && regBtn.disabled) return;
+  if(regBtn){ regBtn.disabled = true; regBtn.classList.add('btn-loading'); }
+  let opened = false;
+  try{
+    baPdvAct();
+    const gateCx = await csGateForSale();
+    if(!gateCx.ok) return fail(gateCx.msg);
 
-  baOpenPagamentoModal(notaId, totalAt, async ()=>{
-    for(const item of baAtCart){
-      const p = products.find(x=>x.id===item.productId);
-      if(p) await baDecrementStock(p.id, item.qty);
+    const c = p.client;
+    // cliente com conta atendido por esse barbeiro pela 1ª vez: entra na carteira dele (aba Clientes)
+    if(c.id){
+      const mine = await baFetchMyCrmClients();
+      if(!mine.some(m=>m.clientId===c.id || m.name.toLowerCase()===c.name.toLowerCase()))
+        await baCreateCrmClient({name:c.name, phone:c.phone||null, email:c.email||null, instagram:c.instagram||null});
     }
-    await baInsertSales(rows);
-    await baFetchProducts();
-    if(linkedClientId) await primeCheckBrindeNotify(baActingBarberId, linkedClientId, clientName);
+    const svcItems = p.items.filter(x=>x.kind==='s'), prodItems = p.items.filter(x=>x.kind==='p');
+    const svcs = svcItems.map(x=>x.name);
+    const svcValue = baPdvR2(svcItems.reduce((s,x)=>s+baPdvItemTotal(x),0));
+    if(svcs.length && svcValue<=0) return fail('O valor do serviço precisa ser maior que zero.');
+    const notes = baPdvEl('at-notes').value.trim() || null;
 
-    baAtResetFields();
-    const successEl = document.getElementById('at-success');
-    successEl.style.display = 'block';
-    setTimeout(()=>{ successEl.style.display='none'; }, 3000);
-  }, {clientName});
+    // serviço pra cliente com conta vira também um agendamento já concluído (histórico/fidelidade/Zap do cliente)
+    let retroApptId = null;
+    if(svcs.length && c.id){
+      const d = new Date(p.date+'T12:00:00');
+      const dayLabel = `${DIAS[d.getDay()]} ${baPdvPad(d.getDate())}/${baPdvPad(d.getMonth()+1)}`;
+      const appt = await primeCreateAppointment({
+        services: svcs, day: p.date, dayLabel, time: p.start, duration: dur, notes,
+        name: c.name, clientId: c.id, clientEmail: c.email || null, barberId: p.barberId, status: 'concluido'
+      });
+      if(appt) retroApptId = appt.id;
+    }
+    const products = baGetProducts();
+    const notaId = primeNextId();
+    const rows = [];
+    if(svcs.length) rows.push({barberId:p.barberId, client:c.name, service:svcs.join(' + '), value:svcValue, date:p.date, time:p.end, notaId, appointmentId:retroApptId});
+    for(const it of prodItems){
+      const pr = products.find(x=>x.id===it.productId); if(!pr) continue;
+      rows.push({barberId:p.barberId, client:c.name, service:pr.name, value:baPdvItemTotal(it), qty:it.qty, date:p.date, time:p.end, notaId, type:'produto',
+        category:pr.category||'Outros', cost:(pr.cost||0)*it.qty});
+    }
+    const totalAt = rows.reduce((s,r)=>s+r.value,0);
+    const linkedClientId = c.id || null;
+    opened = true;
+    baOpenPagamentoModal(notaId, totalAt, async ()=>{
+      for(const it of prodItems){ await baDecrementStock(it.productId, it.qty); }
+      await baInsertSales(rows);
+      await baFetchProducts();
+      if(linkedClientId) await primeCheckBrindeNotify(p.barberId, linkedClientId, c.name);
+      baPdv = baPdvNew(); baPdv.barberId = p.barberId;
+      baPdvFillBarbers();
+      baPdvEl('pdv-date').value = baPdv.date; baPdvEl('pdv-ini').value = baPdv.start; baPdvEl('pdv-fim').value = baPdv.end;
+      baPdvEl('pdv-busca').value = ''; baPdvEl('at-notes').value = '';
+      baPdvWhenCheck(); baPdvRenderClient(); baPdvRenderItems(); baPdvCatalog();
+      const ok = baPdvEl('at-success'); ok.style.display = 'block';
+      setTimeout(()=>{ ok.style.display = 'none'; }, 3000);
+    }, {clientName:c.name});
   } finally {
     if(regBtn){ regBtn.disabled = false; regBtn.classList.remove('btn-loading'); }
+    if(!opened) baPdvRestoreActing();   // com o modal aberto, quem restaura é o fechamento/confirmação do pagamento
   }
 }
 
