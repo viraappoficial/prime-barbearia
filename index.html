@@ -3664,6 +3664,8 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .pdv-cat button b{display:block;font-weight:400;font-size:.9rem;line-height:1.2}
 #barberApp .pdv-cat button span{color:var(--dourado-claro);font-size:.82rem}
 #barberApp .pdv-cat button small{color:var(--prata-dim);font-size:.68rem;margin-left:.3rem}
+#barberApp .pdv-catlabel{grid-column:1/-1;font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--dourado);margin:.7rem 0 .1rem;padding-bottom:.35rem;border-bottom:1px solid var(--hair)}
+#barberApp .pdv-catlabel:first-child{margin-top:0}
 #barberApp .pdv-cat .vazio{grid-column:1/-1;color:var(--prata-dim);text-align:center;padding:1rem 0;border:0;min-height:0}
 #barberApp .pdv-th{display:none}
 #barberApp .pdv-it{border:1px solid var(--hair);border-radius:8px;background:var(--grafite);padding:.7rem;margin-bottom:.5rem;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.35rem .6rem;align-items:center}
@@ -11869,14 +11871,18 @@ function baPdvTab(t){
 }
 function baPdvCatalog(){
   const q = baPdvEl('pdv-busca').value.trim().toLowerCase(), box = baPdvEl('pdv-cat');
+  const grupo = (label, itens) => itens.length ? `<div class="pdv-catlabel">${primeEsc(label)}</div>` + itens.join('') : '';
   let h = '';
   if(baPdv.tab==='s'){
-    Object.keys(SVC_PRICES).filter(n=>n.toLowerCase().includes(q)).forEach(n=>{
-      h += `<button type="button" style="--c:${SVC_COLORS[n]||'var(--dourado)'}" onclick="baPdvAddSvc(this.dataset.n)" data-n="${primeEsc(n)}"><b>${primeEsc(n)}</b><span>${baFormatMoney(SVC_PRICES[n])}</span></button>`;
+    const btn = n => `<button type="button" style="--c:${SVC_COLORS[n]||'var(--dourado)'}" onclick="baPdvAddSvc(this.dataset.n)" data-n="${primeEsc(n)}"><b>${primeEsc(n)}</b><span>${baFormatMoney(SVC_PRICES[n])}</span></button>`;
+    primeSvcCategoriesInOrder().forEach(cat=>{      // mesma ordem/nomes de categoria do resto do sistema (Serviços, Combos, Tratamentos…)
+      h += grupo(primeSvcCatLabel(cat), primeServicesCache.filter(s=>s.category===cat && s.name.toLowerCase().includes(q)).map(s=>btn(s.name)));
     });
   } else {
-    baGetProducts().filter(p=>p.stock>0 && p.name.toLowerCase().includes(q)).forEach(p=>{
-      h += `<button type="button" onclick="baPdvAddProd(${p.id})"><b>${primeEsc(p.name)}</b><span>${baFormatMoney(p.price)}<small>${p.stock} un.</small></span></button>`;
+    const prods = baGetProducts().filter(p=>p.stock>0 && p.name.toLowerCase().includes(q));
+    [...new Set(prods.map(p=>p.category||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(cat=>{
+      h += grupo(cat, prods.filter(p=>(p.category||'Outros')===cat).map(p=>
+        `<button type="button" onclick="baPdvAddProd(${p.id})"><b>${primeEsc(p.name)}</b><span>${baFormatMoney(p.price)}<small>${p.stock} un.</small></span></button>`));
     });
   }
   box.innerHTML = h || '<div class="vazio">Nada encontrado</div>';
