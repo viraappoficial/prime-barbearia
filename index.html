@@ -5185,7 +5185,8 @@ function baSetActingBarber(id){
 }
 function baTab(tab){
   if(tab==='gestao' && baCurrentRole!=='admin') tab='perfil';
-  if((tab==='dashboard'||tab==='clientes'||tab==='vendas') && baCurrentRole==='vendas') tab='agenda';
+  // vendas não atende cliente: não tem Agenda nem as abas de barbeiro — cai em Atendimento
+  if((tab==='agenda'||tab==='dashboard'||tab==='clientes'||tab==='vendas') && baCurrentRole==='vendas') tab='atendimento';
   if(tab==='caixa' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab==='zap' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab==='cadastros' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
@@ -11779,8 +11780,10 @@ function baEnter(barber){
   // nenhuma ali). Isso só evita mostrar um botão que ia falhar silenciosamente.
   const bloqueioBtn = document.getElementById('ba-btn-bloqueio');
   if(bloqueioBtn) bloqueioBtn.style.display = isVendas ? 'none' : '';
+  // a aba Agenda é de quem atende (barbeiro e admin); vendas não tem
+  document.querySelectorAll('#barberApp [data-tab="agenda"]').forEach(el=>{ el.style.display = isVendas ? 'none' : ''; });
   document.getElementById('ba-tabbar').style.display='';
-  baTab('agenda');
+  baTab(isVendas ? 'atendimento' : 'agenda');
 }
 function baLogout(){
   baAlertStop();
