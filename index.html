@@ -5158,13 +5158,14 @@ function baIsLoggedIn(){ return !!baCurrentBarber; }
 function baSaleFromRow(r){
   if(!r) return r;
   return { id:r.id, barberId:r.barber_id, client:r.client_name, appointmentId:r.appointment_id,
-    service:r.service, value:r.value, date:r.date, time:r.time, notaId:r.nota_id,
+    service:r.service, value:r.value, date:r.date, time:r.time, notaId:r.nota_id, clientPhone:r.client_phone,
     qty:r.qty, type:r.type, category:r.category, cost:r.cost, createdAt:r.created_at };
 }
 function baSaleToRow(s){
   const row = {};
   if('barberId' in s) row.barber_id = s.barberId;
   if('client' in s) row.client_name = s.client;
+  if(s.clientPhone) row.client_phone = s.clientPhone;
   if('appointmentId' in s) row.appointment_id = s.appointmentId;
   if('service' in s) row.service = s.service;
   if('value' in s) row.value = s.value;
@@ -5178,8 +5179,21 @@ function baSaleToRow(s){
   return row;
 }
 async function baInsertSales(rows){
-  const { data, error } = await sb.from('sales').insert(rows.map(baSaleToRow)).select();
+  let { data, error } = await sb.from('sales').insert(rows.map(baSaleToRow)).select();
+  // migration do telefone (sales.client_phone) ainda não rodada: grava a venda do jeito antigo, sem o telefone
+  if(error && /client_phone/.test(error.message||'')){
+    ({ data, error } = await sb.from('sales').insert(rows.map(r=>{ const o = baSaleToRow(r); delete o.client_phone; return o; })).select());
+  }
   if(error){ console.error('baInsertSales', error); return []; }
+  return (data||[]).map(baSaleFromRow);
+}
+// compras de um telefone (qualquer barbeiro que a RLS deixe ler) — vazio se a coluna ainda não existe
+async function baFetchSalesByPhone(phone){
+  const d = String(phone||'').replace(/\D/g,'');
+  if(d.length<8) return [];
+  const cands = baZapLocalPhoneCandidates(d).filter(x=>/^\d+$/.test(x));
+  const { data, error } = await sb.from('sales').select('*').in('client_phone', cands).order('date',{ascending:false}).order('time',{ascending:false}).limit(30);
+  if(error){ return []; }
   return (data||[]).map(baSaleFromRow);
 }
 async function baFetchMySales(from, to){
@@ -5897,6 +5911,8 @@ async function baZapRenderFicha(){
       fidInfo = await primeBrindeCutsInfo(client.id, cutCount);
     }
   }
+  let phoneSales = [];
+  if(phone && !client) phoneSales = await baFetchSalesByPhone(phone);   // sem conta: o histórico vem das vendas de balcão gravadas com o telefone
   const { data: noteRow } = await sb.from('whatsapp_contact_notes').select('note').eq('chat_id', chatId).maybeSingle();
   const note = (noteRow && noteRow.note) || '';
   if(chatId !== baZapCurrentChat) return; // trocou de conversa enquanto carregava
@@ -5935,6 +5951,7 @@ async function baZapRenderFicha(){
     ${fidHtml}
     <div class="ba-slabel" style="margin-top:0">Cortes concluídos</div>
     ${cutsHtml}
+    ${phoneSales.length ? `<div class="ba-slabel">Compras no balcão</div>${phoneSales.slice(0,6).map(x=>`<div class="ba-cli-row"><span class="lbl">${baFormatDate(x.date)}</span><span class="val">${primeEsc(x.service)}</span></div>`).join('')}` : ''}
     <div class="ba-slabel">Observação</div>
     <textarea class="ba-zap-ficha-note" id="ba-zap-ficha-note" placeholder="Anotação interna sobre esse contato — só a equipe vê">${primeEsc(note)}</textarea>
     <button class="ba-btn ghost" style="max-width:100%" id="ba-zap-ficha-save" onclick="baZapSaveNote()">Salvar observação</button>
@@ -11827,6 +11844,10 @@ async function baPdvLoadLast(){
         .order('day',{ascending:false}).order('time',{ascending:false}).limit(1);
       if(data && data[0]) line = {day:data[0].day, what:(data[0].services||[]).join(' + '), who:apBarberName({barberId:data[0].barber_id})};
     }
+    if(!line && c.phone){
+      const byPhone = await baFetchSalesByPhone(c.phone);
+      if(byPhone[0]) line = {day:byPhone[0].date, what:byPhone[0].service, who:apBarberName({barberId:byPhone[0].barberId})};
+    }
     if(!line && baPdv.barberId){
       const sales = await baFetchClientSales(c.name, baPdv.barberId);
       sales.sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
@@ -11948,11 +11969,12 @@ async function baAtRegistrar(){
     }
     const products = baGetProducts();
     const notaId = primeNextId();
+    const cph = c.phone ? baPdvLocalPhone(c.phone) : null;   // telefone na venda: é o que reencontra o cliente depois
     const rows = [];
-    if(svcs.length) rows.push({barberId:p.barberId, client:c.name, service:svcs.join(' + '), value:svcValue, date:p.date, time:p.end, notaId, appointmentId:retroApptId});
+    if(svcs.length) rows.push({barberId:p.barberId, client:c.name, clientPhone:cph, service:svcs.join(' + '), value:svcValue, date:p.date, time:p.end, notaId, appointmentId:retroApptId});
     for(const it of prodItems){
       const pr = products.find(x=>x.id===it.productId); if(!pr) continue;
-      rows.push({barberId:p.barberId, client:c.name, service:pr.name, value:baPdvItemTotal(it), qty:it.qty, date:p.date, time:p.end, notaId, type:'produto',
+      rows.push({barberId:p.barberId, client:c.name, clientPhone:cph, service:pr.name, value:baPdvItemTotal(it), qty:it.qty, date:p.date, time:p.end, notaId, type:'produto',
         category:pr.category||'Outros', cost:(pr.cost||0)*it.qty});
     }
     const totalAt = rows.reduce((s,r)=>s+r.value,0);
