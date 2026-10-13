@@ -3844,6 +3844,10 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-tab{flex:1;background:none;border:none;color:var(--prata-dim);display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.7rem 0 .9rem;font-family:var(--font-body);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 #barberApp .ba-tab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6}
 #barberApp .ba-tab.active{color:var(--dourado)}
+/* muitas abas (o administrador tem até 10): a barra rola de lado em vez de espremer os nomes uns nos outros e cortar a última */
+#barberApp .ba-tabbar{overflow-x:auto;overflow-y:hidden;justify-content:flex-start;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#barberApp .ba-tabbar::-webkit-scrollbar{display:none}
+#barberApp .ba-tab{flex:1 0 auto;min-width:4.6rem;padding-left:.4rem;padding-right:.4rem}
 #barberApp.desktop .phone{max-width:none;width:100%;left:0;transform:none;flex-direction:column}
 #barberApp.desktop .ba-close{display:none}
 #barberApp.desktop .ba-tabbar{display:none!important}
@@ -5128,6 +5132,8 @@ function baTab(tab){
   const m={agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',caixa:'ba-screen-caixa',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao',zap:'ba-screen-zap',cadastros:'ba-screen-cadastros'};
   baShow(m[tab]);
   document.querySelectorAll('#barberApp .ba-tab,#barberApp .ba-links button').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  const baAt=document.querySelector('#barberApp .ba-tab.active'), baTb=document.getElementById('ba-tabbar'); // aba ativa sempre visível na barra que rola
+  if(baAt && baTb && baTb.scrollWidth>baTb.clientWidth) baTb.scrollLeft=baAt.offsetLeft-(baTb.clientWidth-baAt.offsetWidth)/2;
   if(tab==='vendas') baRenderVendas();
   if(tab==='clientes') primeSkeletonThen(['ba-clientes-list'], [[5,58]], baRenderClientes);
   if(tab==='caixa') csRenderScreen();
