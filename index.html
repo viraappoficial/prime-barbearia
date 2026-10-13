@@ -11023,6 +11023,18 @@ function baAlterarUpdateBtn(){
   const okStatus = ap.status==='pendente' || ap.status==='confirmado';
   btn.disabled = !okStatus || !Object.keys(patch).length || baAlterarSel.services.size===0;
 }
+function baAlterarRpcMsg(code){
+  const m = {
+    BARBER_BUSY:'Esse profissional já tem agendamento nesse horário.',
+    SLOT_BLOCKED:'A agenda desse profissional está bloqueada nesse horário.',
+    NOT_ALLOWED:'Você não tem permissão pra transferir esse agendamento.',
+    BAD_STATUS:'Só dá pra alterar agendamento pendente ou confirmado.',
+    BAD_BARBER:'Esse profissional não atende clientes.',
+    NOT_FOUND:'Agendamento não encontrado.'
+  };
+  const k = Object.keys(m).find(x=>String(code).includes(x));
+  return k ? m[k] : 'Não foi possível salvar. Tente de novo.';
+}
 async function baAlterarConfirm(){
   const ap = baAlterarAppt; if(!ap) return;
   const patch = baAlterarChanges();
@@ -11031,10 +11043,18 @@ async function baAlterarConfirm(){
   errEl.style.display = 'none';
   const btn = document.getElementById('baAlterarConfirm');
   btn.disabled = true; btn.classList.add('btn-loading');
-  const updated = await primeUpdateAppointment(ap.id, patch);
+  // trocar de profissional passa pela função do banco (confere permissão e horário do colega, e troca o serviço junto);
+  // só o serviço continua sendo um update direto
+  let updated = null, rpcErr = null;
+  if(patch.barberId){
+    const { error } = await sb.rpc('transfer_appointment', { p_appointment_id: ap.id, p_new_barber_id: patch.barberId, p_services: patch.services || null });
+    if(error){ console.error('transfer_appointment', error); rpcErr = error.message || ''; } else updated = true;
+  } else {
+    updated = await primeUpdateAppointment(ap.id, patch);
+  }
   btn.classList.remove('btn-loading');
   if(!updated){
-    errEl.textContent = patch.barberId ? primeApptErrorMessage().replace('Esse horário não está disponível. Escolha outro.','Esse profissional não está disponível nesse horário.') : primeApptErrorMessage();
+    errEl.textContent = rpcErr!==null ? baAlterarRpcMsg(rpcErr) : primeApptErrorMessage();
     errEl.style.display = 'block'; baAlterarUpdateBtn(); return;
   }
   // avisos: cliente (app + WhatsApp, igual ao Remarcar) e o profissional que assumiu
