@@ -12602,6 +12602,8 @@ function primeRenderProductCatalog(search){
 <style>
 #ba-report-print, #ba-qr-print{display:none}
 .staff-host #barberApp .ba-close, .staff-host #barberApp button[onclick="baClose()"]{display:none!important}
+/* endereço da equipe: a página do cliente nem aparece (antes só ficava coberta e vazava por baixo quando o teclado abria no iPhone) */
+.staff-host body>nav,.staff-host body>header,.staff-host body>section,.staff-host body>footer,.staff-host body>#svcCatalogView,.staff-host body>#productCatalogView{display:none!important}
 @media print{
   body > *:not(.prime-print-target){display:none!important}
   .prime-print-target{display:block!important}
