@@ -3658,6 +3658,9 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .pdv-cat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin-top:.6rem}
 #barberApp .pdv-cat button{min-height:60px;text-align:left;padding:.5rem .8rem;border:1px solid var(--hair);border-radius:8px;background:var(--grafite);position:relative;overflow:hidden;color:var(--prata);font-family:var(--font-body);cursor:pointer}
 #barberApp .pdv-cat button::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,var(--dourado))}
+#barberApp .pdv-cat button.sel{border-color:var(--dourado);background:rgba(198,167,94,.14);box-shadow:inset 0 0 0 1px var(--dourado)}
+#barberApp .pdv-cat button.sel:not(:has(.pdv-qb))::after{content:"✓";position:absolute;top:.35rem;right:.55rem;color:var(--dourado-claro);font-size:.95rem;font-weight:600}
+#barberApp .pdv-cat .pdv-qb{position:absolute;top:.35rem;right:.5rem;font-style:normal;font-size:.72rem;font-weight:600;background:var(--dourado);color:var(--verde-noite);border-radius:99px;padding:.05rem .45rem}
 #barberApp .pdv-cat button b{display:block;font-weight:400;font-size:.9rem;line-height:1.2}
 #barberApp .pdv-cat button span{color:var(--dourado-claro);font-size:.82rem}
 #barberApp .pdv-cat button small{color:var(--prata-dim);font-size:.68rem;margin-left:.3rem}
@@ -11895,7 +11898,7 @@ function baPdvCatalog(){
   const grupo = (label, itens) => itens.length ? `<div class="pdv-catlabel">${primeEsc(label)}</div>` + itens.join('') : '';
   let h = '';
   if(baPdv.tab==='s'){
-    const btn = n => `<button type="button" style="--c:${SVC_COLORS[n]||'var(--dourado)'}" onclick="baPdvAddSvc(this.dataset.n)" data-n="${primeEsc(n)}"><b>${primeEsc(n)}</b><span>${baFormatMoney(SVC_PRICES[n])}</span></button>`;
+    const btn = n => `<button type="button" class="${baPdv.items.some(x=>x.kind==='s'&&x.name===n)?'sel':''}" style="--c:${SVC_COLORS[n]||'var(--dourado)'}" onclick="baPdvAddSvc(this.dataset.n)" data-n="${primeEsc(n)}"><b>${primeEsc(n)}</b><span>${baFormatMoney(SVC_PRICES[n])}</span></button>`;
     primeSvcCategoriesInOrder().forEach(cat=>{      // mesma ordem/nomes de categoria do resto do sistema (Serviços, Combos, Tratamentos…)
       h += grupo(primeSvcCatLabel(cat), primeServicesCache.filter(s=>s.category===cat && s.name.toLowerCase().includes(q)).map(s=>btn(s.name)));
     });
@@ -11903,14 +11906,14 @@ function baPdvCatalog(){
     const prods = baGetProducts().filter(p=>p.stock>0 && p.name.toLowerCase().includes(q));
     [...new Set(prods.map(p=>p.category||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(cat=>{
       h += grupo(cat, prods.filter(p=>(p.category||'Outros')===cat).map(p=>
-        `<button type="button" onclick="baPdvAddProd(${p.id})"><b>${primeEsc(p.name)}</b><span>${baFormatMoney(p.price)}<small>${p.stock} un.</small></span></button>`));
+        `<button type="button" class="${baPdv.items.some(x=>x.kind==='p'&&x.productId===p.id)?'sel':''}" onclick="baPdvAddProd(${p.id})"><b>${primeEsc(p.name)}</b><span>${baFormatMoney(p.price)}<small>${p.stock} un.</small></span>${(()=>{ const it = baPdv.items.find(x=>x.kind==='p'&&x.productId===p.id); return it ? `<i class="pdv-qb">×${it.qty}</i>` : ''; })()}</button>`));
     });
   }
   box.innerHTML = h || '<div class="vazio">Nada encontrado</div>';
 }
 function baPdvAddSvc(name){
   const i = baPdv.items.findIndex(x=>x.kind==='s' && x.name===name);
-  if(i>=0){ baPdv.flash = i; baPdvRenderItems(); return; }      // serviço entra uma vez só
+  if(i>=0){ baPdv.items.splice(i,1); baPdvRenderItems(); return; }      // serviço entra uma vez só: tocar de novo desmarca
   baPdv.items.push({kind:'s', name, price:SVC_PRICES[name]||0, qty:1, disc:0, cod:'S'+baPdvPad(baPdv.items.length+1)});
   baPdv.flash = baPdv.items.length-1; baPdvRenderItems();
 }
@@ -11950,6 +11953,7 @@ function baPdvRenderItems(){
   baPdvEl('pdv-bruto').textContent = baFormatMoney(bruto);
   baPdvEl('pdv-desc').textContent = baFormatMoney(baPdvR2(bruto-liq));
   baPdvEl('pdv-liq').textContent = baFormatMoney(liq);
+  baPdvCatalog();   // mantém o catálogo marcado com o que já está na comanda
   baPdvEl('pdv-nit').textContent = lbl; baPdvEl('pdv-bar-n').textContent = lbl; baPdvEl('pdv-bar-v').textContent = baFormatMoney(liq);
 }
 
