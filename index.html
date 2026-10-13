@@ -1851,6 +1851,23 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
   </div>
 </div>
 
+<!-- MODAL: alterar agendamento (transferir pra outro profissional e/ou mudar o serviço) -->
+<div class="modal-backdrop" id="baAlterarModal" role="dialog" aria-modal="true" aria-labelledby="baAlterarTitle" style="z-index:1200" onclick="if(event.target===this)baCloseAlterar()">
+  <div class="modal" style="max-width:440px;text-align:left;max-height:calc(100dvh - 2rem);overflow-y:auto">
+    <button class="close" aria-label="Fechar" onclick="baCloseAlterar()">✕</button>
+    <h3 id="baAlterarTitle" style="text-align:center">Alterar agendamento</h3>
+    <p style="color:var(--prata-dim);font-size:.85rem;margin:.8rem 0 1.2rem;text-align:center" id="baAlterarSub"></p>
+    <div class="alt-label">Profissional</div>
+    <div id="baAlterarBarbers" class="alt-list"></div>
+    <div class="alt-label" style="margin-top:1.2rem">Serviço</div>
+    <p id="baAlterarSvcNote" class="alt-note" style="display:none"></p>
+    <div id="baAlterarServices" class="alt-list alt-scroll"></div>
+    <div class="alt-total"><span>Total</span><b id="baAlterarTotal">R$ 0,00</b></div>
+    <p id="baAlterarErr" style="color:var(--erro);font-size:.82rem;margin:.8rem 0 0;display:none"></p>
+    <button class="btn btn-primary" style="width:100%;margin-top:1rem" id="baAlterarConfirm" onclick="baAlterarConfirm()" disabled>Salvar alteração</button>
+  </div>
+</div>
+
 <!-- MODAL: forma de pagamento (split) ao finalizar venda -->
 <div class="modal-backdrop" id="baPagamentoModal" role="dialog" aria-modal="true" style="z-index:1200" onclick="if(event.target===this)baClosePagamentoModal()">
   <div class="modal" style="max-width:480px">
@@ -3462,6 +3479,23 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-empty{color:var(--prata-dim);font-size:.82rem;padding:1.2rem 0;text-align:center}
 #barberApp .ba-zap-ficha-note{width:100%;min-height:6rem;resize:vertical;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.84rem;padding:.7rem .8rem;border-radius:2px;margin-bottom:.7rem}
 #barberApp .ba-zap-ficha-note:focus{outline:none;border-color:var(--dourado)}
+/* alterar agendamento */
+.alt-label{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dourado);margin-bottom:.5rem}
+.alt-list{display:flex;flex-direction:column;gap:.4rem}
+.alt-scroll{max-height:34vh;overflow-y:auto;padding-right:.2rem}
+.alt-row{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;background:var(--grafite-card);border:1px solid var(--hair);border-radius:6px;padding:.7rem .85rem;color:var(--prata);font-family:var(--font-body);font-size:.9rem;cursor:pointer;min-height:44px}
+.alt-row[aria-pressed="true"]{border-color:var(--dourado);background:rgba(198,167,94,.10)}
+.alt-row:disabled{opacity:.5;cursor:not-allowed}
+.alt-row .alt-dot{flex:none;width:16px;height:16px;border-radius:50%;border:1px solid var(--prata-dim)}
+.alt-row[aria-pressed="true"] .alt-dot{border-color:var(--dourado);background:radial-gradient(circle,var(--dourado) 45%,transparent 50%)}
+.alt-row.alt-chk .alt-dot{border-radius:4px}
+.alt-row.alt-chk[aria-pressed="true"] .alt-dot{background:var(--dourado)}
+.alt-row .alt-nm{flex:1;min-width:0}
+.alt-row .alt-sub{font-size:.72rem;color:var(--prata-dim)}
+.alt-row .alt-pr{flex:none;font-size:.82rem;color:var(--dourado-claro)}
+.alt-note{font-size:.78rem;color:var(--alerta);margin:0 0 .6rem}
+.alt-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--dourado-dim);color:var(--prata-dim);font-size:.85rem}
+.alt-total b{font-family:var(--font-display);font-weight:500;font-size:1.15rem;color:var(--prata)}
 /* mobile/tablet (abaixo do breakpoint "desktop" do app, 900px): uma coluna por vez, com botão "voltar" */
 /* bottom: 5.5rem = a barra de abas fixa embaixo (mesma folga do .ba-body) — sem isso a caixa de escrever ficava ATRÁS dela */
 #barberApp:not(.desktop) .ba-zap-col{display:none;width:100%;position:absolute;top:0;left:0;right:0;bottom:5.5rem;height:auto;border:none}
@@ -10692,7 +10726,7 @@ async function baBuildAgendaTimes(){
         : st==='confirmado' ? `<button class="ba-mini-btn primary" onclick="baIniciarAtendimento(${a.id})">Iniciar</button>`
         : '';
       const canManage = (st==='pendente' || st==='confirmado') && !emAndamento;
-      const manageBtns = canManage ? `<button class="ba-mini-btn ghost" onclick="baOpenReagendar(${a.id})">Remarcar</button><button class="ba-mini-btn ghost" onclick="baMarcarNaoCompareceu(${a.id})">Não veio</button><button class="ba-mini-btn danger" onclick="baOpenAdminGateCancel(${a.id})">Cancelar</button>` : '';
+      const manageBtns = canManage ? `<button class="ba-mini-btn ghost" onclick="baOpenReagendar(${a.id})">Remarcar</button><button class="ba-mini-btn ghost" onclick="baOpenAlterar(${a.id})">Alterar</button><button class="ba-mini-btn ghost" onclick="baMarcarNaoCompareceu(${a.id})">Não veio</button><button class="ba-mini-btn danger" onclick="baOpenAdminGateCancel(${a.id})">Cancelar</button>` : '';
       const action = (statusBtn || manageBtns) ? `<div style="display:flex;flex-direction:column;gap:.3rem;align-items:stretch">${statusBtn}${manageBtns}</div>` : '';
       const notesLine = a.notes ? `<div class="ts-detail" style="color:var(--dourado-dim)">📝 ${primeEsc(a.notes)}</div>` : '';
       html += `<div class="ba-tslot ${cls}">
@@ -10891,6 +10925,144 @@ document.getElementById('baRemarcarConfirm').addEventListener('click', async ()=
   baCloseRemarcar();
   baBuildAgendaTimes();
 });
+
+// ── Alterar agendamento: transferir pra outro profissional e/ou mudar o serviço ──
+// Só pendente/confirmado e fora de atendimento (mesma regra do Remarcar). Quem barra o que não pode é o banco
+// (permissão e horário/bloqueio); aqui a tela já mostra só quem está livre naquele horário.
+let baAlterarAppt = null;
+let baAlterarSel = null; // { barberId, services:Set }
+function baAlterarFmt(v){ return 'R$ ' + Number(v||0).toFixed(2).replace('.',','); }
+function baAlterarHasDiscount(ap){ return !!(ap.couponCode || typeof ap.discountPrice==='number'); }
+async function baOpenAlterar(id){
+  const ap = await primeFetchAppointmentById(id);
+  if(!ap) return;
+  baAlterarAppt = ap;
+  baAlterarSel = { barberId: ap.barberId, services: new Set(ap.services||[]) };
+  document.getElementById('baAlterarSub').textContent = `${ap.name||'Cliente'} · ${ap.dayLabel} às ${ap.time}`;
+  const err = document.getElementById('baAlterarErr');
+  if(ap.status!=='pendente' && ap.status!=='confirmado'){ err.textContent = 'Só dá pra alterar agendamento pendente ou confirmado.'; err.style.display = 'block'; }
+  else err.style.display = 'none';
+  document.getElementById('baAlterarBarbers').innerHTML = '<p class="alt-note" style="color:var(--prata-dim)">Verificando quem está livre…</p>';
+  document.getElementById('baAlterarModal').classList.add('open');
+  baAlterarRenderServices();
+  baAlterarUpdateBtn();
+  await baAlterarLoadBarbers();
+}
+function baCloseAlterar(){
+  document.getElementById('baAlterarModal').classList.remove('open');
+  baAlterarAppt = null; baAlterarSel = null;
+}
+// quem pode assumir esse dia/horário: expediente do barbeiro, agendamento no mesmo horário e bloqueio de agenda
+async function baAlterarLoadBarbers(){
+  const ap = baAlterarAppt; if(!ap) return;
+  await primeEnsureBarberRoster();
+  const roster = primeGetBarberRoster();
+  const [appts, blocks] = await Promise.all([primeFetchDayAppointments(ap.day), primeFetchDayBlocks(ap.day)]);
+  if(!baAlterarAppt || baAlterarAppt.id!==ap.id) return;
+  const wd = new Date(ap.day+'T12:00:00').getDay();
+  const t = primeHhmmToMin(ap.time);
+  const busy = new Set(appts.filter(a=>a.id!==ap.id && a.time===ap.time && a.barberId).map(a=>a.barberId));
+  const blocked = primeBlockedBarberIdsAt(blocks, t, t+SLOT_MIN);
+  const rows = roster.map(b=>{
+    let why = null;
+    if(b.id!==ap.barberId){
+      const h = resolveBarberHours(b, wd);
+      if(!h) why = 'de folga nesse dia';
+      else if(t < primeHhmmToMin(h[0]) || t+SLOT_MIN > primeHhmmToMin(h[1])) why = 'fora do expediente nesse horário';
+      else if(busy.has(b.id)) why = 'já tem agendamento nesse horário';
+      else if(blocked.has(b.id)) why = 'agenda bloqueada nesse horário';
+    }
+    return { b, why };
+  });
+  const box = document.getElementById('baAlterarBarbers');
+  box.innerHTML = rows.map(({b,why})=>{
+    const atual = b.id===ap.barberId;
+    const sub = atual ? 'Atual' : (why ? why : 'Livre nesse horário');
+    return `<button type="button" class="alt-row" data-barber="${primeEsc(b.id)}" aria-pressed="${baAlterarSel.barberId===b.id}" ${why?'disabled':''}><span class="alt-dot"></span><span class="alt-nm">${primeEsc(b.name)}<div class="alt-sub">${primeEsc(sub)}</div></span></button>`;
+  }).join('') || '<p class="alt-note">Nenhum profissional cadastrado.</p>';
+  box.querySelectorAll('[data-barber]').forEach(btn=>btn.addEventListener('click', ()=>{
+    baAlterarSel.barberId = btn.dataset.barber;
+    box.querySelectorAll('[data-barber]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.barber===baAlterarSel.barberId)));
+    baAlterarUpdateBtn();
+  }));
+}
+function baAlterarRenderServices(){
+  const ap = baAlterarAppt; if(!ap) return;
+  const locked = baAlterarHasDiscount(ap);
+  const note = document.getElementById('baAlterarSvcNote');
+  if(locked){ note.textContent = 'Este agendamento tem cupom ou desconto. Pra mudar o serviço, cancele e agende de novo.'; note.style.display = 'block'; }
+  else note.style.display = 'none';
+  const cat = (primeServicesCache||[]).filter(s=>s.active!==false);
+  const names = new Set(cat.map(s=>s.name));
+  const extra = [...baAlterarSel.services].filter(n=>!names.has(n)).map(n=>({name:n, price:SVC_PRICES[n]||0}));
+  const list = [...cat, ...extra];
+  const box = document.getElementById('baAlterarServices');
+  box.innerHTML = list.map(s=>`<button type="button" class="alt-row alt-chk" data-svc="${primeEsc(s.name)}" aria-pressed="${baAlterarSel.services.has(s.name)}" ${locked?'disabled':''}><span class="alt-dot"></span><span class="alt-nm">${primeEsc(s.name)}</span><span class="alt-pr">${baAlterarFmt(s.price)}</span></button>`).join('');
+  box.querySelectorAll('[data-svc]').forEach(btn=>btn.addEventListener('click', ()=>{
+    const n = btn.dataset.svc;
+    if(baAlterarSel.services.has(n)) baAlterarSel.services.delete(n); else baAlterarSel.services.add(n);
+    btn.setAttribute('aria-pressed', String(baAlterarSel.services.has(n)));
+    baAlterarUpdateBtn();
+  }));
+  baAlterarUpdateBtn();
+}
+function baAlterarChanges(){
+  const ap = baAlterarAppt, sel = baAlterarSel; if(!ap || !sel) return {};
+  const cur = ap.services||[], now = [...sel.services];
+  const patch = {};
+  if(sel.barberId && sel.barberId!==ap.barberId) patch.barberId = sel.barberId;
+  if(now.length!==cur.length || !now.every(s=>cur.includes(s))) patch.services = now;
+  return patch;
+}
+function baAlterarUpdateBtn(){
+  const ap = baAlterarAppt, btn = document.getElementById('baAlterarConfirm'); if(!btn) return;
+  if(!ap){ btn.disabled = true; return; }
+  const patch = baAlterarChanges();
+  const total = [...baAlterarSel.services].reduce((s,n)=>s+(SVC_PRICES[n]||0),0);
+  document.getElementById('baAlterarTotal').textContent = baAlterarFmt(total);
+  const okStatus = ap.status==='pendente' || ap.status==='confirmado';
+  btn.disabled = !okStatus || !Object.keys(patch).length || baAlterarSel.services.size===0;
+}
+async function baAlterarConfirm(){
+  const ap = baAlterarAppt; if(!ap) return;
+  const patch = baAlterarChanges();
+  if(!Object.keys(patch).length) return;
+  const errEl = document.getElementById('baAlterarErr');
+  errEl.style.display = 'none';
+  const btn = document.getElementById('baAlterarConfirm');
+  btn.disabled = true; btn.classList.add('btn-loading');
+  const updated = await primeUpdateAppointment(ap.id, patch);
+  btn.classList.remove('btn-loading');
+  if(!updated){
+    errEl.textContent = patch.barberId ? primeApptErrorMessage().replace('Esse horário não está disponível. Escolha outro.','Esse profissional não está disponível nesse horário.') : primeApptErrorMessage();
+    errEl.style.display = 'block'; baAlterarUpdateBtn(); return;
+  }
+  // avisos: cliente (app + WhatsApp, igual ao Remarcar) e o profissional que assumiu
+  const roster = primeGetBarberRoster();
+  const nome = id => (roster.find(b=>b.id===id)||{}).name || 'outro profissional';
+  const partes = [];
+  if(patch.barberId) partes.push(`o profissional agora é ${nome(patch.barberId)}`);
+  if(patch.services) partes.push(`o serviço agora é ${patch.services.join(' + ')}`);
+  const quando = `${ap.dayLabel} às ${ap.time}`;
+  let phone = null;
+  if(ap.clientId){
+    await primeAddNotif({forRole:'client', recipientClientId:ap.clientId, type:'remarcado', apptId:ap.id,
+      text:`Seu agendamento de ${quando} foi atualizado: ${partes.join(' e ')}.`});
+    const { data: cli } = await sb.from('clients').select('phone').eq('id', ap.clientId).maybeSingle();
+    phone = cli && cli.phone;
+  }
+  if(patch.barberId){
+    await primeAddNotif({forRole:'barber', recipientBarberId:patch.barberId, type:'novo', apptId:ap.id,
+      text:`Atendimento transferido pra você: ${ap.name||'Cliente'} · ${quando} · ${(patch.services||ap.services||[]).join(' + ')}.`});
+  }
+  const msg = `Oi ${ap.name||''}! Seu agendamento na Prime Barbearia (${quando}) foi atualizado: ${partes.join(' e ')}. Qualquer coisa é só chamar 🙏`;
+  // telefone do cadastro vem sem DDI (44999445716): sem o 55 o wa.me entende como outro país
+  let waNum = phone ? phone.replace(/\D/g,'') : '';
+  if(waNum && !waNum.startsWith('55') && (waNum.length===10 || waNum.length===11)) waNum = '55' + waNum;
+  window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
+  baCloseAlterar();
+  baBuildAgendaTimes();
+}
 
 // ══ Bloqueio de agenda (agenda_blocks) — barbeiro bloqueia a própria agenda sem
 // aprovação de admin (D1); admin bloqueia qualquer barbeiro; vendas não tem acesso
