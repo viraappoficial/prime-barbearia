@@ -27,7 +27,7 @@ Não mexer nas 3 primeiras linhas (site).
 | **Caddy** (`caddy-caddy-1`, pasta `/opt/caddy`) | 80 e 443 | internet | faz o HTTPS e o certificado sozinho |
 | **Evolution Go** (`evolutiongo-evolution-go-1`, imagem `evoapicloud/evolution-go:0.7.2`) | 4000 | **só a VPS** (`127.0.0.1`) | https://painel.primebarbearia.app.br/manager/instances |
 | Postgres do Evolution (`evolutiongo-postgres-1`) | 5432 | só rede interna do Docker | — |
-| **n8n** (`n8n-n8n-1`, versão 2.43.5) | 5678 | **ainda aberta na internet** (falta trocar pra `127.0.0.1`) | https://n8n.primebarbearia.app.br |
+| **n8n** (`n8n-n8n-1`, versão 2.43.5) | 5678 | **só a VPS** (`127.0.0.1`) | https://n8n.primebarbearia.app.br |
 | Postgres do n8n (`n8n-n8n-db-1`, Postgres 16) | 5432 | só rede interna | — |
 | **Portainer** (`portainer`) | 9443 e 8000 | **aberta na internet** (decisão: deixar assim por enquanto) | https://76.13.229.246:9443 |
 | `postgres_db` e `pgadmin_web` (stack 1) | 5432 e 8080 | **PARADOS** (`restart=no`) | — |
@@ -38,7 +38,9 @@ Roteamento do Caddy (`/opt/caddy/Caddyfile`): `painel.…` → `127.0.0.1:4000` 
 Pasta base: `/var/lib/docker/volumes/portainer_data/_data/compose/`
 - `1` = `postgres_db` + `pgadmin_web` (parados; banco vazio de 46 MB, sem uso).
 - `2` = **Evolution Go** — projeto `evolutiongo`, variáveis em `stack.env`. Cópia de segurança: `docker-compose.yml.bak`. A linha 52 já foi trocada pra `127.0.0.1:4000:4000`.
-- `3` = **n8n** — projeto `n8n`.
+- `3` = **n8n** — projeto `n8n`, variáveis em `stack.env`. Cópia de segurança: `docker-compose.yml.bak`. Já ajustado: porta `127.0.0.1:5678`, `N8N_HOST`, `N8N_PROTOCOL=https`, `N8N_EDITOR_BASE_URL`, `N8N_WEBHOOK_URL`, `WEBHOOK_URL` e `N8N_SECURE_COOKIE=true`.
+
+Pra reaplicar o n8n: `cd .../compose/3 && docker compose -p n8n --env-file stack.env up -d`.
 
 ## Comandos úteis
 ```bash
@@ -80,7 +82,7 @@ docker start portainer
 | Senha de `root` (SSH) | apareceu em print; trocar e passar pra chave SSH |
 
 ## O que ainda falta
-1. Fechar a porta **5678** do n8n (`127.0.0.1:5678:5678` na stack 3) e ajustar `N8N_HOST`, `N8N_PROTOCOL=https`, `WEBHOOK_URL=https://n8n.primebarbearia.app.br/`.
+1. ~~Fechar a porta 5678 do n8n~~ (feito em 14/10).
 2. Decidir o **chip** (separado do número principal) e conectar na instância `prime` do Evolution (QR Code).
 3. Colocar o **bot do WhatsApp** na VPS (Docker) e criar o canal Evolution no código; depois endereço `bot.primebarbearia.app.br`.
 4. Trocar senhas/chaves dos prints; entrar por **chave SSH**.
