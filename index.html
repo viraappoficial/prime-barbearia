@@ -11121,9 +11121,21 @@ async function baExecuteCancel(id){
     const { data: cli } = await sb.from('clients').select('phone').eq('id', ap.clientId).maybeSingle();
     phone = cli && cli.phone;
   }
-  const msg = `Oi ${ap.name||''}! Infelizmente precisei cancelar seu horário de ${ap.dayLabel} às ${ap.time} na Prime Barbearia. Bora marcar de novo? 🙏`;
-  const waNum = primeIntlPhone(phone);
-  window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
+  // Aviso automático pelo WhatsApp da barbearia (pede desculpas e oferece outro horário com outro barbeiro). Se não der
+  // (sem telefone, função ainda não criada no banco, erro), cai no wa.me manual de sempre.
+  let avisou = false;
+  try {
+    const { data: ok, error } = await sb.rpc('notify_client_appointment_cancelled', { p_appt_id: id });
+    if(error) console.error('notify_client_appointment_cancelled', error);
+    avisou = !error && ok === true;
+  }catch(e){ console.error('notify_client_appointment_cancelled', e); }
+  if(avisou){
+    baAlertToast('<div style="color:var(--dourado);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.3rem">Horário cancelado</div><b>Cliente avisado no WhatsApp</b><br><span style="opacity:.75">Pedimos desculpas e oferecemos outro horário.</span>');
+  } else {
+    const msg = `Oi ${ap.name||''}! Infelizmente precisei cancelar seu horário de ${ap.dayLabel} às ${ap.time} na Prime Barbearia. Bora marcar de novo? 🙏`;
+    const waNum = primeIntlPhone(phone);
+    window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
   baBuildAgendaTimes();
 }
 // marcar que o cliente não veio — mesmo nível de confiança de "Aceitar"/"Iniciar" (sem gate de admin),
