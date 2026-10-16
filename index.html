@@ -4857,13 +4857,17 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="ba-slabel">Por dia</div>
           <div id="ba-ia-dias"></div>
           <div class="ba-slabel">Saldo da conta de IA</div>
-          <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Informe quanto de crédito você tem agora na Anthropic. O saldo restante é estimado descontando o que a IA gastar daqui pra frente.</p>
+          <div id="ba-ia-saldo"></div>
+          <p style="color:var(--prata-dim);font-size:.78rem;margin:.8rem 0 .6rem">A Anthropic não informa o saldo automaticamente. Olhe o saldo no Console da Anthropic e registre aqui; a tela desconta o que a IA gastar depois disso.</p>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
-            <input type="number" id="ba-ia-credito" step="0.01" min="0" placeholder="Crédito atual (US$)" style="width:160px;margin:0;padding:.5rem .7rem;font-size:.78rem">
+            <input type="number" id="ba-ia-credito" step="0.01" min="0" placeholder="Saldo agora (US$)" style="width:160px;margin:0;padding:.5rem .7rem;font-size:.78rem">
             <input type="number" id="ba-ia-cambio" step="0.01" min="1" placeholder="Dólar (R$)" style="width:110px;margin:0;padding:.5rem .7rem;font-size:.78rem">
-            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baIaSalvarSaldo()">Salvar</button>
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baIaSalvarSaldo()">Registrar saldo</button>
           </div>
-          <div id="ba-ia-saldo" style="margin-top:.8rem"></div>
+          <div class="ba-slabel">Saldos registrados</div>
+          <div id="ba-ia-saldos"></div>
+          <div class="ba-slabel">Últimos consumos</div>
+          <div id="ba-ia-ultimos"></div>
           <p style="color:var(--prata-dim);font-size:.7rem;margin-top:.9rem">Valores estimados pela tabela de preços dos modelos. O valor oficial está no Console da Anthropic.</p>
         </div>
 
@@ -6370,7 +6374,6 @@ async function baIaRender(){
   const cambioSalvo = Number(baIaLs('ba_ia_cambio')) || 5.5;
   const credEl = document.getElementById('ba-ia-credito'), cambEl = document.getElementById('ba-ia-cambio');
   if(cambEl && !cambEl.value) cambEl.value = cambioSalvo;
-  if(credEl && !credEl.value && baIaLs('ba_ia_credito')) credEl.value = baIaLs('ba_ia_credito');
   resEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.8rem">Carregando…</p>';
   const desde = baIaInicio(baIaPeriodo);
   const r = await baIaFetchTodos(desde);
@@ -6385,7 +6388,7 @@ async function baIaRender(){
   const conversas = new Set(rows.map(x=>x.chat_id)).size;
   // mensagens reais enviadas/recebidas no período (whatsapp_messages), pra custo por mensagem
   let enviadas = 0;
-  { let q = sb.from('whatsapp_messages').select('id',{count:'exact',head:true}).eq('direction','outbound').is('created_by',null); if(desde) q = q.gte('created_at', desde.toISOString()); const c = await q; enviadas = c.count||0; }
+  { let q = sb.from('whatsapp_messages').select('id',{count:'exact',head:true}).eq('direction','outbound').is('created_by',null); if(desde) q = q.gte('created_at', desde.toISOString()); const c = await q; if(c.error) console.error('baIaRender msgs', c.error); enviadas = c.count||0; }
   const porModelo = {};
   rows.forEach(x=>{ const n = baIaNomeModelo(x.model); (porModelo[n] ??= {custo:0,chamadas:0}); porModelo[n].custo += Number(x.cost_usd); porModelo[n].chamadas += x.calls; });
   const card = (t, v, sub) => `<div style="flex:1;min-width:130px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.7rem .8rem"><div style="font-size:.66rem;color:var(--prata-dim);text-transform:uppercase;letter-spacing:.06em">${t}</div><div style="font-size:1.1rem;font-weight:600;margin-top:.15rem">${v}</div>${sub?`<div style="font-size:.7rem;color:var(--prata-dim);margin-top:.1rem">${sub}</div>`:''}</div>`;
@@ -6405,21 +6408,41 @@ async function baIaRender(){
     const [y,m,dd] = d.split('-');
     return `<div style="display:flex;align-items:center;gap:.6rem;font-size:.76rem;margin-bottom:.3rem"><span style="width:44px;color:var(--prata-dim)">${dd}/${m}</span><div style="flex:1;background:rgba(255,255,255,.05);border-radius:4px;height:10px"><div style="width:${Math.max(2,v.custo/max*100)}%;height:10px;border-radius:4px;background:var(--dourado)"></div></div><span style="width:150px;text-align:right">${baIaUsd(v.custo)} · ${v.chamadas} ch.</span></div>`;
   }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Sem dados.</p>';
-  // saldo: crédito informado - gasto registrado desde a hora em que foi informado
-  const cred = Number(baIaLs('ba_ia_credito')), desdeSaldo = baIaLs('ba_ia_credito_em');
-  const saldoEl = document.getElementById('ba-ia-saldo');
-  if(cred && desdeSaldo){
-    const rs = await baIaFetchTodos(new Date(desdeSaldo));
+  // saldo: último saldo registrado (tabela ai_balance) - consumo registrado desde aquele momento
+  const saldoEl = document.getElementById('ba-ia-saldo'), saldosEl = document.getElementById('ba-ia-saldos');
+  const { data: saldos, error: saldoErr } = await sb.from('ai_balance').select('id,created_at,balance_usd,note').order('created_at',{ascending:false}).limit(20);
+  const quando = iso => new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  if(saldoErr){
+    console.error('baIaRender saldo', saldoErr);
+    saldoEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.8rem">Não foi possível carregar o saldo. Se a tabela ainda não existe, rode a migration ai_balance no Supabase.</p>'; saldosEl.innerHTML = '';
+  } else if(saldos && saldos.length){
+    const ult = saldos[0];
+    const rs = await baIaFetchTodos(new Date(ult.created_at));
     const gasto = rs.rows ? rs.rows.reduce((a,x)=>a+Number(x.cost_usd),0) : 0;
-    const resta = Math.max(0, cred-gasto);
+    const resta = Math.max(0, Number(ult.balance_usd)-gasto);
     const porMsg = enviadas && custo ? custo/enviadas : 0;
-    saldoEl.innerHTML = `<div style="display:flex;gap:.5rem;flex-wrap:wrap">${card('Saldo estimado', baIaUsd(resta), brl(resta))}${card('Gasto desde que informou', baIaUsd(gasto), new Date(desdeSaldo).toLocaleDateString('pt-BR'))}${porMsg?card('Dá para ainda', Math.floor(resta/porMsg).toLocaleString('pt-BR')+' msgs','no ritmo do período'):''}</div>`;
-  } else saldoEl.innerHTML = '';
+    saldoEl.innerHTML = `<div style="display:flex;gap:.5rem;flex-wrap:wrap">${card('Saldo atual (estimado)', baIaUsd(resta), brl(resta))}${card('Saldo informado', baIaUsd(ult.balance_usd), 'em '+quando(ult.created_at))}${card('Gasto desde então', baIaUsd(gasto), (rs.rows?rs.rows.reduce((a,x)=>a+x.calls,0):0)+' chamadas')}${porMsg?card('Dá para ainda', Math.floor(resta/porMsg).toLocaleString('pt-BR')+' msgs','no ritmo do período'):''}</div>`;
+    // histórico: cada saldo registrado e quanto foi gasto até o próximo registro
+    const todos = await baIaFetchTodos(new Date(saldos[saldos.length-1].created_at));
+    saldosEl.innerHTML = saldos.map((sd,i)=>{
+      const fim = i===0 ? Date.now() : Date.parse(saldos[i-1].created_at), ini = Date.parse(sd.created_at);
+      const g = (todos.rows||[]).filter(x=>{ const t=Date.parse(x.created_at); return t>=ini && t<fim; }).reduce((a,x)=>a+Number(x.cost_usd),0);
+      return `<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.76rem;margin-bottom:.3rem"><span style="color:var(--prata-dim)">${quando(sd.created_at)}</span><span>${baIaUsd(sd.balance_usd)}</span><span style="color:var(--prata-dim)">gastou ${baIaUsd(g)}${i===0?' até agora':' até o próximo'}</span></div>`;
+    }).join('');
+  } else { saldoEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.8rem">Nenhum saldo registrado ainda.</p>'; saldosEl.innerHTML = ''; }
+  // últimos consumos, com data e hora
+  const ultEl = document.getElementById('ba-ia-ultimos');
+  const recentes = rows.slice(-15).reverse();
+  ultEl.innerHTML = recentes.length ? recentes.map(x=>`<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.76rem;margin-bottom:.3rem"><span style="color:var(--prata-dim)">${quando(x.created_at)}</span><span>${primeEsc(baIaNomeModelo(x.model))} · ${x.calls} ch.</span><span>${baIaUsd(x.cost_usd)}</span></div>`).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Sem consumo neste período.</p>';
 }
-function baIaSalvarSaldo(){
+async function baIaSalvarSaldo(){
   const c = Number(document.getElementById('ba-ia-credito').value), x = Number(document.getElementById('ba-ia-cambio').value);
   if(x>0) baIaLs('ba_ia_cambio', String(x));
-  if(c>0){ baIaLs('ba_ia_credito', String(c)); baIaLs('ba_ia_credito_em', new Date().toISOString()); }
+  if(document.getElementById('ba-ia-credito').value !== '' && c>=0){
+    const { error } = await sb.from('ai_balance').insert({ balance_usd: c });
+    if(error){ console.error('baIaSalvarSaldo', error); alert('Não foi possível registrar o saldo. Confira se a migration ai_balance foi rodada.'); return; }
+    document.getElementById('ba-ia-credito').value = '';
+  }
   baIaRender();
 }
 function baFinanceiroTab(sub){
