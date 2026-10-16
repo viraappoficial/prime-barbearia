@@ -81,6 +81,12 @@ docker start portainer
 | Senhas dos bancos (Evolution, n8n) | apareceram em prints; trocar no fim |
 | Senha de `root` (SSH) | apareceu em print; trocar e passar pra chave SSH |
 
+## Servidor do bot (VPS) — Evolution como canal principal
+- Pasta: `/opt/assistente/proto-ia` (compose + `.env` com os segredos, `chmod 600`). Contêiner `proto-ia-assistente-1`, porta `127.0.0.1:4030`, Caddy `bot.primebarbearia.app.br` -> `127.0.0.1:4030`.
+- Webhook do Evolution (instância `prime`, evento MESSAGE): `https://bot.primebarbearia.app.br/webhook/evolution/<WEBHOOK_SEGREDO>`.
+- O WAHA e o bot de casa foram aposentados. Migration: `20261016000000_whatsapp_channel_evolution.sql`.
+- Atualizar: no pop-os `git pull` + `rsync -av --exclude node_modules --exclude .git <repo>/ root@76.13.229.246:/opt/assistente/`; na VPS `cd /opt/assistente/proto-ia && docker compose up -d --build`.
+
 ## O que ainda falta
 1. ~~Fechar a porta 5678 do n8n~~ (feito em 14/10).
 2. Decidir o **chip** (separado do número principal) e conectar na instância `prime` do Evolution (QR Code).
