@@ -6042,10 +6042,10 @@ function baZapBubbleMedia(m){
 }
 async function baZapRenderThread(){
   if(!baZapCurrentChat) return;
-  const { data, error } = await sb.from('whatsapp_messages').select('*').eq('chat_id', baZapCurrentChat).order('created_at',{ascending:true}).limit(200);
+  const { data, error } = await sb.from('whatsapp_messages').select('*').eq('chat_id', baZapCurrentChat).order('created_at',{ascending:false}).limit(200);
   const box = document.getElementById('ba-zap-thread-messages');
   if(error){ box.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as mensagens.</div>'; return; }
-  baZapThreadMessages = data || [];
+  baZapThreadMessages = (data || []).slice().reverse();   // busca as 200 MAIS NOVAS (desc) e põe em ordem de leitura: com asc+limit a conversa longa travava nas mensagens mais antigas
   const wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
   box.innerHTML = baZapThreadMessages.map(m=>{
     const cls = m.direction==='outbound' ? 'out' : 'in';
