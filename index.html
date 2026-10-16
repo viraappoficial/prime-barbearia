@@ -4858,6 +4858,16 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div id="ba-ia-dias"></div>
           <div class="ba-slabel">Saldo da conta de IA</div>
           <div id="ba-ia-saldo"></div>
+          <div class="ba-slabel">Registrar recarga</div>
+          <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Quando colocar dinheiro na Anthropic, registre aqui: o valor pago vira despesa paga no Financeiro (Mensalidade sistema — Inteligência Artificial) e o saldo é atualizado.</p>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+            <input type="number" id="ba-ia-rec-usd" step="0.01" min="0" placeholder="Crédito (US$)" style="width:130px;margin:0;padding:.5rem .7rem;font-size:.78rem">
+            <input type="number" id="ba-ia-rec-brl" step="0.01" min="0" placeholder="Pago (R$)" style="width:120px;margin:0;padding:.5rem .7rem;font-size:.78rem">
+            <input type="date" id="ba-ia-rec-data" style="width:150px;margin:0;padding:.5rem .7rem;font-size:.78rem">
+            <select id="ba-ia-rec-banco" style="margin:0;padding:.5rem .7rem;font-size:.78rem"><option value="">Conta: não informar</option></select>
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baIaRegistrarRecarga()">Registrar recarga</button>
+          </div>
+          <p class="ba-err" id="ba-ia-rec-err" style="display:none;margin-top:.4rem"></p>
           <p style="color:var(--prata-dim);font-size:.78rem;margin:.8rem 0 .6rem">A Anthropic não informa o saldo automaticamente. Olhe o saldo no Console da Anthropic e registre aqui; a tela desconta o que a IA gastar depois disso.</p>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
             <input type="number" id="ba-ia-credito" step="0.01" min="0" placeholder="Saldo agora (US$)" style="width:160px;margin:0;padding:.5rem .7rem;font-size:.78rem">
@@ -6338,11 +6348,12 @@ function baGestaoTab(sub){
   document.getElementById('ba-instagram-config').style.display = sub==='instagram' ? 'block' : 'none';
   document.getElementById('ba-financeiro-config').style.display = sub==='financeiro' ? 'block' : 'none';
   document.getElementById('ba-ia-config').style.display = sub==='ia' ? 'block' : 'none';
-  if(sub==='ia') baIaRender();
+  if(sub==='ia'){ baIaPopularRecarga(); baIaRender(); }
   if(sub==='financeiro') baFinanceiroTab('contasapagar');
 }
 // ══ Consumo da IA (Gestão > IA): lê ai_usage (gravada pelo servidor do assistente) ══
 let baIaPeriodo = 'hoje';
+let baIaSaldoEstimado = 0;
 const baIaLs = (k, v) => { try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){ return null; } };
 function baIaSetPeriodo(p){
   baIaPeriodo = p;
@@ -6410,7 +6421,7 @@ async function baIaRender(){
   }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Sem dados.</p>';
   // saldo: último saldo registrado (tabela ai_balance) - consumo registrado desde aquele momento
   const saldoEl = document.getElementById('ba-ia-saldo'), saldosEl = document.getElementById('ba-ia-saldos');
-  const { data: saldos, error: saldoErr } = await sb.from('ai_balance').select('id,created_at,balance_usd,note').order('created_at',{ascending:false}).limit(20);
+  const { data: saldos, error: saldoErr } = await sb.from('ai_balance').select('id,created_at,balance_usd,note,topup_usd,cost_brl').order('created_at',{ascending:false}).limit(20);
   const quando = iso => new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   if(saldoErr){
     console.error('baIaRender saldo', saldoErr);
@@ -6420,6 +6431,7 @@ async function baIaRender(){
     const rs = await baIaFetchTodos(new Date(ult.created_at));
     const gasto = rs.rows ? rs.rows.reduce((a,x)=>a+Number(x.cost_usd),0) : 0;
     const resta = Math.max(0, Number(ult.balance_usd)-gasto);
+    baIaSaldoEstimado = resta;
     const porMsg = enviadas && custo ? custo/enviadas : 0;
     saldoEl.innerHTML = `<div style="display:flex;gap:.5rem;flex-wrap:wrap">${card('Saldo atual (estimado)', baIaUsd(resta), brl(resta))}${card('Saldo informado', baIaUsd(ult.balance_usd), 'em '+quando(ult.created_at))}${card('Gasto desde então', baIaUsd(gasto), (rs.rows?rs.rows.reduce((a,x)=>a+x.calls,0):0)+' chamadas')}${porMsg?card('Dá para ainda', Math.floor(resta/porMsg).toLocaleString('pt-BR')+' msgs','no ritmo do período'):''}</div>`;
     // histórico: cada saldo registrado e quanto foi gasto até o próximo registro
@@ -6427,13 +6439,32 @@ async function baIaRender(){
     saldosEl.innerHTML = saldos.map((sd,i)=>{
       const fim = i===0 ? Date.now() : Date.parse(saldos[i-1].created_at), ini = Date.parse(sd.created_at);
       const g = (todos.rows||[]).filter(x=>{ const t=Date.parse(x.created_at); return t>=ini && t<fim; }).reduce((a,x)=>a+Number(x.cost_usd),0);
-      return `<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.76rem;margin-bottom:.3rem"><span style="color:var(--prata-dim)">${quando(sd.created_at)}</span><span>${baIaUsd(sd.balance_usd)}</span><span style="color:var(--prata-dim)">gastou ${baIaUsd(g)}${i===0?' até agora':' até o próximo'}</span></div>`;
+      return `<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.76rem;margin-bottom:.3rem"><span style="color:var(--prata-dim)">${quando(sd.created_at)}${sd.topup_usd?' · recarga '+baIaUsd(sd.topup_usd)+' (R$ '+Number(sd.cost_brl).toLocaleString('pt-BR',{minimumFractionDigits:2})+' no Financeiro)':''}</span><span>${baIaUsd(sd.balance_usd)}</span><span style="color:var(--prata-dim)">gastou ${baIaUsd(g)}${i===0?' até agora':' até o próximo'}</span></div>`;
     }).join('');
   } else { saldoEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.8rem">Nenhum saldo registrado ainda.</p>'; saldosEl.innerHTML = ''; }
   // últimos consumos, com data e hora
   const ultEl = document.getElementById('ba-ia-ultimos');
   const recentes = rows.slice(-15).reverse();
   ultEl.innerHTML = recentes.length ? recentes.map(x=>`<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.76rem;margin-bottom:.3rem"><span style="color:var(--prata-dim)">${quando(x.created_at)}</span><span>${primeEsc(baIaNomeModelo(x.model))} · ${x.calls} ch.</span><span>${baIaUsd(x.cost_usd)}</span></div>`).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Sem consumo neste período.</p>';
+}
+async function baIaPopularRecarga(){
+  const dt = document.getElementById('ba-ia-rec-data'); if(dt && !dt.value) dt.value = primeLocalDate();
+  const sel = document.getElementById('ba-ia-rec-banco'); if(!sel) return;
+  if(!baBankAccountsCache.length) baBankAccountsCache = await baFetchContasBancarias();
+  sel.innerHTML = '<option value="">Conta: não informar</option>' + baBankAccountsCache.map(c=>`<option value="${c.id}">${primeEsc(baBankAccountLabel(c))}</option>`).join('');
+}
+async function baIaRegistrarRecarga(){
+  const errEl = document.getElementById('ba-ia-rec-err'); errEl.style.display = 'none';
+  const fail = m => { errEl.textContent = m; errEl.style.display = 'block'; };
+  const usd = Number(document.getElementById('ba-ia-rec-usd').value), brl = Number(document.getElementById('ba-ia-rec-brl').value);
+  const data = document.getElementById('ba-ia-rec-data').value || primeLocalDate();
+  const banco = document.getElementById('ba-ia-rec-banco').value;
+  if(!(usd>0)) return fail('Digite quanto de crédito entrou, em dólar.');
+  if(!(brl>0)) return fail('Digite quanto foi pago, em reais (com taxas e IOF).');
+  const { error } = await sb.rpc('ai_register_topup', { p_usd: usd, p_brl: brl, p_date: data, p_balance_after: Math.round((baIaSaldoEstimado + usd)*10000)/10000, p_bank_account_id: banco ? Number(banco) : null });
+  if(error){ console.error('baIaRegistrarRecarga', error); return fail('Não foi possível registrar. Confira se a migration ai_recarga_financeiro foi rodada. ' + (error.message||'')); }
+  ['ba-ia-rec-usd','ba-ia-rec-brl'].forEach(id=>document.getElementById(id).value='');
+  baIaRender();
 }
 async function baIaSalvarSaldo(){
   const c = Number(document.getElementById('ba-ia-credito').value), x = Number(document.getElementById('ba-ia-cambio').value);
@@ -6853,7 +6884,7 @@ async function baFetchExpenses(from, to){
 }
 const BA_EXPENSE_CATEGORY_LABEL = {
   aluguel:'Aluguel', energia:'Energia', agua_internet:'Água/Internet', salarios:'Salários',
-  produtos:'Produtos e materiais', marketing:'Marketing', software:'Software', taxa_maquininha:'Taxa de maquininha', comissao:'Comissão de barbeiro', outros:'Outros'
+  produtos:'Produtos e materiais', marketing:'Marketing', software:'Software', taxa_maquininha:'Taxa de maquininha', comissao:'Comissão de barbeiro', inteligencia_artificial:'Mensalidade sistema — Inteligência Artificial', outros:'Outros'
 };
 function baCategoryLabel(slug){
   const acc = baChartOfAccountsCache.find(c=>c.slug===slug);
