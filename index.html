@@ -4725,6 +4725,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <button class="ba-btn ghost" data-sub="cupons" onclick="baGestaoTab('cupons')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Cupons</button>
           <button class="ba-btn ghost" data-sub="instagram" onclick="baGestaoTab('instagram')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Instagram</button>
           <button class="ba-btn ghost" data-sub="financeiro" onclick="baGestaoTab('financeiro')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Financeiro</button>
+          <button class="ba-btn ghost" data-sub="ia" onclick="baGestaoTab('ia')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">IA</button>
         </div>
 
         <div class="ba-card" id="ba-admin-panel">
@@ -4842,6 +4843,28 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baAddInstagramPost()">Adicionar</button>
           </div>
           <p class="ba-err" id="ba-instagram-err" style="display:none;margin-top:.5rem"></p>
+        </div>
+
+        <div class="ba-card" id="ba-ia-config" style="display:none">
+          <div class="ba-slabel" style="margin-top:0">Consumo da IA no WhatsApp</div>
+          <div style="display:flex;gap:.4rem;margin-bottom:.9rem;flex-wrap:wrap" id="ba-ia-periodos">
+            <button class="ba-btn ghost active" data-ia="hoje" onclick="baIaSetPeriodo('hoje')" style="width:auto;max-width:none;padding:.35rem .7rem;margin:0;font-size:.68rem">Hoje</button>
+            <button class="ba-btn ghost" data-ia="7d" onclick="baIaSetPeriodo('7d')" style="width:auto;max-width:none;padding:.35rem .7rem;margin:0;font-size:.68rem">7 dias</button>
+            <button class="ba-btn ghost" data-ia="30d" onclick="baIaSetPeriodo('30d')" style="width:auto;max-width:none;padding:.35rem .7rem;margin:0;font-size:.68rem">30 dias</button>
+            <button class="ba-btn ghost" data-ia="tudo" onclick="baIaSetPeriodo('tudo')" style="width:auto;max-width:none;padding:.35rem .7rem;margin:0;font-size:.68rem">Tudo</button>
+          </div>
+          <div id="ba-ia-resumo"></div>
+          <div class="ba-slabel">Por dia</div>
+          <div id="ba-ia-dias"></div>
+          <div class="ba-slabel">Saldo da conta de IA</div>
+          <p style="color:var(--prata-dim);font-size:.78rem;margin-bottom:.6rem">Informe quanto de crédito você tem agora na Anthropic. O saldo restante é estimado descontando o que a IA gastar daqui pra frente.</p>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+            <input type="number" id="ba-ia-credito" step="0.01" min="0" placeholder="Crédito atual (US$)" style="width:160px;margin:0;padding:.5rem .7rem;font-size:.78rem">
+            <input type="number" id="ba-ia-cambio" step="0.01" min="1" placeholder="Dólar (R$)" style="width:110px;margin:0;padding:.5rem .7rem;font-size:.78rem">
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baIaSalvarSaldo()">Salvar</button>
+          </div>
+          <div id="ba-ia-saldo" style="margin-top:.8rem"></div>
+          <p style="color:var(--prata-dim);font-size:.7rem;margin-top:.9rem">Valores estimados pela tabela de preços dos modelos. O valor oficial está no Console da Anthropic.</p>
         </div>
 
         <div class="ba-card" id="ba-financeiro-config" style="display:none">
@@ -6310,7 +6333,94 @@ function baGestaoTab(sub){
   document.getElementById('ba-cupons-config').style.display = sub==='cupons' ? 'block' : 'none';
   document.getElementById('ba-instagram-config').style.display = sub==='instagram' ? 'block' : 'none';
   document.getElementById('ba-financeiro-config').style.display = sub==='financeiro' ? 'block' : 'none';
+  document.getElementById('ba-ia-config').style.display = sub==='ia' ? 'block' : 'none';
+  if(sub==='ia') baIaRender();
   if(sub==='financeiro') baFinanceiroTab('contasapagar');
+}
+// ══ Consumo da IA (Gestão > IA): lê ai_usage (gravada pelo servidor do assistente) ══
+let baIaPeriodo = 'hoje';
+const baIaLs = (k, v) => { try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){ return null; } };
+function baIaSetPeriodo(p){
+  baIaPeriodo = p;
+  document.querySelectorAll('#ba-ia-periodos [data-ia]').forEach(b=>b.classList.toggle('active', b.dataset.ia===p));
+  baIaRender();
+}
+function baIaInicio(p){
+  const d = new Date(); d.setHours(0,0,0,0);
+  if(p==='7d') d.setDate(d.getDate()-6); else if(p==='30d') d.setDate(d.getDate()-29); else if(p==='tudo') return null;
+  return d;
+}
+const baIaUsd = n => 'US$ ' + Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
+const baIaNomeModelo = m => /haiku/i.test(m) ? 'Haiku' : /sonnet/i.test(m) ? 'Sonnet' : /opus/i.test(m) ? 'Opus' : m;
+async function baIaFetchTodos(desde){
+  const out = [];
+  for(let from=0; ; from+=1000){
+    let q = sb.from('ai_usage').select('created_at,chat_id,model,input_tokens,output_tokens,calls,cost_usd').order('created_at',{ascending:true}).range(from, from+999);
+    if(desde) q = q.gte('created_at', desde.toISOString());
+    const { data, error } = await q;
+    if(error) return { error };
+    out.push(...(data||[]));
+    if(!data || data.length<1000) break;
+  }
+  return { rows: out };
+}
+async function baIaRender(){
+  const resEl = document.getElementById('ba-ia-resumo');
+  if(!resEl) return;
+  const cambioSalvo = Number(baIaLs('ba_ia_cambio')) || 5.5;
+  const credEl = document.getElementById('ba-ia-credito'), cambEl = document.getElementById('ba-ia-cambio');
+  if(cambEl && !cambEl.value) cambEl.value = cambioSalvo;
+  if(credEl && !credEl.value && baIaLs('ba_ia_credito')) credEl.value = baIaLs('ba_ia_credito');
+  resEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.8rem">Carregando…</p>';
+  const desde = baIaInicio(baIaPeriodo);
+  const r = await baIaFetchTodos(desde);
+  if(r.error){ console.error('baIaRender', r.error); resEl.innerHTML = '<p style="color:var(--prata-dim);font-size:.8rem">Não foi possível carregar. Se a tabela ainda não existe, rode a migration ai_usage no Supabase.</p>'; return; }
+  const rows = r.rows;
+  const cambio = Number(cambEl && cambEl.value) || cambioSalvo;
+  const brl = n => 'R$ ' + (n*cambio).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const custo = rows.reduce((a,x)=>a+Number(x.cost_usd),0);
+  const chamadas = rows.reduce((a,x)=>a+x.calls,0);
+  const tokIn = rows.reduce((a,x)=>a+x.input_tokens,0), tokOut = rows.reduce((a,x)=>a+x.output_tokens,0);
+  const respostas = new Set(rows.map(x=>x.created_at)).size; // aproximação: respostas ≈ grupos por instante
+  const conversas = new Set(rows.map(x=>x.chat_id)).size;
+  // mensagens reais enviadas/recebidas no período (whatsapp_messages), pra custo por mensagem
+  let enviadas = 0;
+  { let q = sb.from('whatsapp_messages').select('id',{count:'exact',head:true}).eq('direction','outbound').is('created_by',null); if(desde) q = q.gte('created_at', desde.toISOString()); const c = await q; enviadas = c.count||0; }
+  const porModelo = {};
+  rows.forEach(x=>{ const n = baIaNomeModelo(x.model); (porModelo[n] ??= {custo:0,chamadas:0}); porModelo[n].custo += Number(x.cost_usd); porModelo[n].chamadas += x.calls; });
+  const card = (t, v, sub) => `<div style="flex:1;min-width:130px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.7rem .8rem"><div style="font-size:.66rem;color:var(--prata-dim);text-transform:uppercase;letter-spacing:.06em">${t}</div><div style="font-size:1.1rem;font-weight:600;margin-top:.15rem">${v}</div>${sub?`<div style="font-size:.7rem;color:var(--prata-dim);margin-top:.1rem">${sub}</div>`:''}</div>`;
+  resEl.innerHTML = `<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+    ${card('Gasto', baIaUsd(custo), brl(custo))}
+    ${card('Mensagens enviadas', enviadas, conversas+' conversa'+(conversas===1?'':'s'))}
+    ${card('Por mensagem', enviadas? baIaUsd(custo/enviadas):'—', enviadas? brl(custo/enviadas):'')}
+    ${card('Chamadas à IA', chamadas, tokIn.toLocaleString('pt-BR')+' entrada · '+tokOut.toLocaleString('pt-BR')+' saída')}
+  </div>
+  <div style="font-size:.78rem;color:var(--prata-dim)">${Object.keys(porModelo).length ? Object.entries(porModelo).map(([n,v])=>`${primeEsc(n)}: ${baIaUsd(v.custo)} (${v.chamadas} chamada${v.chamadas===1?"":"s"})`).join(' · ') : 'Nenhum consumo registrado neste período.'}</div>`;
+  // por dia
+  const dias = {};
+  rows.forEach(x=>{ const d = primeLocalDate(new Date(x.created_at)); (dias[d] ??= {custo:0,chamadas:0}); dias[d].custo += Number(x.cost_usd); dias[d].chamadas += x.calls; });
+  const lista = Object.entries(dias).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,30);
+  const max = Math.max(...lista.map(([,v])=>v.custo), 0.0001);
+  document.getElementById('ba-ia-dias').innerHTML = lista.length ? lista.map(([d,v])=>{
+    const [y,m,dd] = d.split('-');
+    return `<div style="display:flex;align-items:center;gap:.6rem;font-size:.76rem;margin-bottom:.3rem"><span style="width:44px;color:var(--prata-dim)">${dd}/${m}</span><div style="flex:1;background:rgba(255,255,255,.05);border-radius:4px;height:10px"><div style="width:${Math.max(2,v.custo/max*100)}%;height:10px;border-radius:4px;background:var(--dourado)"></div></div><span style="width:150px;text-align:right">${baIaUsd(v.custo)} · ${v.chamadas} ch.</span></div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.78rem">Sem dados.</p>';
+  // saldo: crédito informado - gasto registrado desde a hora em que foi informado
+  const cred = Number(baIaLs('ba_ia_credito')), desdeSaldo = baIaLs('ba_ia_credito_em');
+  const saldoEl = document.getElementById('ba-ia-saldo');
+  if(cred && desdeSaldo){
+    const rs = await baIaFetchTodos(new Date(desdeSaldo));
+    const gasto = rs.rows ? rs.rows.reduce((a,x)=>a+Number(x.cost_usd),0) : 0;
+    const resta = Math.max(0, cred-gasto);
+    const porMsg = enviadas && custo ? custo/enviadas : 0;
+    saldoEl.innerHTML = `<div style="display:flex;gap:.5rem;flex-wrap:wrap">${card('Saldo estimado', baIaUsd(resta), brl(resta))}${card('Gasto desde que informou', baIaUsd(gasto), new Date(desdeSaldo).toLocaleDateString('pt-BR'))}${porMsg?card('Dá para ainda', Math.floor(resta/porMsg).toLocaleString('pt-BR')+' msgs','no ritmo do período'):''}</div>`;
+  } else saldoEl.innerHTML = '';
+}
+function baIaSalvarSaldo(){
+  const c = Number(document.getElementById('ba-ia-credito').value), x = Number(document.getElementById('ba-ia-cambio').value);
+  if(x>0) baIaLs('ba_ia_cambio', String(x));
+  if(c>0){ baIaLs('ba_ia_credito', String(c)); baIaLs('ba_ia_credito_em', new Date().toISOString()); }
+  baIaRender();
 }
 function baFinanceiroTab(sub){
   document.querySelectorAll('#ba-financeiro-config [data-fin]').forEach(b=>b.classList.toggle('active', b.dataset.fin===sub));
