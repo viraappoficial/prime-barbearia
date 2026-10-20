@@ -3480,6 +3480,9 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-bubble.out{align-self:flex-end;background:rgba(198,167,94,.16);border:1px solid var(--dourado-dim)}
 #barberApp .ba-zap-bubble .st{display:block;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--prata-dim);margin-top:.3rem}
 #barberApp .ba-zap-bubble .st.failed{color:var(--erro)}
+#barberApp .ba-zap-meta{display:block;text-align:right;font-size:.62rem;color:var(--prata-dim);margin-top:.2rem;letter-spacing:.02em}
+#barberApp .ba-zap-meta .ba-zap-ticks{margin-left:.25rem}
+#barberApp .ba-zap-daychip{align-self:center;margin:.55rem 0 .25rem;padding:.22rem .75rem;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--hair);font-size:.68rem;letter-spacing:.04em;color:var(--prata-dim)}
 .st.held{color:var(--erro)}
 #barberApp .ba-zap-compose{position:relative;display:flex;gap:.6rem;align-items:flex-end;border-top:1px solid var(--dourado-dim);padding:.9rem 1.2rem;flex-shrink:0}
 #barberApp .ba-zap-compose textarea{flex:1;resize:none;max-height:6.5rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.86rem;padding:.7rem .8rem;border-radius:2px}
@@ -6054,6 +6057,11 @@ function baZapBubbleMedia(m){
   if(m.media_kind==='video') return `<video controls style="max-width:220px;border-radius:4px;display:block;margin-bottom:.3rem"><source src="${primeEsc(m.media_url)}" type="${primeEsc(m.media_mimetype||'')}"></video>`;
   return `<a href="${primeEsc(m.media_url)}" target="_blank" rel="noopener" style="display:block;margin-bottom:.3rem">📎 ${primeEsc(m.media_mimetype||'arquivo')}</a>`;
 }
+function baZapDayLabel(d){
+  const hoje = primeLocalDate(new Date()), ontem = primeLocalDate(new Date(Date.now()-86400000)), k = primeLocalDate(d);
+  if(k===hoje) return 'Hoje'; if(k===ontem) return 'Ontem';
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
 async function baZapRenderThread(){
   if(!baZapCurrentChat) return;
   const { data, error } = await sb.from('whatsapp_messages').select('*').eq('chat_id', baZapCurrentChat).order('created_at',{ascending:false}).limit(200);
@@ -6061,23 +6069,30 @@ async function baZapRenderThread(){
   if(error){ box.innerHTML = '<div class="ba-zap-empty">Não foi possível carregar as mensagens.</div>'; return; }
   baZapThreadMessages = (data || []).slice().reverse();   // busca as 200 MAIS NOVAS (desc) e põe em ordem de leitura: com asc+limit a conversa longa travava nas mensagens mais antigas
   const wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+  let baZapLastDay = '';
   box.innerHTML = baZapThreadMessages.map(m=>{
     const cls = m.direction==='outbound' ? 'out' : 'in';
+    const dt = new Date(m.created_at), dayKey = primeLocalDate(dt);
+    const chip = dayKey!==baZapLastDay ? `<div class="ba-zap-daychip">${baZapDayLabel(dt)}</div>` : '';
+    baZapLastDay = dayKey;
+    const hhmm = dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     if(m.deleted_at){
-      return `<div class="ba-zap-bubble ${cls} deleted" data-id="${m.id}">🚫 Mensagem apagada</div>`;
+      return `${chip}<div class="ba-zap-bubble ${cls} deleted" data-id="${m.id}">🚫 Mensagem apagada</div>`;
     }
     const status = (m.status==='pending' && m.hold_reason) ? `<span class="st held">⏸ em espera · ${primeEsc(baZapHoldText(m.hold_reason))}</span>`
       : m.status==='pending' ? '<span class="st">enviando…</span>'
       : m.status==='failed' ? `<span class="st failed">não enviada${m.error?' · '+primeEsc(m.error):''}</span>`
       : m.status==='held' ? `<span class="st held">⏸ em espera · ${primeEsc(baZapHoldText(m.hold_reason))}</span>`
-      : m.direction==='outbound' ? baZapTicksHtml(m.ack) : '';
+      : '';
+    const ticks = (m.direction==='outbound' && m.status==='sent') ? baZapTicksHtml(m.ack) : '';
+    const meta = `<span class="ba-zap-meta">${hhmm}${ticks}</span>`;
     const quote = m.reply_to_preview
       ? `<span class="ba-zap-reply-quote">${m.reply_to_direction==='outbound'?'Você: ':''}${primeEsc(m.reply_to_preview)}</span>` : '';
     const deleteBtn = (m.direction==='outbound' && m.status==='sent')
       ? `<button type="button" class="ba-zap-delete-btn" onclick="baZapDeleteMessage(${m.id})" title="Apagar para todos">🗑</button>` : '';
-    return `<div class="ba-zap-bubble ${cls}" data-id="${m.id}" ondblclick="baZapReplyToMessage(${m.id})">
+    return `${chip}<div class="ba-zap-bubble ${cls}" data-id="${m.id}" ondblclick="baZapReplyToMessage(${m.id})">
       ${deleteBtn}<button type="button" class="ba-zap-reply-btn" onclick="baZapReplyToMessage(${m.id})" title="Responder">↩</button>
-      ${quote}${baZapBubbleMedia(m)}${m.body?`<span class="ba-zap-txt">${primeEsc(m.body)}</span>`:''}${status}
+      ${quote}${baZapBubbleMedia(m)}${m.body?`<span class="ba-zap-txt">${primeEsc(m.body)}</span>`:''}${status}${meta}
     </div>`;
   }).join('') || '<div class="ba-zap-empty">Nenhuma mensagem ainda.</div>';
   if(wasAtBottom) box.scrollTop = box.scrollHeight;
