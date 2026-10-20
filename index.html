@@ -4771,6 +4771,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="ba-slabel" id="ba-servico-form-title">Novo serviço</div>
           <div class="ba-field"><label>Nome</label><input type="text" id="ba-servico-nome" placeholder="Ex: Corte Degradê"></div>
           <div class="ba-field"><label>Descrição (aparece na página principal)</label><input type="text" id="ba-servico-desc" placeholder="Ex: Fade moderno com acabamento na navalha."></div>
+          <div class="ba-field"><label>Notas para a IA (o cliente não vê)</label><textarea id="ba-servico-ia" rows="4" placeholder="O que é, pra quem serve, o que inclui, diferença pros parecidos, manutenção... A IA usa só isto (não a descrição do site) pra explicar e indicar este serviço." style="width:100%;resize:vertical"></textarea></div>
           <div style="display:flex;gap:.6rem;flex-wrap:wrap">
             <div class="ba-field" style="flex:1;min-width:130px"><label>Categoria</label>
               <select id="ba-servico-categoria" onchange="baServicoCategoriaChanged()"></select>
@@ -9763,10 +9764,12 @@ function baServicoCategoriaValue(){
   if(sel.value === '__nova__') return document.getElementById('ba-servico-categoria-nova').value.trim().toLowerCase();
   return sel.value;
 }
+let baServicoIaIds = new Set();   // serviços que já têm notas pra IA (tabela service_ai_notes, só admin)
 async function baRenderServicosConfig(){
   const listEl = document.getElementById('ba-servicos-list');
   if(!listEl) return;
   const servicos = await baFetchAllServicos();
+  { const { data: nt } = await sb.from('service_ai_notes').select('service_id,notes'); baServicoIaIds = new Set((nt||[]).filter(n=>(n.notes||'').trim()).map(n=>n.service_id)); }
   const categorias = Array.from(new Set(servicos.map(s=>s.category)));
   baPopulateServicoCategoriaSelect(categorias, document.getElementById('ba-servico-categoria').value);
   if(!document.getElementById('ba-servico-cor-swatches').children.length) baRenderServicoCorSwatches(document.getElementById('ba-servico-cor').value);
@@ -9776,9 +9779,9 @@ async function baRenderServicosConfig(){
     if(!items.length) return '';
     return `<div class="ba-svc-catlabel" style="margin-top:.8rem">${primeSvcCatLabel(cat)}</div>
       <div class="cad-table-wrap"><table class="cad-table">
-      <thead><tr><th>Nome</th><th>Preço</th><th>Duração</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Preço</th><th>Duração</th><th>Notas IA</th><th>Status</th><th></th></tr></thead>
       <tbody>${items.map(s=>`<tr style="${s.active?'':'opacity:.5'}">
-        <td>${primeEsc(s.name)}</td><td>${primeFormatPriceDisplay(s.price)}</td><td>${s.duration_min} min</td>
+        <td>${primeEsc(s.name)}</td><td>${primeFormatPriceDisplay(s.price)}</td><td>${s.duration_min} min</td><td>${baServicoIaIds.has(s.id)?'✓':'—'}</td>
         <td>${s.active ? 'Ativo' : 'Inativo'}</td>
         <td style="white-space:nowrap">
           <span class="cad-edit" onclick="baStartEditServico(${s.id})">editar</span>
@@ -9796,6 +9799,8 @@ function baStartEditServico(id){
     baEditingServicoId = id;
     document.getElementById('ba-servico-nome').value = s.name||'';
     document.getElementById('ba-servico-desc').value = s.description||'';
+    document.getElementById('ba-servico-ia').value = '';
+    sb.from('service_ai_notes').select('notes').eq('service_id', id).maybeSingle().then(({data})=>{ if(baEditingServicoId===id) document.getElementById('ba-servico-ia').value = (data&&data.notes)||''; });
     baPopulateServicoCategoriaSelect(Array.from(new Set(servicos.map(x=>x.category))), s.category);
     document.getElementById('ba-servico-preco').value = String(s.price).replace('.',',');
     document.getElementById('ba-servico-duracao').value = s.duration_min;
@@ -9811,6 +9816,7 @@ function baCancelEditServico(){
   baEditingServicoId = null;
   document.getElementById('ba-servico-nome').value = '';
   document.getElementById('ba-servico-desc').value = '';
+  document.getElementById('ba-servico-ia').value = '';
   document.getElementById('ba-servico-categoria-nova').value = '';
   document.getElementById('ba-servico-preco').value = '';
   document.getElementById('ba-servico-duracao').value = '';
@@ -9838,10 +9844,16 @@ async function baSubmitServico(){
   if(!priceRaw || isNaN(price) || price < 0) return fail('Informe um preço válido.');
   if(!duration || duration <= 0) return fail('Informe uma duração válida (em minutos).');
   const payload = { name, description: description||null, category, price, duration_min: duration, color };
-  const { error } = baEditingServicoId
-    ? await sb.from('services').update(payload).eq('id', baEditingServicoId)
-    : await sb.from('services').insert({ ...payload, display_order: 999 });
+  const aiNotes = document.getElementById('ba-servico-ia').value.trim();
+  let savedId = baEditingServicoId, error;
+  if(baEditingServicoId){ ({ error } = await sb.from('services').update(payload).eq('id', baEditingServicoId)); }
+  else { const r = await sb.from('services').insert({ ...payload, display_order: 999 }).select('id').single(); error = r.error; savedId = r.data && r.data.id; }
   if(error){ console.error('baSubmitServico', error); return fail('Não foi possível salvar. Tente de novo.'); }
+  if(savedId){   // notas pra IA: tabela separada (só admin); vazio apaga a nota
+    const nr = aiNotes ? await sb.from('service_ai_notes').upsert({ service_id: savedId, notes: aiNotes, updated_at: new Date().toISOString() }, { onConflict: 'service_id' })
+                       : await sb.from('service_ai_notes').delete().eq('service_id', savedId);
+    if(nr.error) console.error('baSubmitServico notas IA', nr.error);
+  }
   baCancelEditServico(); // já re-renderiza a lista/categorias
   await primeFetchServices(); // atualiza agendamento e landing na hora, sem precisar recarregar a página
 }
