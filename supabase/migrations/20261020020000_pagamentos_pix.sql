@@ -105,7 +105,7 @@ grant execute on function public.expirar_pagamentos_pix() to service_role;
 -- Pago depois de vencer: se o horário ainda está livre, volta a valer; se já foi ocupado, fica marcado pra estorno manual.
 create or replace function public.registrar_pagamento_aprovado(p_payment_id uuid, p_provider_id text, p_fee numeric, p_net numeric, p_paid_at timestamptz)
 returns text language plpgsql security definer set search_path = public as $$
-declare p record; a record;
+declare p record; a record; ocupado boolean := false;
 begin
   select * into p from appointment_payments where id = p_payment_id for update;
   if not found then return 'nao_encontrado'; end if;
@@ -113,13 +113,24 @@ begin
   if p.status = 'estornado' then return 'ja_estornado'; end if;
   select * into a from appointments where id = p.appointment_id for update;
   if a.status = 'cancelado' then
-    begin
-      update appointments set status = 'pendente' where id = a.id;   -- o gatilho recusa (SLOT_BLOCKED) se o horário já foi ocupado
-    exception when others then
+    -- o horário foi liberado quando o Pix venceu: só volta a valer se ninguém ocupou (o banco não impede dois agendamentos juntos)
+    select exists (
+      select 1 from appointments o
+      where o.id <> a.id and o.barber_id = a.barber_id and o.day = a.day and o.status in ('pendente', 'confirmado')
+        and (o.time::time, (coalesce(o.duration, 45) || ' minutes')::interval) overlaps (a.time::time, (coalesce(a.duration, 45) || ' minutes')::interval)
+    ) into ocupado;
+    if not ocupado then
+      begin
+        update appointments set status = 'pendente' where id = a.id;
+      exception when others then
+        ocupado := true;
+      end;
+    end if;
+    if ocupado then
       update appointment_payments set status = 'aprovado', provider_payment_id = coalesce(provider_payment_id, p_provider_id),
         paid_at = p_paid_at, fee = p_fee, net_amount = p_net, needs_refund = true where id = p.id;
       return 'precisa_estorno';
-    end;
+    end if;
   end if;
   update appointment_payments set status = 'aprovado', provider_payment_id = coalesce(provider_payment_id, p_provider_id),
     paid_at = p_paid_at, fee = p_fee, net_amount = p_net where id = p.id;
