@@ -1,5 +1,6 @@
 // Cria (ou devolve) a cobrança Pix de um agendamento. Lógica pura: o banco e o Mercado Pago entram por `deps`.
-import { calcularValor, cpfValido, dataExpiracao, montarPagamentoPix, type Cupom } from "../_shared/pix-core.ts";
+import { calcularValor, cpfValido, dataExpiracao, type Cupom } from "../_shared/pix-core.ts";
+import type { Provedor } from "../_shared/provedores.ts";
 
 export type Agendamento = { id: number; status: string; payment_status: string; services: string[]; coupon_code: string | null; client_name: string | null; client_email: string | null; day: string };
 export type Pagamento = { id: string; status: string; amount: number; expires_at: string; pix_qr_code: string | null; pix_qr_base64: string | null; ticket_url: string | null };
@@ -14,14 +15,13 @@ export interface Repo {
   atualizarPagamento(id: string, patch: Record<string, unknown>): Promise<void>;
   marcarAgendamento(id: number, patch: { payment_status: string; reserved_until: string | null }): Promise<void>;
 }
-export interface Mp { criarPagamento(corpo: unknown, chaveIdempotencia: string): Promise<{ ok: boolean; status: number; json: any }>; }
-export type Deps = { repo: Repo; mp: Mp; agora: () => Date; urlAviso: string; novoId: () => string; log?: (m: string) => void };
+export type Deps = { repo: Repo; provedor: Provedor; agora: () => Date; urlAviso: string; novoId: () => string; log?: (m: string) => void };
 export type Resposta = { status: number; body: Record<string, unknown> };
 
 const resposta = (p: Pagamento) => ({ payment_id: p.id, status: p.status, amount: p.amount, expires_at: p.expires_at, qr_code: p.pix_qr_code, qr_base64: p.pix_qr_base64, ticket_url: p.ticket_url });
 
 export async function criarPix(entrada: { appointment_id?: unknown; cpf?: unknown; email?: unknown }, deps: Deps): Promise<Resposta> {
-  const { repo, mp, agora } = deps;
+  const { repo, provedor, agora } = deps;
   const appId = Number(entrada.appointment_id);
   if (!Number.isInteger(appId) || appId <= 0) return { status: 400, body: { erro: "agendamento inválido" } };
   if (!cpfValido(String(entrada.cpf ?? ""))) return { status: 400, body: { erro: "cpf_invalido" } };
@@ -48,16 +48,17 @@ export async function criarPix(entrada: { appointment_id?: unknown; cpf?: unknow
   await repo.inserirPagamento({ id, appointment_id: appId, amount: calc.total, expires_at: new Date(Date.parse(expira)).toISOString(), payer_cpf_last3: cpf.slice(-3) });
 
   const email = String(entrada.email ?? "").trim() || ag.client_email || `pix+${appId}@primebarbearia.app.br`;
-  const corpo = montarPagamentoPix({ valor: calc.total, descricao: `Prime Barbearia - ${(ag.services ?? []).join(" + ")}`, email, nome: ag.client_name ?? "Cliente", cpf, referencia: id, urlAviso: deps.urlAviso, expira });
-  const r = await mp.criarPagamento(corpo, `pix-${id}`);   // a mesma chave numa repetição nunca cobra duas vezes
-  const td = r.json?.point_of_interaction?.transaction_data;
-  if (!r.ok || !td?.qr_code) {
-    deps.log?.(`criar-pix: Mercado Pago recusou (HTTP ${r.status}): ${JSON.stringify(r.json?.message ?? r.json?.cause ?? "").slice(0, 300)}`);
+  const r = await provedor.criarPix(
+    { valor: calc.total, descricao: `Prime Barbearia - ${(ag.services ?? []).join(" + ")}`, email, nome: ag.client_name ?? "Cliente", cpf, referencia: id, urlAviso: deps.urlAviso, expira },
+    `pix-${id}`,   // a mesma chave numa repetição nunca cobra duas vezes
+  );
+  if (!r.ok || !r.qr_code) {
+    deps.log?.(`criar-pix: o provedor recusou (HTTP ${r.status}): ${r.erro ?? ""}`);
     await repo.atualizarPagamento(id, { status: "cancelado" });
-    return { status: 502, body: { erro: "mercado_pago_indisponivel" } };
+    return { status: 502, body: { erro: "provedor_indisponivel" } };
   }
-  const pagamento: Pagamento = { id, status: "pendente", amount: calc.total, expires_at: new Date(Date.parse(expira)).toISOString(), pix_qr_code: td.qr_code, pix_qr_base64: td.qr_code_base64 ?? null, ticket_url: td.ticket_url ?? null };
-  await repo.atualizarPagamento(id, { provider_payment_id: String(r.json.id), pix_qr_code: pagamento.pix_qr_code, pix_qr_base64: pagamento.pix_qr_base64, ticket_url: pagamento.ticket_url });
+  const pagamento: Pagamento = { id, status: "pendente", amount: calc.total, expires_at: new Date(Date.parse(expira)).toISOString(), pix_qr_code: r.qr_code, pix_qr_base64: r.qr_base64 ?? null, ticket_url: r.ticket_url ?? null };
+  await repo.atualizarPagamento(id, { provider_payment_id: String(r.id), pix_qr_code: pagamento.pix_qr_code, pix_qr_base64: pagamento.pix_qr_base64, ticket_url: pagamento.ticket_url });
   await repo.marcarAgendamento(appId, { payment_status: "pendente", reserved_until: pagamento.expires_at });
   return { status: 200, body: resposta(pagamento) };
 }

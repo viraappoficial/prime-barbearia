@@ -87,3 +87,52 @@ export function taxaELiquido(pg: any): { fee: number; net: number } {
   const net = pg?.transaction_details?.net_received_amount != null ? Number(pg.transaction_details.net_received_amount) : Math.round((amount - fee) * 100) / 100;
   return { fee, net };
 }
+
+
+// ───────────────────────── PagBank (PagSeguro) ─────────────────────────
+
+/** Validade do Pix em UTC no formato do PagBank (ex.: 2026-10-20T15:30:00Z). */
+export function dataExpiracaoUtc(agora: Date, minutos = 30): string {
+  return new Date(agora.getTime() + Math.max(30, minutos) * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+/** Corpo do POST /orders do PagBank para Pix: o valor vai em centavos e a validade em charges[].payment_method.pix.expiration_date. */
+export function montarPedidoPixPagBank(e: EntradaPix) {
+  const centavos = Math.round(e.valor * 100);
+  const expira = e.expira.endsWith("Z") ? e.expira : dataExpiracaoUtc(new Date(Date.parse(e.expira) - 30 * 60_000), 30);
+  return {
+    reference_id: e.referencia,
+    customer: { name: e.nome.trim() || "Cliente", email: e.email, tax_id: e.cpf.replace(/\D/g, "") },
+    items: [{ reference_id: "agendamento", name: e.descricao.slice(0, 100), quantity: 1, unit_amount: centavos }],
+    charges: [{
+      reference_id: e.referencia, description: e.descricao.slice(0, 100),
+      amount: { value: centavos, currency: "BRL" },
+      payment_method: { type: "PIX", pix: { expiration_date: expira } },
+    }],
+    notification_urls: [e.urlAviso],
+  };
+}
+
+/** Pix na resposta do PagBank: copia e cola em charges[0].qr_code.text e imagem no link QRCODE.PNG. */
+export function extrairPixPagBank(json: any): { id: string; qr_code: string; imagem: string | null; status: string } | null {
+  const c = json?.charges?.[0];
+  const texto = c?.qr_code?.text;
+  if (!json?.id || typeof texto !== "string" || !texto) return null;
+  const png = ((c?.links ?? []) as any[]).find((l) => l?.rel === "QRCODE.PNG")?.href ?? null;
+  return { id: String(json.id), qr_code: texto, imagem: png, status: String(c?.status ?? "WAITING") };
+}
+
+/** Autenticidade do aviso do PagBank: header x-authenticity-token = SHA-256 hex de `${token da conta}-${corpo bruto}`. */
+export async function autenticidadePagBankValida(p: { token: string; corpo: string; xAuthenticityToken: string | null }): Promise<boolean> {
+  if (!p.token || !p.xAuthenticityToken) return false;
+  const digest = await crypto.subtle.digest("SHA-256", enc.encode(`${p.token}-${p.corpo}`));
+  return iguais(hex(digest), p.xAuthenticityToken.trim().toLowerCase());
+}
+
+export function estadoDoPagBank(status: string | undefined): EstadoPagamento {
+  switch (status) {
+    case "PAID": return "aprovado";
+    case "DECLINED": case "CANCELED": return "vencido";
+    default: return "pendente";   // WAITING, IN_ANALYSIS, AUTHORIZED
+  }
+}

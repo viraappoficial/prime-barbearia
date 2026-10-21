@@ -3,6 +3,7 @@
 // Segredos: supabase secrets set MP_ACCESS_TOKEN=...      (SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já existem no ambiente)
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { criarPix, type Repo } from "./handler.ts";
+import { provedorMercadoPago, provedorPagBank } from "../_shared/provedores.ts";
 
 const ORIGENS = ["https://primebarbearia.app.br", "https://www.primebarbearia.app.br", "https://staff.primebarbearia.app.br"];
 const cors = (req: Request) => ({
@@ -36,18 +37,11 @@ Deno.serve(async (req) => {
       repo,
       agora: () => new Date(),
       novoId: () => crypto.randomUUID(),
-      urlAviso: `${Deno.env.get("SUPABASE_URL")}/functions/v1/aviso-mp`,
       log: (m) => console.error(m),
-      mp: {
-        async criarPagamento(corpo, chave) {
-          const resp = await fetch("https://api.mercadopago.com/v1/payments", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("MP_ACCESS_TOKEN")}`, "X-Idempotency-Key": chave },
-            body: JSON.stringify(corpo),
-          });
-          return { ok: resp.ok, status: resp.status, json: await resp.json().catch(() => ({})) };
-        },
-      },
+      provedor: (Deno.env.get("PIX_PROVEDOR") ?? "pagbank") === "mercadopago"
+        ? provedorMercadoPago({ token: Deno.env.get("MP_ACCESS_TOKEN") ?? "" })
+        : provedorPagBank({ token: Deno.env.get("PAGBANK_TOKEN") ?? "", sandbox: (Deno.env.get("PAGBANK_SANDBOX") ?? "true") !== "false" }),
+      urlAviso: (Deno.env.get("PIX_PROVEDOR") ?? "pagbank") === "mercadopago" ? `${Deno.env.get("SUPABASE_URL")}/functions/v1/aviso-mp` : `${Deno.env.get("SUPABASE_URL")}/functions/v1/aviso-pagbank`,
     });
     return new Response(JSON.stringify(r.body), { status: r.status, headers });
   } catch (e) {
