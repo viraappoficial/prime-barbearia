@@ -136,6 +136,12 @@ language sql stable security definer set search_path = public as $$
       or exists (select 1 from public.barbers b where b.id = auth.uid());
 $$;
 
+-- Telefone padronizado: só dígitos, sem o 55 do país (o PDV, o site e o WhatsApp gravam em formatos diferentes).
+create or replace function public._fone_canon(p text) returns text language sql immutable as $$
+  select case when length(d) > 11 and left(d, 2) = '55' then substr(d, 3) else d end
+  from (select regexp_replace(coalesce(p, ''), '\D', '', 'g') as d) t
+$$;
+
 create or replace function public._hoje_sp() returns date
 language sql stable as $$ select (now() at time zone 'America/Sao_Paulo')::date $$;
 
@@ -155,7 +161,7 @@ $$;
 create or replace function public.assinatura_ativa(p_phone text) returns bigint
 language sql stable security definer set search_path = public as $$
   select a.id from public.assinaturas a
-  where a.client_phone = regexp_replace(coalesce(p_phone, ''), '\D', '', 'g')
+  where a.client_phone = public._fone_canon(p_phone)
     and a.status = 'ativa' and public._hoje_sp() between a.inicio and a.fim
   order by a.id desc limit 1;
 $$;
@@ -189,7 +195,7 @@ create or replace function public.vender_plano(
   p_plano_id bigint, p_phone text, p_name text, p_client_id uuid, p_barber_id uuid,
   p_origem text default 'balcao', p_forma text default 'loja', p_pago boolean default false, p_nota_id bigint default null)
 returns bigint language plpgsql security definer set search_path = public as $$
-declare pl public.planos%rowtype; fone text := regexp_replace(coalesce(p_phone, ''), '\D', '', 'g'); novo bigint;
+declare pl public.planos%rowtype; fone text := public._fone_canon(p_phone); novo bigint;
 begin
   if not public._plano_pode_escrever() then raise exception 'sem permissão'; end if;
   if length(fone) < 10 then raise exception 'telefone inválido'; end if;
@@ -260,8 +266,24 @@ begin
   return n;
 end $$;
 
+-- Dados do plano ativo de um telefone (usado pelo balcão para mostrar saldo e cobrir os serviços da comanda).
+create or replace function public.plano_do_cliente(p_phone text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare a public.assinaturas%rowtype;
+begin
+  if not public._plano_pode_escrever() then raise exception 'sem permissão'; end if;
+  select * into a from public.assinaturas x
+   where x.client_phone = public._fone_canon(p_phone) and x.status = 'ativa' and public._hoje_sp() between x.inicio and x.fim
+   order by x.id desc limit 1;
+  if not found then return null; end if;
+  return jsonb_build_object('id', a.id, 'plano', a.plano_nome, 'inicio', a.inicio, 'fim', a.fim, 'valor', a.valor,
+    'saldo', (select coalesce(jsonb_object_agg(s.item, s.restante), '{}') from public.plano_saldo(a.id) s),
+    'total', (select coalesce(jsonb_object_agg(s.item, s.total), '{}') from public.plano_saldo(a.id) s));
+end $$;
+
 grant execute on function public.plano_saldo(bigint), public.assinatura_ativa(text),
   public.vender_plano(bigint, text, text, uuid, uuid, text, text, boolean, bigint), public.ativar_assinatura(bigint, bigint),
-  public.registrar_uso_plano(bigint, jsonb, bigint, bigint, uuid), public.desfazer_uso_plano(bigint, bigint) to authenticated;
+  public.registrar_uso_plano(bigint, jsonb, bigint, bigint, uuid), public.desfazer_uso_plano(bigint, bigint), public.plano_do_cliente(text) to authenticated;
 revoke execute on function public.vender_plano(bigint, text, text, uuid, uuid, text, text, boolean, bigint), public.ativar_assinatura(bigint, bigint),
-  public.registrar_uso_plano(bigint, jsonb, bigint, bigint, uuid), public.desfazer_uso_plano(bigint, bigint) from anon, public;
+  public.registrar_uso_plano(bigint, jsonb, bigint, bigint, uuid), public.desfazer_uso_plano(bigint, bigint), public.plano_do_cliente(text),
+  public.plano_saldo(bigint), public.assinatura_ativa(text) from anon, public;
