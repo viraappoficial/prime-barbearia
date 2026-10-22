@@ -5558,9 +5558,11 @@ function baZapTitleFor(chatId, phone){
 }
 function baZapAvatarHtml(chatId, title){
   const pic = baZapWaInfoCache[chatId] && baZapWaInfoCache[chatId].pictureUrl;
-  if(pic) return `<img class="ba-zap-avatar" src="${primeEsc(pic)}" alt="">`;
   const letter = (title||'?').trim().charAt(0).toUpperCase() || '?';
-  return `<div class="ba-zap-avatar-ph">${primeEsc(letter)}</div>`;
+  const ph = `<div class="ba-zap-avatar-ph">${primeEsc(letter)}</div>`;
+  // o endereço da foto do WhatsApp expira: se a imagem não carregar, volta pra inicial em vez de mostrar imagem quebrada
+  if(pic) return `<img class="ba-zap-avatar" src="${primeEsc(pic)}" alt="" onerror="this.outerHTML=this.dataset.ph" data-ph="${primeEsc(ph)}">`;
+  return ph;
 }
 
 let baZapListMode = 'active'; // 'active' | 'archived'
