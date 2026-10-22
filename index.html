@@ -11726,9 +11726,19 @@ async function baSaveBloqueio(){
     // auth.uid() no servidor, então mesmo o admin criando pra outro profissional
     // (barber_id = targetBarberId) o registro de quem criou continua sendo o
     // próprio admin, nunca o barbeiro selecionado.
-    const { error } = await sb.from('agenda_blocks').insert({
-      barber_id: targetBarberId, day, start_time: start, end_time: end, reason: reason || null
-    });
+    let error = null;
+    if(baCurrentRole==='vendas'){
+      // recepção bloqueando a agenda de um barbeiro: pede a senha de um admin ou do dono da agenda; quem confere é o servidor
+      const senha = await baPedirSenha('Liberar bloqueio', 'Digite a senha de um admin ou do barbeiro dono desta agenda.');
+      if(senha===null) return;
+      const { data, error:e } = await sb.rpc('bloquear_horario', {p_barber_id:targetBarberId, p_day:day, p_start:start, p_end:end, p_reason:reason || null, p_senha:senha});
+      if(e) error = e;
+      else if(data && !data.ok) return fail(BA_BLOQUEIO_ERRO[data.erro] || 'Não foi possível bloquear esse horário.');
+    } else {
+      ({ error } = await sb.from('agenda_blocks').insert({
+        barber_id: targetBarberId, day, start_time: start, end_time: end, reason: reason || null
+      }));
+    }
     if(error){ console.error('baSaveBloqueio', error); return fail('Não foi possível bloquear esse horário. Tente de novo.'); }
     baBloqueioPendingConfirm = false;
     baToggleBloqueio();
@@ -11753,9 +11763,42 @@ async function baRenderBlocksList(){
     </div>`
   ).join('');
 }
+// Pede uma senha numa janelinha própria (campo de senha, sem mostrar o que digita). Devolve o texto, ou null se cancelar.
+function baPedirSenha(titulo, texto){
+  return new Promise(resolve=>{
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:1rem';
+    ov.innerHTML = `<form style="background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:10px;padding:1.4rem;max-width:380px;width:100%;display:flex;flex-direction:column;gap:.8rem" autocomplete="off">
+      <b style="font-family:var(--font-display);font-size:1.05rem;color:var(--prata)">${primeEsc(titulo)}</b>
+      <span style="font-size:.88rem;line-height:1.5;color:var(--prata-dim)">${primeEsc(texto)}</span>
+      <div class="ba-field" style="max-width:none;margin:0"><input type="password" placeholder="Senha" autocomplete="new-password"></div>
+      <div style="display:flex;gap:.6rem"><button type="submit" class="ba-btn" style="flex:1">Liberar</button><button type="button" class="ba-btn ghost" style="flex:1">Cancelar</button></div></form>`;
+    (document.getElementById('barberApp') || document.body).appendChild(ov);   // dentro do app: é lá que os estilos (#barberApp .ba-field, .ba-btn) valem
+    const f = ov.querySelector('form'), inp = ov.querySelector('input');
+    const fim = v => { ov.remove(); resolve(v); };
+    f.onsubmit = e => { e.preventDefault(); fim(inp.value); };
+    ov.querySelector('button[type=button]').onclick = () => fim(null);
+    inp.focus();
+  });
+}
+const BA_BLOQUEIO_ERRO = {
+  senha_invalida:'Senha incorreta. Use a senha de um admin ou do barbeiro dono desta agenda.',
+  muitas_tentativas:'Muitas tentativas erradas. Espere 10 minutos e tente de novo.',
+  ja_bloqueado:'Esse horário já está bloqueado.',
+  horario_invalido:'Horário inválido. Confira início e fim.'
+};
 async function baRemoveBlock(id){
   if(!confirm('Remover esse bloqueio? O horário volta a ficar disponível pra agendamento.')) return;
-  const { error } = await sb.from('agenda_blocks').delete().eq('id', id);
+  let error = null;
+  if(baCurrentRole==='vendas'){
+    const senha = await baPedirSenha('Liberar remoção', 'Digite a senha de um admin ou do barbeiro dono desta agenda.');
+    if(senha===null) return;
+    const { data, error:e } = await sb.rpc('desbloquear_horario', {p_id:id, p_senha:senha});
+    if(e) error = e;
+    else if(data && !data.ok){ alert(BA_BLOQUEIO_ERRO[data.erro] || 'Não foi possível remover.'); return; }
+  } else {
+    ({ error } = await sb.from('agenda_blocks').delete().eq('id', id));
+  }
   if(error){ console.error('baRemoveBlock', error); alert('Não foi possível remover. Tente de novo.'); return; }
   await baRenderBlocksList();
 }
