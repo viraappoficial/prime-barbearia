@@ -5250,13 +5250,15 @@ function baSaleToRow(s){
   return row;
 }
 async function baInsertSales(rows){
-  let { data, error } = await sb.from('sales').insert(rows.map(baSaleToRow)).select();
+  // sem `.select()`: devolver a linha gravada exige permissão de LEITURA em sales, e a conta de vendas (recepção) só tem a de gravar.
+  // Com o select o banco recusava a venda inteira (403) e ela sumia sem aviso, mesmo com o pagamento já gravado.
+  let { error } = await sb.from('sales').insert(rows.map(baSaleToRow));
   // migration do telefone (sales.client_phone) ainda não rodada: grava a venda do jeito antigo, sem o telefone
   if(error && /client_phone/.test(error.message||'')){
-    ({ data, error } = await sb.from('sales').insert(rows.map(r=>{ const o = baSaleToRow(r); delete o.client_phone; return o; })).select());
+    ({ error } = await sb.from('sales').insert(rows.map(r=>{ const o = baSaleToRow(r); delete o.client_phone; return o; })));
   }
-  if(error){ console.error('baInsertSales', error); return []; }
-  return (data||[]).map(baSaleFromRow);
+  if(error){ console.error('baInsertSales', error); throw new Error('não foi possível gravar a venda: ' + (error.message||error)); }   // quem chama avisa; antes falhava calado
+  return rows;
 }
 // compras de um telefone (qualquer barbeiro que a RLS deixe ler) — vazio se a coluna ainda não existe
 async function baFetchSalesByPhone(phone){
