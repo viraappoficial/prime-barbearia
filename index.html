@@ -3471,6 +3471,7 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-assumed-badge{display:inline-block;margin-top:.25rem;padding:.08rem .45rem;border-radius:999px;font-size:.64rem;font-weight:600;background:var(--dourado);color:var(--verde-noite)}
 #barberApp .ba-zap-unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 .3rem;border-radius:999px;background:var(--verde-neon);color:var(--verde-noite);font-size:.7rem;font-weight:700;line-height:1}
 #barberApp .ba-zap-archive-btn{flex:none;width:22px;height:22px;border-radius:50%;border:none;background:none;color:var(--prata-dim);font-size:.75rem;line-height:1;cursor:pointer;opacity:.6}
+#barberApp .ba-zap-reopen-pill{flex:none;border:1px solid var(--verde-neon);border-radius:99px;background:none;color:var(--verde-neon);font-family:var(--font-body);font-size:.68rem;letter-spacing:.06em;padding:.3rem .7rem;cursor:pointer}
 #barberApp .ba-zap-archive-btn:hover{opacity:1;background:rgba(198,167,94,.12);color:var(--erro)}
 #barberApp .ba-zap-thread{grid-row:2;min-height:0;display:flex;flex-direction:column;gap:.5rem;overflow-y:auto;padding:1rem 1.2rem}
 #barberApp .ba-zap-bubble{max-width:72%;padding:.6rem .85rem;font-size:.86rem;line-height:1.45;border-radius:4px}
@@ -4604,6 +4605,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto">
             <button class="ba-btn ghost" id="ba-zap-assume-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;white-space:nowrap;flex-shrink:0" onclick="baZapToggleAssume()">Assumir</button>
             <button class="ba-btn ghost" id="ba-zap-encaixe-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;white-space:nowrap;flex-shrink:0" onclick="baZapToggleEncaixe()">Encaixe</button>
+            <button class="ba-btn ghost" id="ba-zap-reopen-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;border-color:var(--verde-neon);color:var(--verde-neon);white-space:nowrap;flex-shrink:0" onclick="baZapReopenChat()">Reabrir conversa</button>
             <button class="ba-btn ghost" id="ba-zap-end-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;border-color:#E5574B;color:#E5574B;white-space:nowrap;flex-shrink:0" onclick="baZapEndAttendance()">Encerrar</button>
             <button class="ba-btn ghost" id="ba-zap-ficha-btn" style="width:auto;max-width:none;margin:0;padding:.5rem 1rem;font-size:.68rem;display:none;white-space:nowrap;flex-shrink:0" onclick="baZapToggleFicha()">Ficha</button>
           </div>
@@ -5611,7 +5613,7 @@ async function baRenderZapList(){
     const unread = c.chat_id === baZapCurrentChat ? 0 : (unreadByChat[c.chat_id] || 0);
     const unreadHtml = unread > 0 ? `<div class="ba-zap-unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
     const rowAction = baZapListMode === 'archived'
-      ? `<button class="ba-zap-archive-btn" title="Restaurar" onclick="event.stopPropagation(); baZapUnarchiveChat('${c.chat_id}')">↩</button>`
+      ? `<button class="ba-zap-reopen-pill" title="Reabrir conversa" onclick="event.stopPropagation(); baZapUnarchiveChat('${c.chat_id}')">Reabrir</button>`
       : `<button class="ba-zap-archive-btn" title="Tirar da lista" onclick="event.stopPropagation(); baZapArchiveChat('${c.chat_id}')">✕</button>`;
     return `<div class="ba-zap-row${c.chat_id === baZapCurrentChat ? ' active' : ''}" role="button" tabindex="0" onclick="baZapOpenChat('${c.chat_id}','${c.contact_phone||''}')">
       ${baZapAvatarHtml(c.chat_id, title)}
@@ -5637,7 +5639,9 @@ async function baZapOpenChat(chatId, phone){
   document.getElementById('ba-zap-enc-confirm').style.display = 'none'; baZapEncPending = null;
   document.getElementById('ba-screen-zap').classList.remove('ficha-open'); // troca de conversa fecha a ficha da anterior
   document.getElementById('ba-zap-ficha-btn').style.display = '';
-  document.getElementById('ba-zap-end-btn').style.display = '';
+  const arquivada = baZapListMode === 'archived';   // aberta pela lista de Arquivados: oferece Reabrir (e não Encerrar de novo)
+  document.getElementById('ba-zap-end-btn').style.display = arquivada ? 'none' : '';
+  document.getElementById('ba-zap-reopen-btn').style.display = arquivada ? '' : 'none';
   document.getElementById('ba-zap-encaixe-btn').style.display = '';
   document.getElementById('ba-zap-compose-wrap').style.display = '';
   await baZapResolveWaInfo([chatId]); // pode já estar no cache (veio da lista); se não, busca agora
@@ -5703,16 +5707,28 @@ async function baZapToggleAssume(){
 // URA sem mandar nada. Funciona em qualquer estado (assumido ou não).
 async function baZapEndAttendance(){
   if(!baZapCurrentChat) return;
-  if(!confirm('Encerrar esse atendimento? O cliente recebe uma mensagem de despedida.')) return;
+  if(!confirm('Encerrar esse atendimento? O cliente recebe uma mensagem de despedida e a conversa sai da lista (fica em Arquivados, onde dá pra reabrir). Se ele escrever de novo, ela volta sozinha.')) return;
   const btn = document.getElementById('ba-zap-end-btn');
   btn.disabled = true;
   const { error } = await sb.rpc('end_attendance', { p_chat_id: baZapCurrentChat });
   btn.disabled = false;
   if(error){ alert('Não foi possível encerrar agora. Tenta de novo.'); return; }
-  await baZapResolveWaInfo([baZapCurrentChat], true);
-  baZapUpdateAssumeBtn(baZapCurrentChat);
-  baRenderZapList();
-  baZapRenderThread();
+  // fecha a conversa de verdade: sai da lista de atendimento e a tela volta pra lista (nada é apagado; mensagem nova do cliente a traz de volta)
+  const { error: ae } = await sb.rpc('archive_whatsapp_chat', { p_chat_id: baZapCurrentChat });
+  if(ae) console.error('archive_whatsapp_chat', ae);
+  baZapBackToList();
+}
+// Reabrir uma conversa encerrada/arquivada: volta pra lista de atendimento e abre ela
+async function baZapReopenChat(){
+  const chat = baZapCurrentChat, phone = baZapCurrentPhone;
+  if(!chat) return;
+  const { error } = await sb.rpc('unarchive_whatsapp_chat', { p_chat_id: chat });
+  if(error){ alert('Não foi possível reabrir agora. Tenta de novo.'); return; }
+  baZapListMode = 'active';
+  document.getElementById('ba-zap-list-label').textContent = 'Atendimento';
+  document.getElementById('ba-zap-archived-toggle').textContent = 'Arquivados';
+  document.getElementById('ba-zap-archived-toggle').classList.remove('active');
+  await baZapOpenChat(chat, phone);
 }
 // Encaixe direto do Zap: mesmo motor do Encaixe de balcão (primeCreateAppointment, status
 // 'confirmado' na hora, protegido pelo mesmo gatilho de conflito de horário), com o cliente da
@@ -6329,7 +6345,7 @@ function baZapSetup(){
   document.getElementById('ba-zap-archived-toggle').classList.remove('active');
   baZapResetComposeState();
   document.getElementById('ba-screen-zap').classList.remove('ficha-open');
-  ['ba-zap-ficha-btn','ba-zap-end-btn','ba-zap-encaixe-btn','ba-zap-assume-btn'].forEach(id=>{ document.getElementById(id).style.display = 'none'; });  // sem conversa aberta não há o que assumir/encaixar/encerrar
+  ['ba-zap-ficha-btn','ba-zap-end-btn','ba-zap-reopen-btn','ba-zap-encaixe-btn','ba-zap-assume-btn'].forEach(id=>{ document.getElementById(id).style.display = 'none'; });  // sem conversa aberta não há o que assumir/encaixar/encerrar
   document.getElementById('ba-zap-encaixe-modal').style.display = 'none';
   document.getElementById('ba-zap-enc-confirm').style.display = 'none';
   baZapUpdateStatus(null);   // sem conversa aberta não há quem esteja atendendo
