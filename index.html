@@ -10270,10 +10270,22 @@ async function baRenderPending(){
       <div class="ba-card" style="border-color:#E5574B">
         <div style="font-family:var(--font-display);font-size:1.05rem;margin-bottom:.2rem">${a.services.join(' + ')}</div>
         <div style="color:var(--prata-dim);font-size:.85rem;margin-bottom:.9rem">${a.name||'Cliente'} · ${a.dayLabel} às ${a.time}</div>
-        <button class="ba-btn" style="max-width:100%" onclick="baAcceptAppt(${a.id})">Aceitar agendamento</button>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <button class="ba-btn" style="flex:2;min-width:160px;max-width:none;margin:0" onclick="baAcceptAppt(${a.id})">Aceitar agendamento</button>
+          <button class="ba-btn ghost" style="flex:1;min-width:110px;max-width:none;margin:0;border-color:#E5574B;color:#E5574B" onclick="baRejectAppt(${a.id})">Recusar</button>
+        </div>
       </div>`).join('');
 }
 
+// Recusar uma solicitação pendente: mesmo caminho do cancelamento (marca cancelado, avisa o cliente no app e no WhatsApp e libera o horário).
+// Sem senha de admin, como o "Aceitar": é só uma solicitação que o barbeiro ainda não tinha aceitado.
+async function baRejectAppt(id){
+  if(!confirm('Recusar essa solicitação? O cliente é avisado e o horário volta a ficar livre.')) return;
+  await baExecuteCancel(id);
+  baRenderAgenda();
+  if(typeof caRenderNextAppointment==='function') caRenderNextAppointment();
+  if(typeof caRenderNotifs==='function') caRenderNotifs();
+}
 async function baAcceptAppt(id){
   const ap = await primeUpdateAppointment(id, {status:'confirmado'});
   // defesa, não deveria disparar por bloqueio de agenda: aceitar sem mudar dia/hora/
