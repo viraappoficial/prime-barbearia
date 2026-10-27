@@ -3523,6 +3523,11 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-bubble.in .ba-zap-reply-btn{right:-1.6rem}
 #barberApp .ba-zap-bubble:hover .ba-zap-reply-btn{opacity:1}
 #barberApp .ba-zap-bubble.swiping{transition:none}
+#barberApp .ba-zap-doc{display:block;width:220px;max-width:100%;margin-bottom:.3rem;border-radius:6px;overflow:hidden;background:rgba(0,0,0,.28);text-decoration:none;color:inherit}
+#barberApp .ba-zap-doc-thumb{display:block;width:100%;height:auto;background:#fff}
+#barberApp .ba-zap-doc-row{display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem}
+#barberApp .ba-zap-doc-ic{flex:none;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:#fff;border-radius:4px;padding:.25rem .35rem}
+#barberApp .ba-zap-doc-nm{font-size:.78rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all}
 #barberApp .ba-zap-bubble-media{max-width:220px;border-radius:4px;display:block;margin-bottom:.3rem;cursor:pointer}
 #barberApp .ba-zap-empty{color:var(--prata-dim);font-size:.82rem;padding:1.2rem 0;text-align:center}
 #barberApp .ba-zap-ficha-note{width:100%;min-height:6rem;resize:vertical;background:var(--grafite-card);border:1px solid var(--dourado-dim);color:var(--prata);font-family:var(--font-body);font-size:.84rem;padding:.7rem .8rem;border-radius:2px;margin-bottom:.7rem}
@@ -6088,7 +6093,49 @@ function baZapBubbleMedia(m){
   if(m.media_kind==='image') return `<a href="${primeEsc(m.media_url)}" target="_blank" rel="noopener"><img class="ba-zap-bubble-media" src="${primeEsc(m.media_url)}" loading="lazy"></a>`;
   if(m.media_kind==='audio') return `<audio controls style="max-width:220px;display:block;margin-bottom:.3rem"><source src="${primeEsc(m.media_url)}" type="${primeEsc(m.media_mimetype||'')}"></audio>`;
   if(m.media_kind==='video') return `<video controls style="max-width:220px;border-radius:4px;display:block;margin-bottom:.3rem"><source src="${primeEsc(m.media_url)}" type="${primeEsc(m.media_mimetype||'')}"></video>`;
-  return `<a href="${primeEsc(m.media_url)}" target="_blank" rel="noopener" style="display:block;margin-bottom:.3rem">📎 ${primeEsc(m.media_mimetype||'arquivo')}</a>`;
+  return baZapDocCard(m);
+}
+// documento no estilo do WhatsApp: miniatura da 1ª página (PDF) + nome + tipo, tudo clicável
+const BA_ZAP_DOC_TIPOS = { 'application/pdf':['PDF','#E5574B'], 'application/msword':['DOC','#4A90D9'], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':['DOC','#4A90D9'],
+  'application/vnd.ms-excel':['XLS','#35C558'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['XLS','#35C558'], 'text/csv':['CSV','#35C558'],
+  'application/vnd.ms-powerpoint':['PPT','#E8A33D'], 'application/vnd.openxmlformats-officedocument.presentationml.presentation':['PPT','#E8A33D'], 'application/zip':['ZIP','#9BA39C'] };
+function baZapDocNome(m){
+  if(m.direction==='inbound' && m.body) return m.body;                       // o bot grava o nome do arquivo no corpo
+  try{ return decodeURIComponent(String(m.media_url).split('?')[0].split('/').pop()); }catch(e){ return 'arquivo'; }
+}
+function baZapDocCard(m){
+  const mime = String(m.media_mimetype||'').split(';')[0];
+  const [tipo, cor] = BA_ZAP_DOC_TIPOS[mime] || [(baZapDocNome(m).split('.').pop()||'ARQ').slice(0,4).toUpperCase(), '#9BA39C'];
+  const thumb = mime==='application/pdf' ? `<canvas class="ba-zap-doc-thumb" data-pdf="${primeEsc(m.media_url)}" width="220" height="0"></canvas>` : '';
+  return `<a class="ba-zap-doc" href="${primeEsc(m.media_url)}" target="_blank" rel="noopener">${thumb}
+    <span class="ba-zap-doc-row"><span class="ba-zap-doc-ic" style="background:${cor}">${primeEsc(tipo)}</span><span class="ba-zap-doc-nm">${primeEsc(baZapDocNome(m))}</span></span></a>`;
+}
+let baPdfJsPromise = null;
+function baZapPdfJs(){
+  if(baPdfJsPromise) return baPdfJsPromise;
+  baPdfJsPromise = new Promise((ok, fail)=>{
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload = ()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); };
+    sc.onerror = ()=>{ baPdfJsPromise = null; fail(new Error('pdf.js')); };
+    document.head.appendChild(sc);
+  });
+  return baPdfJsPromise;
+}
+async function baZapPdfThumbs(root){
+  const cs = [...root.querySelectorAll('canvas[data-pdf]:not([data-done])')];
+  if(!cs.length) return;
+  let lib; try{ lib = await baZapPdfJs(); }catch(e){ cs.forEach(c=>c.remove()); return; }
+  for(const c of cs){
+    c.dataset.done = '1';
+    try{
+      const pdf = await lib.getDocument(c.dataset.pdf).promise;
+      const page = await pdf.getPage(1);
+      const v0 = page.getViewport({scale:1}), sc = 220 / v0.width, v = page.getViewport({scale:sc});
+      c.width = Math.round(v.width); c.height = Math.min(Math.round(v.height), 160);   // só o topo da página, como a miniatura do WhatsApp
+      await page.render({ canvasContext: c.getContext('2d'), viewport: v }).promise;
+    }catch(e){ c.remove(); }
+  }
 }
 function baZapDayLabel(d){
   const hoje = primeLocalDate(new Date()), ontem = primeLocalDate(new Date(Date.now()-86400000)), k = primeLocalDate(d);
@@ -6126,10 +6173,11 @@ async function baZapRenderThread(){
       ? `<button type="button" class="ba-zap-delete-btn" onclick="baZapDeleteMessage(${m.id})" title="Apagar para todos">🗑</button>` : '';
     return `${chip}<div class="ba-zap-bubble ${cls}" data-id="${m.id}" ondblclick="baZapReplyToMessage(${m.id})">
       ${deleteBtn}<button type="button" class="ba-zap-reply-btn" onclick="baZapReplyToMessage(${m.id})" title="Responder">↩</button>
-      ${quote}${baZapBubbleMedia(m)}${m.body?`<span class="ba-zap-txt">${primeEsc(m.body)}</span>`:''}${status}${meta}
+      ${quote}${baZapBubbleMedia(m)}${(m.body && !(m.direction==='inbound' && m.media_kind==='file' && m.media_url))?`<span class="ba-zap-txt">${primeEsc(m.body)}</span>`:''}${status}${meta}
     </div>`;
   }).join('') || '<div class="ba-zap-empty">Nenhuma mensagem ainda.</div>';
   if(wasAtBottom) box.scrollTop = box.scrollHeight;
+  baZapPdfThumbs(box);
 }
 // ✓ enviada (SERVER) · ✓✓ entregue (DEVICE) · ✓✓ azul lida/ouvida (READ/PLAYED)
 function baZapHoldText(reason){
