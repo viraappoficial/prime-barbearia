@@ -4899,6 +4899,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="taxas" onclick="baFinanceiroTab('taxas')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Taxas de maquininha</button>
             <button class="ba-btn ghost" data-fin="comissoes" onclick="baFinanceiroTab('comissoes')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Comissões</button>
             <button class="ba-btn ghost" data-fin="fluxo" onclick="baFinanceiroTab('fluxo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Fluxo de caixa</button>
+            <button class="ba-btn ghost" data-fin="corrigir" onclick="baFinanceiroTab('corrigir')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Corrigir vendas</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -5149,6 +5150,16 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
             <div class="ba-slabel">Linha do tempo</div>
             <div id="ba-fluxo-list"></div>
+          </div>
+
+          <div id="ba-fin-corrigir" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Corrigir barbeiro de uma venda</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Para vendas lançadas na conta de outro barbeiro. Só troca o barbeiro (venda, pagamento e comissão acompanham); valor, forma de pagamento e caixa não mudam. Fica registrado quem corrigiu.</p>
+            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.9rem">
+              <input type="date" id="ba-corr-data" onchange="baRenderCorrigirVendas()">
+              <button class="ba-btn" style="padding:.4rem .9rem;font-size:.72rem" onclick="baRenderCorrigirVendas()">Buscar</button>
+            </div>
+            <div id="ba-corr-list"></div>
           </div>
         </div>
       </div>
@@ -6386,6 +6397,40 @@ function baZapTeardown(){
   if(baZapPollTimer){ clearInterval(baZapPollTimer); baZapPollTimer = null; }
 }
 
+// ── corrigir barbeiro de uma venda (admin) ──
+let baCorrGrupos = [];
+async function baRenderCorrigirVendas(){
+  const inp = document.getElementById('ba-corr-data');
+  if(!inp.value) inp.value = primeLocalDate();
+  const box = document.getElementById('ba-corr-list');
+  box.innerHTML = '<p style="color:var(--prata-dim)">Carregando…</p>';
+  const sales = await baFetchShopSales(inp.value, inp.value);
+  const g = {};
+  sales.forEach(x=>{
+    const k = x.notaId+'|'+x.barberId+'|'+String(x.createdAt||'').slice(0,16);
+    (g[k] = g[k] || []).push(x);
+  });
+  baCorrGrupos = Object.values(g).sort((a,b)=>String(b[0].createdAt).localeCompare(String(a[0].createdAt)));
+  if(!baCorrGrupos.length){ box.innerHTML = '<p style="color:var(--prata-dim)">Nenhuma venda neste dia.</p>'; return; }
+  const roster = baGetRoster();
+  box.innerHTML = baCorrGrupos.map((items,i)=>{
+    const h = items[0], total = items.reduce((t,x)=>t+Number(x.value||0)*(Number(x.qty)||1),0);
+    const hora = h.createdAt ? new Date(h.createdAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}) : (h.time||'');
+    return `<div class="ba-item" style="flex-wrap:wrap;gap:.5rem"><div class="info" style="min-width:150px"><div class="n">${primeEsc(h.client||'Cliente')} · ${baFormatMoney(total)}</div><div class="d">${hora} · ${items.map(x=>primeEsc(x.service)).join(' + ')} · hoje em <b>${primeEsc(baSaleBarberName(h))}</b></div></div>
+      <select id="ba-corr-sel-${i}">${roster.map(b=>`<option value="${b.id}"${b.id===h.barberId?' selected':''}>${primeEsc(b.name)}</option>`).join('')}</select>
+      <button class="ba-btn" style="padding:.4rem .9rem;font-size:.72rem" onclick="baCorrigirVenda(${i})">Trocar</button></div>`;
+  }).join('');
+}
+async function baCorrigirVenda(i){
+  const items = baCorrGrupos[i]; if(!items) return;
+  const novo = document.getElementById('ba-corr-sel-'+i).value;
+  if(novo === items[0].barberId){ alert('Escolha outro barbeiro.'); return; }
+  const nome = (baGetRoster().find(b=>b.id===novo)||{}).name || 'esse barbeiro';
+  if(!confirm('Passar esta venda para '+nome+'? Venda, pagamento e comissão vão junto.')) return;
+  const { error } = await sb.rpc('corrigir_barbeiro_venda', { p_sale_ids: items.map(x=>x.id), p_novo_barbeiro: novo, p_motivo: 'Barbeiro lançado errado' });
+  if(error){ console.error('corrigir_barbeiro_venda', error); alert('Não foi possível trocar o barbeiro.'); return; }
+  baRenderCorrigirVendas();
+}
 function baGestaoTab(sub){
   document.querySelectorAll('#ba-screen-gestao [data-sub]').forEach(b=>b.classList.toggle('active', b.dataset.sub===sub));
   document.getElementById('ba-admin-panel').style.display = sub==='equipe' ? 'block' : 'none';
@@ -6535,12 +6580,14 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-taxas').style.display = sub==='taxas' ? 'block' : 'none';
   document.getElementById('ba-fin-comissoes').style.display = sub==='comissoes' ? 'block' : 'none';
   document.getElementById('ba-fin-fluxo').style.display = sub==='fluxo' ? 'block' : 'none';
+  document.getElementById('ba-fin-corrigir').style.display = sub==='corrigir' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
   if(sub==='caixa') baRenderCaixa();
   if(sub==='aprazo') baRenderAPrazo();
   if(sub==='taxas') baRenderTaxasMaquininha();
   if(sub==='comissoes') baRenderComissoes();
   if(sub==='fluxo') baRenderFluxoCaixa();
+  if(sub==='corrigir') baRenderCorrigirVendas();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
