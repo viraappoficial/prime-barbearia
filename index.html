@@ -8878,6 +8878,7 @@ async function csOpenCloseModal(){
   csModalOpen(`
     <button class="close" aria-label="Fechar" onclick="csModalClose()">✕</button>
     <h3>Fechar caixa</h3>
+    ${csCloseConferenciaHtml(rep)}
     <div class="cs-block" style="margin:.7rem 0 1rem"><div class="cs-row"><span>Esperado em dinheiro</span><b>${csMoney(csCloseCtx.expected)}</b></div></div>
     <div class="cs-field"><label>Dinheiro contado na gaveta (R$)</label><input type="text" inputmode="decimal" id="cs-close-contado" oninput="csCloseRecalc()" placeholder="0,00"></div>
     <div class="cs-row"><span>Resultado</span><b id="cs-close-diff">—</b></div>
@@ -8891,6 +8892,26 @@ async function csOpenCloseModal(){
     <div class="cs-field"><label>Observação (opcional)</label><input type="text" id="cs-close-nota" maxlength="300"></div>
     <p class="cs-err" id="cs-err" style="display:none"></p>
     <div class="cs-btns"><button class="btn btn-primary" onclick="csDoClose()">Confirmar com o admin</button><button class="btn btn-ghost" onclick="csModalClose()">Voltar</button></div>`);
+}
+// lista de conferência mostrada antes de fechar: quem lançou o quê, pra pegar barbeiro errado a tempo
+function csCloseConferenciaHtml(rep){
+  const vs = rep.vendas || [];
+  const dono = rep.session && rep.session.opened_by;
+  const nome = id => ((baGetRoster().find(b=>b.id===id))||{}).name || '';
+  let diverge = 0;
+  const rows = vs.map(v=>{
+    const barbs = [...new Set((v.items||[]).map(it=>it.barber).filter(Boolean))];
+    const errado = (v.items||[]).some(it=>it.barber_id && dono && it.barber_id!==dono);
+    if(errado) diverge++;
+    return `<div class="cs-row" style="align-items:flex-start;gap:.6rem;${errado?'color:var(--dourado)':''}">
+      <span style="flex:1"><b>${csFmtTime(v.late ? v.at : (v.sold_at||v.at))}</b> · ${primeEsc(v.client||'Cliente')}<br><small class="cs-muted">${(v.items||[]).map(it=>primeEsc(it.service)).join(' + ')||'—'} · ${barbs.map(primeEsc).join(', ')||'—'} · ${(v.payments||[]).map(p=>primeEsc(csMethodLabel(p.method))).join(' + ')}</small></span>
+      <b>${csMoney(v.paid)}</b></div>`;
+  }).join('');
+  return `<div class="cs-block" style="margin:.7rem 0 1rem">
+    <div class="cs-row"><span><b>Confira os lançamentos</b></span><b>${vs.length}</b></div>
+    ${rows || '<p class="cs-muted">Nenhuma venda neste caixa.</p>'}
+    ${diverge ? `<p class="cs-warn" style="margin:.6rem 0 0">${diverge} lançamento${diverge>1?'s estão':' está'} em nome de outro barbeiro${dono?' (caixa aberto por '+primeEsc(nome(dono))+')':''}. Se estiver errado, feche e corrija em Gestão › Financeiro › Corrigir vendas.</p>` : ''}
+  </div>`;
 }
 function csCloseRecalc(){
   const ctx = csCloseCtx;
