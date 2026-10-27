@@ -3444,6 +3444,7 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-zap-ticks{letter-spacing:-.1em;font-size:.72rem;margin-left:.3rem}
 #barberApp .ba-zap-ticks.read{color:#34B7F1}
 #barberApp .ba-zap-bubble.deleted{font-style:italic;color:var(--prata-dim)}
+#barberApp .ba-zap-auth-btn{margin-left:.4rem;border:1px solid var(--verde-neon);border-radius:99px;background:none;color:var(--verde-neon);font-family:var(--font-body);font-size:.66rem;letter-spacing:.05em;padding:.15rem .55rem;cursor:pointer}
 #barberApp .ba-zap-delete-btn{position:absolute;top:-.3rem;left:-2.9rem;background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:50%;width:22px;height:22px;line-height:20px;text-align:center;font-size:.72rem;cursor:pointer;opacity:0;transition:opacity .15s}
 #barberApp .ba-zap-bubble.out:hover .ba-zap-delete-btn{opacity:1}
 #barberApp .ba-zap-main-title .nm{font-size:.92rem;color:var(--prata);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -6100,7 +6101,8 @@ async function baZapRenderThread(){
     if(m.deleted_at){
       return `${chip}<div class="ba-zap-bubble ${cls} deleted" data-id="${m.id}">🚫 Mensagem apagada</div>`;
     }
-    const status = (m.status==='pending' && m.hold_reason) ? `<span class="st held">⏸ em espera · ${primeEsc(baZapHoldText(m.hold_reason))}</span>`
+    const status = (m.status==='pending' && m.hold_reason==='aguardando_autorizacao') ? `<span class="st held">⏸ ${primeEsc(baZapHoldText(m.hold_reason))} <button type="button" class="ba-zap-auth-btn" onclick="baZapAuthorizeSend()">Autorizar envio</button></span>`
+      : (m.status==='pending' && m.hold_reason) ? `<span class="st held">⏸ em espera · ${primeEsc(baZapHoldText(m.hold_reason))}</span>`
       : m.status==='pending' ? '<span class="st">enviando…</span>'
       : m.status==='failed' ? `<span class="st failed">não enviada${m.error?' · '+primeEsc(m.error):''}</span>`
       : m.status==='held' ? `<span class="st held">⏸ em espera · ${primeEsc(baZapHoldText(m.hold_reason))}</span>`
@@ -6123,6 +6125,8 @@ function baZapHoldText(reason){
   const map={
     fora_da_janela_24h:'o cliente não fala com o número há mais de 24 h; sai quando ele responder (ou use um modelo aprovado)',
     cliente_pediu_para_parar:'o cliente pediu para não receber mensagens',
+    aguardando_autorizacao:'essa pessoa ainda não escreveu para o número: a mensagem automática só sai se você autorizar',
+    autorizada:'autorizada, sai em instantes',
     cuidado_limite_hora:'limite por hora de mensagens a quem não falou com o número (protege o WhatsApp); sai sozinha',
     cuidado_limite_dia:'limite do dia de mensagens a quem não falou com o número; sai amanhã',
     cuidado_fora_do_horario:'fora do horário de envio (a quem não falou com o número); sai de manhã',
@@ -6136,6 +6140,14 @@ function baZapTicksHtml(ack){
   if(ack==='SERVER') return '<span class="ba-zap-ticks">✓</span>';
   if(ack==='DEVICE') return '<span class="ba-zap-ticks">✓✓</span>';
   return '<span class="ba-zap-ticks read">✓✓</span>'; // READ ou PLAYED
+}
+// Mensagem automática para quem nunca escreveu para o número fica esperando; autorizar libera o envio (o bot manda no próximo ciclo)
+async function baZapAuthorizeSend(){
+  const chat = baZapCurrentChat; if(!chat) return;
+  if(!confirm('Autorizar o envio? Essa pessoa ainda não escreveu para o número: a mensagem automática será enviada agora.')) return;
+  const { error } = await sb.rpc('authorize_cold_send', { p_chat_id: chat });
+  if(error){ console.error('authorize_cold_send', error); alert('Não foi possível autorizar agora. Tenta de novo.'); return; }
+  baZapRenderThread();
 }
 async function baZapDeleteMessage(id){
   if(!confirm('Apagar esta mensagem para todos? Não tem como desfazer.')) return;
