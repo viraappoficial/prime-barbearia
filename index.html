@@ -841,16 +841,16 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
     </div>
 
     <div class="wstep" data-step="2">
-      <div class="chips" id="wDay"></div>
+      <div id="wBarberArea"></div>
     </div>
 
     <div class="wstep" data-step="3">
-      <div class="chips" id="wTime"></div>
-      <div id="wWaitlist" style="display:none"></div>
+      <div class="chips" id="wDay"></div>
     </div>
 
     <div class="wstep" data-step="4">
-      <div id="wBarberArea"></div>
+      <div class="chips" id="wTime"></div>
+      <div id="wWaitlist" style="display:none"></div>
     </div>
 
     <div class="wstep" data-step="5">
@@ -1023,7 +1023,7 @@ function primeShowAuthPrompt(reason){
 }
 const modal = document.getElementById('bookingModal');
 const steps = [...document.querySelectorAll('.wstep')];
-const labels = ["Escolha o serviço","Escolha o dia","Escolha o horário","Escolha o barbeiro","Seus dados"];
+const labels = ["Escolha o serviço","Escolha o barbeiro","Escolha o dia","Escolha o horário","Seus dados"];
 
 function openModal(){ modal.classList.add('open'); document.body.style.overflow='hidden'; buildDays(); primeRenderServiceChips(); }
 function closeModal(){ modal.classList.remove('open'); const appOpen = document.querySelector('#clientApp.open,#barberApp.open'); if(!appOpen) document.body.style.overflow=''; }
@@ -1051,7 +1051,7 @@ function render(){
   document.getElementById('wWizardNav').style.display = state.step===6 ? 'none' : 'flex';
   document.getElementById('wBack').disabled = state.step===1;
   const next = document.getElementById('wNext');
-  const ready = (state.step===1&&state.services.length>0)||(state.step===2&&state.day)||(state.step===3&&state.time)||(state.step===4&&state.barber)||state.step===5;
+  const ready = (state.step===1&&state.services.length>0)||(state.step===2&&state.barber)||(state.step===3&&state.day)||(state.step===4&&state.time)||state.step===5;
   next.disabled = !ready;
   next.textContent = state.step===5 ? 'Agendar' : 'Próximo →';
   if(state.step===5){
@@ -1125,17 +1125,24 @@ document.getElementById('wCouponApply').addEventListener('click', async ()=>{
   msgEl.style.color = 'var(--verde-neon)';
   render();
 });
-chipSelect('wDay', c=>{ state.day=c.dataset.iso; state.dayLabel=c.dataset.label; state.time=null; state.barber=null; state.barberId=null; buildTimes(); });
-chipSelect('wTime', c=>{ state.time=c.dataset.v; state.barber=null; state.barberId=null; });
+chipSelect('wDay', c=>{ state.day=c.dataset.iso; state.dayLabel=c.dataset.label; state.time=null; buildTimes(); });
+chipSelect('wTime', c=>{ state.time=c.dataset.v; });
 
 // próximos 10 dias com funcionamento
 const DIAS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+// barbeiro escolhido no passo 2 (null = sem preferência)
+function primeWizardBarber(){
+  if(!state.barberId || state.barberId==='any') return null;
+  const roster = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
+  return roster.find(b=>b.id===state.barberId) || null;
+}
 function buildDays(){
   const box=document.getElementById('wDay'); box.innerHTML='';
   const today=new Date();
   for(let i=0;i<10;i++){
     const d=new Date(today); d.setDate(today.getDate()+i);
     if(!HORARIOS[d.getDay()]) continue;
+    if(primeWizardBarber() && !resolveBarberHours(primeWizardBarber(), d.getDay())) continue;   // barbeiro folga nesse dia
     const label=`${DIAS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
     const btn=document.createElement('button');
     btn.className='chip'; btn.dataset.iso=primeLocalDate(d); btn.dataset.label=label;
@@ -1197,14 +1204,15 @@ async function buildTimes(){
     // indisponível = união de quem está ocupado (agendamento nesse horário) com quem
     // está bloqueado (bloqueio cruzando o intervalo do slot) — mesmo barbeiro contando
     // nos dois não dobra a conta, é união de conjunto, não soma
-    const scheduled = barbersScheduledAt(weekday, timeStr);
+    const escolhido = primeWizardBarber();
+    const scheduled = escolhido ? barbersScheduledAt(weekday, timeStr).filter(b=>b.id===escolhido.id) : barbersScheduledAt(weekday, timeStr);
     const bookedIds = bookedIdsByTime[timeStr] || new Set();
     const blockedIds = primeBlockedBarberIdsAt(dayBlocks, t, t+SLOT_MIN);
     const isTaken = scheduled.length===0 || scheduled.every(b => bookedIds.has(b.id) || blockedIds.has(b.id));
     slotCount++; if(isTaken) takenCount++;
     const btn=document.createElement('button');
     btn.className='chip'+(isTaken?' taken':''); btn.dataset.v=timeStr; btn.textContent=timeStr;
-    if(isTaken){ btn.disabled=true; btn.title='Nenhum barbeiro disponível nesse horário'; }
+    if(isTaken){ btn.disabled=true; btn.title = primeWizardBarber() ? 'Horário indisponível com esse barbeiro' : 'Nenhum barbeiro disponível nesse horário'; }
     box.appendChild(btn);
   }
   baRenderWaitlistCTA(slotCount>0 && takenCount===slotCount);
@@ -1243,20 +1251,8 @@ async function renderBarberStep(){
   await primeEnsureBarberRoster();
   const acc = typeof primeGetAccount==='function' ? primeGetAccount() : null;
   const favorite = acc && acc.favoriteBarber;
-  const allBarbers = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
-  const appts = await primeFetchDayAppointments(state.day);
-  const dayBlocks = await primeFetchDayBlocks(state.day);
-  const weekday = new Date(state.day+'T12:00:00').getDay();
-  const available = allBarbers.filter(b => {
-    const h = resolveBarberHours(b, weekday);
-    if(!h) return false;
-    const [oH,oM]=h[0].split(':').map(Number), [cH,cM]=h[1].split(':').map(Number);
-    const [tH,tM]=state.time.split(':').map(Number);
-    const t=tH*60+tM;
-    if(t<oH*60+oM || t+SLOT_MIN>cH*60+cM) return false;
-    if(primeBlockedBarberIdsAt(dayBlocks, t, t+SLOT_MIN).has(b.id)) return false;   // barbeiro com a agenda bloqueada nesse horário não aparece
-    return !appts.some(a=>a.day===state.day && a.time===state.time && a.barberId===b.id);
-  });
+  const available = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
+  const nomeAttr = n => n.replace(/"/g,'&quot;');
 
   if(!favorite && !state.barberIntroAnswered){
     area.innerHTML = `
@@ -1274,47 +1270,73 @@ async function renderBarberStep(){
   }
 
   if(!available.length){
-    area.innerHTML = '<p style="color:var(--prata-dim);text-align:center;padding:1rem 0">Nenhum barbeiro disponível nesse horário. Volte e escolha outro horário.</p>';
+    area.innerHTML = '<p style="color:var(--prata-dim);text-align:center;padding:1rem 0">Nenhum barbeiro disponível no momento.</p>';
     return;
   }
 
   const detailed = state.barberIntroAnswered==='detailed';
+  const anyActive = state.barberId==='any';
   if(detailed){
     area.innerHTML = `<div class="wbarber-list">${available.map(b=>{
       const p = barberDemoProfile(b.name);
       const isFav = b.name===favorite;
-      return `<div class="wbarber-card${state.barber===b.name?' active':''}" data-name="${b.name.replace(/"/g,'&quot;')}" data-id="${b.id}">
+      return `<div class="wbarber-card${state.barberId===b.id?' active':''}" data-name="${nomeAttr(b.name)}" data-id="${b.id}">
         ${isFav?'<span class="wbarber-star" title="Seu barbeiro favorito">★</span>':''}
         <div class="wbarber-ph"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg></div>
         <div class="wbarber-info"><h4>${b.name}</h4><p>${p.esp} · ${p.exp} de experiência</p></div>
       </div>`;
-    }).join('')}</div>`;
+    }).join('')}
+      <div class="wbarber-card${anyActive?' active':''}" data-name="Sem preferência" data-id="any"><div class="wbarber-info"><h4>Sem preferência</h4><p>O primeiro barbeiro livre no horário que você escolher</p></div></div></div>`;
   } else {
     area.innerHTML = `<div class="chips">${available.map(b=>
-      `<button class="chip${state.barber===b.name?' active':''}" data-name="${b.name.replace(/"/g,'&quot;')}" data-id="${b.id}">${b.name===favorite?'<span class="wbarber-chip-star">★</span>':''}${b.name}</button>`
-    ).join('')}</div>`;
+      `<button class="chip${state.barberId===b.id?' active':''}" data-name="${nomeAttr(b.name)}" data-id="${b.id}">${b.name===favorite?'<span class="wbarber-chip-star">★</span>':''}${b.name}</button>`
+    ).join('')}<button class="chip${anyActive?' active':''}" data-name="Sem preferência" data-id="any">Sem preferência</button></div>`;
   }
   area.querySelectorAll('[data-name]').forEach(el=>el.addEventListener('click', ()=>{
     state.barber = el.dataset.name;
     state.barberId = el.dataset.id;
+    state.day = null; state.dayLabel = null; state.time = null;   // trocou de barbeiro: dia e horário precisam ser escolhidos de novo
     renderBarberStep();
     render();
   }));
+}
+// "sem preferência": no fim, fica com o primeiro barbeiro livre nesse dia+horário (o favorito tem prioridade)
+async function primeAssignBarber(){
+  await primeEnsureBarberRoster();
+  const roster = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
+  const acc = typeof primeGetAccount==='function' ? primeGetAccount() : null;
+  const fav = acc && acc.favoriteBarber;
+  const appts = await primeFetchDayAppointments(state.day);
+  const blocks = await primeFetchDayBlocks(state.day);
+  const t = primeHhmmToMin(state.time);
+  const weekday = new Date(state.day+'T12:00:00').getDay();
+  const livres = roster.filter(b=>{
+    if(!barbersScheduledAt(weekday, state.time).some(x=>x.id===b.id)) return false;
+    if(primeBlockedBarberIdsAt(blocks, t, t+SLOT_MIN).has(b.id)) return false;
+    return !appts.some(a=>a.time===state.time && a.barberId===b.id);
+  }).sort((a,b)=> (b.name===fav) - (a.name===fav));
+  if(!livres.length) return false;
+  state.barber = livres[0].name; state.barberId = livres[0].id;
+  return true;
 }
 
 let lastBookingWaMsg = null;
 document.getElementById('wBack').addEventListener('click',()=>{ state.step=Math.max(1,state.step-1); render(); });
 document.getElementById('wNext').addEventListener('click', async ()=>{
   if(state.step<5){
-    if(state.step===3 && !primeIsLoggedIn()){
-      pendingBooking = {services:[...state.services], day:state.day, dayLabel:state.dayLabel, time:state.time};
+    if(state.step===4 && !primeIsLoggedIn()){
+      pendingBooking = {services:[...state.services], day:state.day, dayLabel:state.dayLabel, time:state.time, barber:state.barber, barberId:state.barberId};
       closeModal();
       primeShowAuthPrompt('booking');
       return;
     }
+    if(state.step===4 && state.barberId==='any' && !(await primeAssignBarber())){
+      alert('Esse horário acabou de ser ocupado. Escolha outro.'); await buildTimes(); render(); return;
+    }
     state.step++;
-    if(state.step===3) await buildTimes();
-    if(state.step===4) await renderBarberStep();
+    if(state.step===2) await renderBarberStep();
+    if(state.step===3) buildDays();
+    if(state.step===4) await buildTimes();
     render();
     return;
   }
@@ -1341,7 +1363,7 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
   if(!savedAppt){
     errEl.textContent = primeApptErrorMessage();
     errEl.style.display = 'block';
-    if(primeLastApptErrorCode==='SLOT_BLOCKED'){ alert(primeApptErrorMessage()); state.step = 3; state.time = null; state.barber = null; state.barberId = null; await buildTimes(); render(); }   // horário ficou indisponível: volta a escolher
+    if(primeLastApptErrorCode==='SLOT_BLOCKED'){ alert(primeApptErrorMessage()); state.step = 4; state.time = null; await buildTimes(); render(); }   // horário ficou indisponível: volta a escolher
     return;
   }
   // notifica o barbeiro sobre o novo pedido de agendamento
@@ -2841,9 +2863,8 @@ async function caToggleNotifs(){
 function caResumeBookingIfPending(){
   if(!pendingBooking) return;
   const p = pendingBooking; pendingBooking = null;
-  state.services = p.services; state.day = p.day; state.dayLabel = p.dayLabel; state.time = p.time; state.step = 4;
+  state.services = p.services; state.day = p.day; state.dayLabel = p.dayLabel; state.time = p.time; state.barber = p.barber; state.barberId = p.barberId; state.step = 5;
   openModal();
-  renderBarberStep();
   render();
 }
 function caLogout(){sb.auth.signOut();primeAccountCache=null;document.getElementById('clientApp').classList.remove('logged');primeSetLoggedIn(false);caShowLogin();caShow('ca-screen-login');document.querySelectorAll('#clientApp .ca-tab,#clientApp .tb-link').forEach(t=>t.classList.remove('active'));document.querySelector('#clientApp .ca-tab[data-tab=home]').classList.add('active');document.querySelector('#clientApp .tb-link[data-tab=home]').classList.add('active');updateNavAuthUI()}
