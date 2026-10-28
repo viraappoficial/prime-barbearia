@@ -1245,6 +1245,7 @@ async function renderBarberStep(){
   const favorite = acc && acc.favoriteBarber;
   const allBarbers = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
   const appts = await primeFetchDayAppointments(state.day);
+  const dayBlocks = await primeFetchDayBlocks(state.day);
   const weekday = new Date(state.day+'T12:00:00').getDay();
   const available = allBarbers.filter(b => {
     const h = resolveBarberHours(b, weekday);
@@ -1253,6 +1254,7 @@ async function renderBarberStep(){
     const [tH,tM]=state.time.split(':').map(Number);
     const t=tH*60+tM;
     if(t<oH*60+oM || t+SLOT_MIN>cH*60+cM) return false;
+    if(primeBlockedBarberIdsAt(dayBlocks, t, t+SLOT_MIN).has(b.id)) return false;   // barbeiro com a agenda bloqueada nesse horário não aparece
     return !appts.some(a=>a.day===state.day && a.time===state.time && a.barberId===b.id);
   });
 
@@ -1337,7 +1339,9 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
     next.disabled = false; next.classList.remove('btn-loading');
   }
   if(!savedAppt){
+    errEl.textContent = primeApptErrorMessage();
     errEl.style.display = 'block';
+    if(primeLastApptErrorCode==='SLOT_BLOCKED'){ alert(primeApptErrorMessage()); state.step = 3; state.time = null; state.barber = null; state.barberId = null; await buildTimes(); render(); }   // horário ficou indisponível: volta a escolher
     return;
   }
   // notifica o barbeiro sobre o novo pedido de agendamento
