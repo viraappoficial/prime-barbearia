@@ -1,9 +1,10 @@
 // Edge Function criar-pix: o site chama com { appointment_id, cpf, email? } e recebe o QR Code do Pix.
 // Deploy:   supabase functions deploy criar-pix           (com verificação de JWT: o site manda a chave pública do Supabase)
+// Provedor: PIX_PROVEDOR=infinitepay (INFINITEPAY_HANDLE, INFINITEPAY_REDIRECT_URL e, só se a conta exigir, INFINITEPAY_TOKEN), mercadopago ou pagbank.
 // Segredos: supabase secrets set MP_ACCESS_TOKEN=...      (SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já existem no ambiente)
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { criarPix, type Repo } from "./handler.ts";
-import { provedorMercadoPago, provedorPagBank } from "../_shared/provedores.ts";
+import { provedorInfinitePay, provedorMercadoPago, provedorPagBank } from "../_shared/provedores.ts";
 
 const ORIGENS = ["https://primebarbearia.app.br", "https://www.primebarbearia.app.br", "https://staff.primebarbearia.app.br"];
 const cors = (req: Request) => ({
@@ -13,6 +14,7 @@ const cors = (req: Request) => ({
   "Vary": "Origin",
 });
 
+const PROVEDOR = Deno.env.get("PIX_PROVEDOR") ?? "pagbank";   // infinitepay | mercadopago | pagbank
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const must = <T>(r: { data: T; error: { message: string } | null }): T => { if (r.error) throw new Error(r.error.message); return r.data; };
 
@@ -38,10 +40,12 @@ Deno.serve(async (req) => {
       agora: () => new Date(),
       novoId: () => crypto.randomUUID(),
       log: (m) => console.error(m),
-      provedor: (Deno.env.get("PIX_PROVEDOR") ?? "pagbank") === "mercadopago"
+      provedor: PROVEDOR === "infinitepay"
+        ? provedorInfinitePay({ handle: Deno.env.get("INFINITEPAY_HANDLE") ?? "", token: Deno.env.get("INFINITEPAY_TOKEN") || undefined, urlRetorno: Deno.env.get("INFINITEPAY_REDIRECT_URL") || undefined })
+        : PROVEDOR === "mercadopago"
         ? provedorMercadoPago({ token: Deno.env.get("MP_ACCESS_TOKEN") ?? "" })
         : provedorPagBank({ token: Deno.env.get("PAGBANK_TOKEN") ?? "", sandbox: (Deno.env.get("PAGBANK_SANDBOX") ?? "true") !== "false" }),
-      urlAviso: (Deno.env.get("PIX_PROVEDOR") ?? "pagbank") === "mercadopago" ? `${Deno.env.get("SUPABASE_URL")}/functions/v1/aviso-mp` : `${Deno.env.get("SUPABASE_URL")}/functions/v1/aviso-pagbank`,
+      urlAviso: `${Deno.env.get("SUPABASE_URL")}/functions/v1/${PROVEDOR === "infinitepay" ? "aviso-infinitepay" : PROVEDOR === "mercadopago" ? "aviso-mp" : "aviso-pagbank"}`,
     });
     return new Response(JSON.stringify(r.body), { status: r.status, headers });
   } catch (e) {

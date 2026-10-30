@@ -52,12 +52,12 @@ export async function criarPix(entrada: { appointment_id?: unknown; cpf?: unknow
     { valor: calc.total, descricao: `Prime Barbearia - ${(ag.services ?? []).join(" + ")}`, email, nome: ag.client_name ?? "Cliente", cpf, referencia: id, urlAviso: deps.urlAviso, expira },
     `pix-${id}`,   // a mesma chave numa repetição nunca cobra duas vezes
   );
-  if (!r.ok || !r.qr_code) {
+  if (!r.ok || (!r.qr_code && !r.ticket_url)) {   // Mercado Pago/PagBank devolvem QR Code; InfinitePay devolve só o link do checkout
     deps.log?.(`criar-pix: o provedor recusou (HTTP ${r.status}): ${r.erro ?? ""}`);
     await repo.atualizarPagamento(id, { status: "cancelado" });
     return { status: 502, body: { erro: "provedor_indisponivel" } };
   }
-  const pagamento: Pagamento = { id, status: "pendente", amount: calc.total, expires_at: new Date(Date.parse(expira)).toISOString(), pix_qr_code: r.qr_code, pix_qr_base64: r.qr_base64 ?? null, ticket_url: r.ticket_url ?? null };
+  const pagamento: Pagamento = { id, status: "pendente", amount: calc.total, expires_at: new Date(Date.parse(expira)).toISOString(), pix_qr_code: r.qr_code ?? null, pix_qr_base64: r.qr_base64 ?? null, ticket_url: r.ticket_url ?? null };
   await repo.atualizarPagamento(id, { provider_payment_id: String(r.id), pix_qr_code: pagamento.pix_qr_code, pix_qr_base64: pagamento.pix_qr_base64, ticket_url: pagamento.ticket_url });
   await repo.marcarAgendamento(appId, { payment_status: "pendente", reserved_until: pagamento.expires_at });
   return { status: 200, body: resposta(pagamento) };
