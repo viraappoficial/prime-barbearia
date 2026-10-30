@@ -884,7 +884,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
       <div style="text-align:center;padding:1.2rem 0">
         <div style="font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dourado);margin-bottom:.5rem">Pagamento</div>
         <div id="wPayTotal" style="font-family:var(--font-display);font-size:2rem;color:var(--dourado);margin-bottom:.8rem"></div>
-        <p style="color:var(--prata-dim);font-size:.88rem;line-height:1.5;margin-bottom:1.4rem">Você escolhe como pagar na próxima tela, que é segura e da InfinitePay: <b style="color:var(--prata)">Pix</b>, <b style="color:var(--prata)">cartão</b> ou <b style="color:var(--prata)">Apple Pay</b>. O pagamento é confirmado sozinho e você pode pagar depois, no local, se preferir.</p>
+        <p style="color:var(--prata-dim);font-size:.88rem;line-height:1.5;margin-bottom:1.4rem">Você escolhe como pagar na próxima tela, que é segura e da InfinitePay: <b style="color:var(--prata)">Pix</b> (aprovado na hora), <b style="color:var(--prata)">cartão</b> ou <b style="color:var(--prata)">Apple Pay</b>. O pagamento é confirmado sozinho e você pode pagar depois, no local, se preferir.</p>
         <p id="wPayErr" style="color:var(--erro);font-size:.82rem;margin-bottom:.8rem;display:none">Não foi possível abrir o pagamento agora. Tente de novo ou pague no local.</p>
         <button class="btn btn-primary" id="wPayGo" style="margin-bottom:.8rem">Ir para o pagamento</button>
         <button class="btn btn-ghost" id="wPayBack">Voltar</button>
@@ -5111,6 +5111,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="comissoes" onclick="baFinanceiroTab('comissoes')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Comissões</button>
             <button class="ba-btn ghost" data-fin="fluxo" onclick="baFinanceiroTab('fluxo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Fluxo de caixa</button>
             <button class="ba-btn ghost" data-fin="corrigir" onclick="baFinanceiroTab('corrigir')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Corrigir vendas</button>
+            <button class="ba-btn ghost" data-fin="concilia" onclick="baFinanceiroTab('concilia')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Conciliação</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -5296,21 +5297,23 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           </div>
 
           <div id="ba-fin-taxas" style="display:none">
-            <div class="ba-slabel" style="margin-top:0">Taxas de maquininha</div>
-            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Taxa cobrada pela maquininha por forma, bandeira e parcelamento — usada na conciliação financeira (quanto do faturamento em cartão/pix realmente entra líquido).</p>
+            <div class="ba-slabel" style="margin-top:0">Taxas de pagamento</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Duas tabelas, uma para cada jeito de receber. Servem para estimar quanto do faturamento entra líquido (DRE e Conciliação).</p>
+            <div class="ba-slabel">Pagamento online (link do site e do Léo)</div>
+            <div id="ba-taxas-list-online"></div>
+            <div class="ba-slabel">InfiniteTap / maquininha</div>
             <div id="ba-taxas-list"></div>
             <div class="ba-slabel">Nova taxa</div>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-              <select id="ba-taxa-forma" class="add-input" style="flex:1;min-width:130px" onchange="baTaxaFormaChanged()">
-                <option value="debito">Débito</option>
-                <option value="credito">Crédito</option>
-                <option value="pix_qrs">Pix maquininha</option>
+              <select id="ba-taxa-canal" class="add-input" style="flex:1;min-width:150px" onchange="baTaxaFormaChanged()">
+                <option value="online">Pagamento online</option>
+                <option value="maquininha">InfiniteTap / maquininha</option>
               </select>
+              <select id="ba-taxa-forma" class="add-input" style="flex:1;min-width:130px" onchange="baTaxaFormaChanged()"></select>
               <select id="ba-taxa-bandeira" class="add-input" style="flex:1;min-width:120px"></select>
               <select id="ba-taxa-parcelas" class="add-input" style="flex:1;min-width:90px;display:none">
-                <option value="1">1x</option>
-                <option value="2">2x</option>
-                <option value="3">3x</option>
+                <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
+                <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
               </select>
               <input type="text" inputmode="decimal" id="ba-taxa-pct" class="add-input" placeholder="Taxa %" style="flex:1;min-width:90px">
             </div>
@@ -5361,6 +5364,21 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             </div>
             <div class="ba-slabel">Linha do tempo</div>
             <div id="ba-fluxo-list"></div>
+          </div>
+
+          <div id="ba-fin-concilia" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Conciliação</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Confere o que entrou pela InfinitePay com o que está lançado no sistema, e estima a taxa pelas tabelas cadastradas em Taxas de maquininha.</p>
+            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.9rem">
+              <input type="month" id="ba-conc-mes" onchange="baRenderConciliacao()">
+              <button class="ba-btn" style="padding:.4rem .9rem;font-size:.72rem" onclick="baRenderConciliacao()">Atualizar</button>
+            </div>
+            <div id="ba-conc-online"></div>
+            <div id="ba-conc-maq"></div>
+            <div class="ba-slabel">Conferir com o relatório da InfinitePay</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.6rem">No app da InfinitePay, abra "Suas vendas", exporte o relatório do mês em <b>CSV</b> e escolha o arquivo aqui. O arquivo é lido só no seu aparelho; nada é enviado.</p>
+            <input type="file" id="ba-conc-arquivo" accept=".csv,text/csv,text/plain" onchange="baConcLerArquivo(this)">
+            <div id="ba-conc-resultado" style="margin-top:.8rem"></div>
           </div>
 
           <div id="ba-fin-corrigir" style="display:none">
@@ -6835,6 +6853,7 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-comissoes').style.display = sub==='comissoes' ? 'block' : 'none';
   document.getElementById('ba-fin-fluxo').style.display = sub==='fluxo' ? 'block' : 'none';
   document.getElementById('ba-fin-corrigir').style.display = sub==='corrigir' ? 'block' : 'none';
+  document.getElementById('ba-fin-concilia').style.display = sub==='concilia' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
   if(sub==='caixa') baRenderCaixa();
   if(sub==='aprazo') baRenderAPrazo();
@@ -6842,6 +6861,7 @@ function baFinanceiroTab(sub){
   if(sub==='comissoes') baRenderComissoes();
   if(sub==='fluxo') baRenderFluxoCaixa();
   if(sub==='corrigir') baRenderCorrigirVendas();
+  if(sub==='concilia') baRenderConciliacao();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
@@ -8375,13 +8395,19 @@ function baPopulatePlanoContaSelect(){
 const BA_TAXA_BANDEIRAS = ['Visa', 'Mastercard', 'Elo', 'Amex', 'Outra'];
 let baTaxasMaquininhaCache = [];
 function baTaxaFormaLabel(forma){
-  return forma==='debito' ? 'Débito' : forma==='credito' ? 'Crédito' : 'Pix maquininha';
+  return forma==='debito' ? 'Débito' : forma==='credito' ? 'Crédito' : forma==='pix_online' ? 'Pix online' : 'Pix maquininha';
 }
 function baTaxaFormaChanged(){
-  const forma = document.getElementById('ba-taxa-forma').value;
+  const canal = document.getElementById('ba-taxa-canal').value;
+  const formaEl = document.getElementById('ba-taxa-forma');
+  const formas = canal==='online' ? ['credito','pix_online'] : ['debito','credito','pix_qrs'];
+  if(![...formaEl.options].map(o=>o.value).every((v,i)=>v===formas[i]) || formaEl.options.length!==formas.length){
+    formaEl.innerHTML = formas.map(f=>`<option value="${f}">${baTaxaFormaLabel(f)}</option>`).join('');
+  }
+  const forma = formaEl.value;
   const bandeiraEl = document.getElementById('ba-taxa-bandeira');
   const parcelasEl = document.getElementById('ba-taxa-parcelas');
-  if(forma==='pix_qrs'){
+  if(forma==='pix_qrs' || forma==='pix_online' || canal==='online'){
     bandeiraEl.style.display = 'none';
     bandeiraEl.innerHTML = '';
   } else {
@@ -8395,29 +8421,36 @@ async function baFetchTaxasMaquininha(){
   if(error){ console.error('baFetchTaxasMaquininha', error); return []; }
   return data || [];
 }
-async function baRenderTaxasMaquininha(){
-  const listEl = document.getElementById('ba-taxas-list');
-  baTaxasMaquininhaCache = await baFetchTaxasMaquininha();
-  baTaxaFormaChanged();
-  if(!listEl) return;
-  listEl.innerHTML = baTaxasMaquininhaCache.length ? `<div class="cad-table-wrap"><table class="cad-table">
+function baTaxasTabelaHtml(lista, vazio){
+  if(!lista.length) return `<p style="color:var(--prata-dim);font-size:.78rem">${vazio}</p>`;
+  return `<div class="cad-table-wrap"><table class="cad-table">
     <thead><tr><th>Forma</th><th>Bandeira</th><th>Parcelas</th><th>Taxa</th><th></th></tr></thead>
-    <tbody>${baTaxasMaquininhaCache.map(t=>
+    <tbody>${lista.map(t=>
       `<tr><td>${baTaxaFormaLabel(t.forma)}</td><td>${t.bandeira||'—'}</td><td>${t.forma==='credito'?t.parcelas+'x':'—'}</td><td>${Number(t.taxa_pct).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%</td><td><span class="cad-remove" onclick="baRemoveTaxaMaquininha(${t.id})">remover</span></td></tr>`
     ).join('')}</tbody>
-  </table></div>` : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhuma taxa cadastrada.</p>';
+  </table></div>`;
+}
+async function baRenderTaxasMaquininha(){
+  baTaxasMaquininhaCache = await baFetchTaxasMaquininha();
+  baTaxaFormaChanged();
+  const online = baTaxasMaquininhaCache.filter(t=>t.canal==='online');
+  const maq = baTaxasMaquininhaCache.filter(t=>t.canal!=='online');
+  const o = document.getElementById('ba-taxas-list-online'), m = document.getElementById('ba-taxas-list');
+  if(o) o.innerHTML = baTaxasTabelaHtml(online, 'Nenhuma taxa cadastrada.') + (online.some(t=>t.forma==='pix_online') ? '' : '<p style="color:var(--prata-dim);font-size:.76rem;margin-top:.4rem">Pix online ainda sem taxa cadastrada: conta como sem taxa até você cadastrar.</p>');
+  if(m) m.innerHTML = baTaxasTabelaHtml(maq, 'Nenhuma taxa cadastrada.');
 }
 async function baAddTaxaMaquininha(){
   const errEl = document.getElementById('ba-taxa-err');
   errEl.style.display = 'none';
+  const canal = document.getElementById('ba-taxa-canal').value;
   const forma = document.getElementById('ba-taxa-forma').value;
-  const bandeira = forma==='pix_qrs' ? null : document.getElementById('ba-taxa-bandeira').value;
+  const bandeira = (forma==='pix_qrs' || forma==='pix_online') ? null : canal==='online' ? 'Todas' : document.getElementById('ba-taxa-bandeira').value;
   const parcelas = forma==='credito' ? Number(document.getElementById('ba-taxa-parcelas').value) : 1;
   const pctEl = document.getElementById('ba-taxa-pct');
   const taxa_pct = parseFloat((pctEl.value||'').replace(',','.'));
   function fail(msg){ errEl.textContent = msg; errEl.style.display = 'block'; }
   if(isNaN(taxa_pct) || taxa_pct<0) return fail('Digite uma taxa válida.');
-  const { error } = await sb.from('taxas_maquininha').insert({ forma, bandeira, parcelas, taxa_pct });
+  const { error } = await sb.from('taxas_maquininha').insert({ canal, forma, bandeira, parcelas, taxa_pct });
   if(error){ console.error('baAddTaxaMaquininha', error); return fail('Não foi possível salvar. Tente de novo.'); }
   pctEl.value = '';
   await baRenderTaxasMaquininha();
@@ -8426,6 +8459,158 @@ async function baRemoveTaxaMaquininha(id){
   const { error } = await sb.from('taxas_maquininha').delete().eq('id', id);
   if(error) console.error('baRemoveTaxaMaquininha', error);
   await baRenderTaxasMaquininha();
+}
+
+// ══ Conciliação (admin): pagamentos online + maquininha do mês e conferência com o CSV da InfinitePay ══
+function baConcMoney(v){ return Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function baConcNum(t){   // "R$ 1.234,56" | "1234.56" | "-12,3" -> número
+  let x = String(t==null?'':t).replace(/[^\d,.\-]/g,'');
+  if(!x) return NaN;
+  if(x.includes(',')) x = x.replace(/\./g,'').replace(',','.');
+  return parseFloat(x);
+}
+function baConcData(t){   // "30/10/2026 14:05" | "2026-10-30T..." -> "AAAA-MM-DD"
+  const x = String(t||'').trim();
+  let m = x.match(/(\d{2})\/(\d{2})\/(\d{4})/); if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  m = x.match(/(\d{4})-(\d{2})-(\d{2})/); return m ? m[0] : '';
+}
+function baConcCsv(texto){   // separa linhas/colunas, com aspas e ; ou ,
+  const t = String(texto).replace(/^﻿/,'');
+  const primeira = t.split(/\r?\n/)[0]||'';
+  const sep = (primeira.match(/;/g)||[]).length >= (primeira.match(/,/g)||[]).length ? ';' : ',';
+  const linhas = []; let cel = '', lin = [], aspas = false;
+  for(let i=0;i<t.length;i++){
+    const c = t[i];
+    if(aspas){ if(c==='"'){ if(t[i+1]==='"'){ cel+='"'; i++; } else aspas=false; } else cel+=c; }
+    else if(c==='"') aspas = true;
+    else if(c===sep){ lin.push(cel); cel=''; }
+    else if(c==='\n'){ lin.push(cel); cel=''; if(lin.some(x=>x.trim())) linhas.push(lin); lin=[]; }
+    else if(c!=='\r') cel+=c;
+  }
+  lin.push(cel); if(lin.some(x=>x.trim())) linhas.push(lin);
+  return linhas;
+}
+// acha as colunas pelo nome do cabeçalho; devolve { linhas:[{data,valor,liquido,taxa,nsu,forma,parcelas}], faltando:[...] }
+function baConcLerRelatorio(texto){
+  const g = baConcCsv(texto);
+  if(g.length<2) return { linhas:[], faltando:['cabeçalho'] };
+  const norm = x=>String(x).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const cab = g[0].map(norm);
+  const acha = (...res)=>{ for(const r of res){ const i = cab.findIndex(c=>r.test(c)); if(i>=0) return i; } return -1; };
+  const col = {
+    data: acha(/^data/, /data/, /date/, /hora/),
+    valor: acha(/valor.*bruto|bruto/, /^valor/, /valor/, /amount/),
+    liquido: acha(/liquido|net/),
+    taxa: acha(/^taxa|taxa|fee|desconto/),
+    nsu: acha(/nsu/, /autoriza/, /codigo|id da|^id/),
+    forma: acha(/metodo|forma|modalidade|tipo/),
+    parcelas: acha(/parcela/),
+  };
+  const faltando = ['data','valor'].filter(k=>col[k]<0);
+  const v = (l,k)=> col[k]>=0 ? (l[col[k]]||'').trim() : '';
+  const linhas = g.slice(1).map(l=>({ data: baConcData(v(l,'data')), valor: baConcNum(v(l,'valor')), liquido: baConcNum(v(l,'liquido')), taxa: baConcNum(v(l,'taxa')), nsu: v(l,'nsu'), forma: v(l,'forma'), parcelas: parseInt(v(l,'parcelas'),10)||null }))
+    .filter(r=>r.data && !isNaN(r.valor));
+  return { linhas, faltando };
+}
+function baConcDiaDiff(a,b){ return Math.abs((Date.parse(a+'T12:00:00Z')-Date.parse(b+'T12:00:00Z'))/86400000); }
+// casa as linhas do relatório com as do sistema: primeiro pelo NSU/id, depois por valor + data (até 1 dia de diferença), um para um
+function baConcCasar(relatorio, sistema){
+  const usados = new Set(), pares = [], soRelatorio = [];
+  const livres = () => sistema.filter(x=>!usados.has(x));
+  for(const r of relatorio){
+    let alvo = r.nsu ? livres().find(x=>x.ids.some(id=>id && String(id)===String(r.nsu))) : null;
+    if(!alvo) alvo = livres().filter(x=>Math.abs(x.valor-r.valor)<0.005 && x.data && baConcDiaDiff(x.data, r.data)<=1).sort((a,b)=>baConcDiaDiff(a.data,r.data)-baConcDiaDiff(b.data,r.data))[0];
+    if(alvo){ usados.add(alvo); pares.push({ r, x: alvo }); } else soRelatorio.push(r);
+  }
+  return { pares, soRelatorio, soSistema: sistema.filter(x=>!usados.has(x)) };
+}
+let baConcSistema = [];
+async function baConcCarregar(mes){
+  const ini = `${mes}-01T00:00:00-03:00`;
+  const [y,m] = mes.split('-').map(Number);
+  const fim = `${m===12?y+1:y}-${String(m===12?1:m+1).padStart(2,'0')}-01T00:00:00-03:00`;
+  const [pg, sp, taxas] = await Promise.all([
+    sb.from('appointment_payments').select('id,appointment_id,amount,fee,net_amount,paid_at,provider_payment_id,capture_method,installments').eq('status','aprovado').gte('paid_at',ini).lt('paid_at',fim).order('paid_at'),
+    sb.from('sale_payments').select('id,nota_id,method,value,parcelas,bandeira,nsu,created_at').in('method',['debito','credito','pix_qrs']).gte('created_at',ini).lt('created_at',fim).order('created_at'),
+    baFetchTaxasMaquininha(),
+  ]);
+  if(pg.error) console.error('conciliacao pagamentos', pg.error);
+  if(sp.error) console.error('conciliacao vendas', sp.error);
+  const online = pg.data||[], maq = sp.data||[];
+  const ids = online.map(p=>p.appointment_id);
+  let appts = [], vendas = [];
+  if(ids.length){
+    const a = await sb.from('appointments').select('id,client_name,day,services,status').in('id', ids); appts = a.data||[];
+    const v = await sb.from('sales').select('appointment_id').in('appointment_id', ids); vendas = v.data||[];
+  }
+  return { online, maq, taxas, appts, vendas };
+}
+function baConcOnlineLinha(p, taxas){
+  const pix = /pix/i.test(p.capture_method||'');
+  const parcelas = p.installments || 1;
+  let taxa = null;
+  if(p.fee!=null) taxa = Number(p.fee);
+  else if(pix){ const t = taxas.find(t=>t.canal==='online' && t.forma==='pix_online'); taxa = t ? Number(p.amount)*Number(t.taxa_pct)/100 : null; }
+  else if(p.capture_method){ const t = baTaxaOnlineCredito(taxas, parcelas); taxa = t ? Number(p.amount)*Number(t.taxa_pct)/100 : null; }
+  const como = !p.capture_method ? '—' : pix ? 'Pix' : `Cartão ${parcelas}x`;
+  return { como, taxa: taxa==null ? null : Math.round(taxa*100)/100 };
+}
+async function baRenderConciliacao(){
+  const inp = document.getElementById('ba-conc-mes');
+  if(!inp.value) inp.value = primeLocalDate().slice(0,7);
+  const on = document.getElementById('ba-conc-online'), mq = document.getElementById('ba-conc-maq');
+  on.innerHTML = '<p style="color:var(--prata-dim)">Carregando…</p>'; mq.innerHTML = '';
+  const d = await baConcCarregar(inp.value);
+  const hoje = primeLocalDate();
+  const apptPor = Object.fromEntries(d.appts.map(a=>[a.id,a]));
+  const comVenda = new Set(d.vendas.map(v=>v.appointment_id));
+  baConcSistema = [];
+  let bruto = 0, taxaTot = 0, semTaxa = 0;
+  const linhas = d.online.map(p=>{
+    const a = apptPor[p.appointment_id]||{}, c = baConcOnlineLinha(p, d.taxas), valor = Number(p.amount);
+    bruto += valor; if(c.taxa==null) semTaxa++; else taxaTot += c.taxa;
+    baConcSistema.push({ origem:'online', valor, data: baConcData(new Date(p.paid_at).toLocaleString('sv-SE',{timeZone:'America/Sao_Paulo'})), ids:[p.provider_payment_id, p.id] });
+    const sit = comVenda.has(p.appointment_id) ? '<span style="color:var(--verde-neon)">Lançado no caixa ✓</span>'
+      : (a.status==='cancelado' ? '<span style="color:var(--erro)">Cancelado: avaliar estorno</span>'
+      : (a.day && a.day < hoje ? '<span style="color:var(--alerta)">Pago, sem venda lançada</span>' : '<span style="color:var(--prata-dim)">Aguardando atendimento</span>'));
+    const data = new Date(p.paid_at).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'});
+    return `<tr><td>${data}</td><td>${primeEsc(a.client_name||'—')}</td><td>${baConcMoney(valor)}</td><td>${c.como}</td><td>${c.taxa==null?'—':baConcMoney(c.taxa)}</td><td>${sit}</td></tr>`;
+  });
+  on.innerHTML = `<div class="ba-slabel">Pagamento online (site e Léo)</div>` + (linhas.length
+    ? `<p style="font-size:.82rem;margin-bottom:.5rem">${linhas.length} pagamento(s) · bruto <b>${baConcMoney(bruto)}</b> · taxa estimada <b>${baConcMoney(taxaTot)}</b> · líquido estimado <b>${baConcMoney(bruto-taxaTot)}</b>${semTaxa?` <span style="color:var(--alerta)">· ${semTaxa} sem taxa (Pix sem taxa cadastrada ou pagamento antigo)</span>`:''}</p>
+       <div class="cad-table-wrap"><table class="cad-table"><thead><tr><th>Data</th><th>Cliente</th><th>Valor</th><th>Como pagou</th><th>Taxa est.</th><th>Situação</th></tr></thead><tbody>${linhas.join('')}</tbody></table></div>`
+    : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhum pagamento online neste mês.</p>');
+  // maquininha / InfiniteTap
+  const est = baEstimateTaxaMaquininha(d.maq.map(x=>({ ...x, value:Number(x.value) })), d.taxas);
+  const totMaq = d.maq.reduce((t,x)=>t+Number(x.value),0);
+  d.maq.forEach(x=>baConcSistema.push({ origem:'maquininha', valor:Number(x.value), data: baConcData(new Date(x.created_at).toLocaleString('sv-SE',{timeZone:'America/Sao_Paulo'})), ids:[x.nsu] }));
+  const porForma = {}; d.maq.forEach(x=>{ porForma[x.method] = (porForma[x.method]||0) + Number(x.value); });
+  const nome = { debito:'Débito', credito:'Crédito', pix_qrs:'Pix maquininha' };
+  mq.innerHTML = `<div class="ba-slabel">InfiniteTap / maquininha</div>` + (d.maq.length
+    ? `<p style="font-size:.82rem">${d.maq.length} recebimento(s) · bruto <b>${baConcMoney(totMaq)}</b> · taxa estimada <b>${baConcMoney(est.valor)}</b> · líquido estimado <b>${baConcMoney(totMaq-est.valor)}</b>${est.semTaxa?` <span style="color:var(--alerta)">· ${est.semTaxa} sem taxa cadastrada</span>`:''}</p>
+       <p style="color:var(--prata-dim);font-size:.78rem">${Object.entries(porForma).map(([k,v])=>`${nome[k]}: ${baConcMoney(v)}`).join(' · ')}</p>`
+    : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhum recebimento de cartão/Pix de maquininha neste mês.</p>');
+  document.getElementById('ba-conc-resultado').innerHTML = '';
+}
+function baConcLerArquivo(input){
+  const f = input.files && input.files[0];
+  const box = document.getElementById('ba-conc-resultado');
+  if(!f) return;
+  if(/\.xlsx?$/i.test(f.name)){ box.innerHTML = '<p class="ba-err" style="display:block">Esse formato (Excel) eu ainda não leio. Abra o arquivo e use "Salvar como CSV", depois escolha o CSV aqui.</p>'; return; }
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    const rel = baConcLerRelatorio(String(rd.result));
+    if(rel.faltando.length || !rel.linhas.length){ box.innerHTML = `<p class="ba-err" style="display:block">Não encontrei as colunas ${rel.faltando.length?rel.faltando.join(' e '):'de data e valor'} no arquivo. Confira se é o relatório de vendas da InfinitePay em CSV.</p>`; return; }
+    const r = baConcCasar(rel.linhas, baConcSistema);
+    const totRel = rel.linhas.reduce((t,x)=>t+x.valor,0);
+    const taxaReal = rel.linhas.filter(x=>!isNaN(x.taxa)).reduce((t,x)=>t+Math.abs(x.taxa),0);
+    const liqReal = rel.linhas.filter(x=>!isNaN(x.liquido)).reduce((t,x)=>t+x.liquido,0);
+    const li = (a,txt)=> a.length ? `<div class="cad-table-wrap"><table class="cad-table"><tbody>${a.map(txt).join('')}</tbody></table></div>` : '<p style="color:var(--prata-dim);font-size:.78rem">Nenhum.</p>';
+    box.innerHTML = `<p style="font-size:.86rem"><b>${r.pares.length}</b> conferido(s) de ${rel.linhas.length} no relatório (${baConcMoney(totRel)})${taxaReal?` · taxa real <b>${baConcMoney(taxaReal)}</b>`:''}${liqReal?` · líquido real <b>${baConcMoney(liqReal)}</b>`:''}</p>
+      <div class="ba-slabel">No relatório e não no sistema (${r.soRelatorio.length})</div>${li(r.soRelatorio, x=>`<tr><td>${x.data.split('-').reverse().join('/')}</td><td>${baConcMoney(x.valor)}</td><td>${primeEsc(x.forma||'')}</td><td>${primeEsc(x.nsu||'')}</td></tr>`)}
+      <div class="ba-slabel">No sistema e não no relatório (${r.soSistema.length})</div>${li(r.soSistema, x=>`<tr><td>${x.data.split('-').reverse().join('/')}</td><td>${baConcMoney(x.valor)}</td><td>${x.origem==='online'?'Online':'Maquininha'}</td></tr>`)}`;
+  };
+  rd.readAsText(f, 'utf-8');
 }
 
 // ══ Fechamento de comissão por barbeiro (admin) — vira uma Conta a Pagar de verdade (expenses,
@@ -8578,10 +8763,16 @@ async function baFetchSalePaymentsByNotaIds(notaIds){
   return data||[];
 }
 function baFindTaxaMaquininha(taxas, method, bandeira, parcelas){
-  if(method==='pix_qrs') return taxas.find(t=>t.forma==='pix_qrs');
-  if(method==='debito') return taxas.find(t=>t.forma==='debito' && t.bandeira===bandeira);
-  if(method==='credito') return taxas.find(t=>t.forma==='credito' && t.bandeira===bandeira && t.parcelas===parcelas);
+  const maq = taxas.filter(t=>t.canal!=='online');
+  if(method==='pix_online') return taxas.find(t=>t.canal==='online' && t.forma==='pix_online');
+  if(method==='pix_qrs') return maq.find(t=>t.forma==='pix_qrs');
+  if(method==='debito') return maq.find(t=>t.forma==='debito' && t.bandeira===bandeira);
+  if(method==='credito') return maq.find(t=>t.forma==='credito' && t.bandeira===bandeira && t.parcelas===parcelas);
   return null;
+}
+// crédito do pagamento online: a bandeira não vem do checkout, vale a tabela "Pagamento online"
+function baTaxaOnlineCredito(taxas, parcelas){
+  return taxas.find(t=>t.canal==='online' && t.forma==='credito' && t.parcelas===(parcelas||1));
 }
 // retorna { valor, semTaxa } — semTaxa conta recebimentos de cartão/pix maquininha sem taxa cadastrada pra aquela combinação
 function baEstimateTaxaMaquininha(payments, taxas){

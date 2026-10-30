@@ -9,7 +9,7 @@ const aviso = (o: any = {}) => JSON.stringify({ order_nsu: ID, transaction_nsu: 
 function montar(json: any, linha: any = { id: ID, status: "pendente", appointment_id: 7, amount: 45 }, ok = true) {
   const c: any = { aprovados: [], consultas: [] };
   const deps: Deps = {
-    repo: { async cobranca() { return linha; }, async registrarAprovado(id, p, fee, net, pago) { c.aprovados.push({ id, p, fee, net }); return "ok"; } },
+    repo: { async cobranca() { return linha; }, async registrarAprovado(id, p, fee, net, pago, como) { c.aprovados.push({ id, p, fee, net }); c.como = como; return "ok"; } },
     infinitepay: { async consultar(q) { c.consultas.push(q); return { ok, status: ok ? 200 : 500, json }; } },
     agora: () => new Date("2026-10-30T12:00:00Z"),
   };
@@ -63,4 +63,10 @@ test("provedor: cria o link em centavos com order_nsu e webhook; token só se ex
   assert.equal(ruim.ok, false);
   const c = await consultarPagamentoInfinitePay({ handle: "$t", fetch: f }, { order_nsu: ID, transaction_nsu: "T", slug: "S" });
   assert.equal(chamadas[2].url, "https://api.infinitepay.io/invoices/public/checkout/payment_check"); assert.equal(JSON.parse(chamadas[2].init.body).handle, "t"); assert.equal(c.ok, true);
+});
+
+test("guarda como o cliente pagou (pix ou cartão e parcelas) pra Conciliação estimar a taxa", async () => {
+  const { deps, c } = montar({ paid: true, paid_amount: 4500, capture_method: "credit_card", installments: 1 });
+  await tratarAvisoInfinitePay(aviso(), deps);
+  assert.deepEqual(c.como, { capture_method: "credit_card", installments: 1 });
 });

@@ -14,9 +14,10 @@ const repo: Repo = {
     if (error) throw new Error(error.message);
     return data ? { ...(data as any), amount: Number((data as any).amount) } : null;
   },
-  async registrarAprovado(id, providerId, fee, net, pagoEm) {
+  async registrarAprovado(id, providerId, fee, net, pagoEm, como) {
     const { data, error } = await db.rpc("registrar_pagamento_aprovado", { p_payment_id: id, p_provider_id: providerId, p_fee: fee, p_net: net, p_paid_at: pagoEm });
     if (error) throw new Error(error.message);
+    if (como) await db.from("appointment_payments").update(como).eq("id", id);   // não derruba a baixa se falhar
     return String(data);
   },
 };

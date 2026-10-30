@@ -4,7 +4,7 @@
 
 export interface Repo {
   cobranca(id: string): Promise<{ id: string; status: string; appointment_id: number; amount: number } | null>;
-  registrarAprovado(id: string, providerId: string, fee: number | null, net: number | null, pagoEm: string): Promise<string>;
+  registrarAprovado(id: string, providerId: string, fee: number | null, net: number | null, pagoEm: string, como?: { capture_method: string | null; installments: number | null }): Promise<string>;
 }
 export interface InfinitePay { consultar(q: { order_nsu: string; transaction_nsu: string; slug: string }): Promise<{ ok: boolean; status: number; json: any }>; }
 export type Deps = { repo: Repo; infinitepay: InfinitePay; agora?: () => Date; log?: (m: string) => void };
@@ -36,7 +36,8 @@ export async function tratarAvisoInfinitePay(corpo: string, deps: Deps): Promise
     return { status: 200, body: { resultado: "valor_incompleto" } };
   }
   // o InfinitePay não devolve a taxa nesta consulta: fica em branco e o Financeiro usa a taxa cadastrada
-  const resultado = await deps.repo.registrarAprovado(linha.id, transactionNsu, null, null, (deps.agora?.() ?? new Date()).toISOString());
+  const como = { capture_method: texto(r.json?.capture_method) || null, installments: Number.isInteger(r.json?.installments) ? Number(r.json.installments) : null };   // pix ou cartão, e em quantas vezes: a Conciliação usa pra estimar a taxa
+  const resultado = await deps.repo.registrarAprovado(linha.id, transactionNsu, null, null, (deps.agora?.() ?? new Date()).toISOString(), como);
   if (resultado === "precisa_estorno") deps.log?.(`aviso-infinitepay: ATENÇÃO ${orderNsu} pago depois de vencer e o horário já foi ocupado: devolver à mão`);
   return { status: 200, body: { resultado } };
 }
