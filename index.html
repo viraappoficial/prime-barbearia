@@ -4267,6 +4267,9 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .obs-textarea{width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.15);color:var(--prata);padding:.6rem .8rem;font-family:var(--font-body);font-size:.82rem;border-radius:4px;resize:vertical;min-height:60px;margin-top:.4rem}
 #barberApp .review-reply-form button{align-self:flex-end;background:var(--dourado);color:#1a1506;border:none;font-size:.68rem;font-weight:600;text-transform:uppercase;padding:.5rem .8rem;border-radius:4px;cursor:pointer;white-space:nowrap}
 #barberApp .ba-item{display:flex;align-items:center;gap:.9rem;padding:.9rem 0;border-bottom:1px solid rgba(198,167,94,.12)}
+#barberApp .ba-crm-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:1rem;align-items:start}
+#barberApp .ba-crm-dir{position:sticky;top:.8rem;max-height:calc(100vh - 1.6rem);overflow:auto}
+@media(max-width:900px){#barberApp .ba-crm-grid{grid-template-columns:1fr}#barberApp .ba-crm-dir{position:static;max-height:none}}
 #barberApp .ba-crm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.5rem}
 #barberApp .ba-crm-k{background:var(--verde-noite);border:1px solid var(--hair);border-radius:8px;padding:.55rem .7rem}
 #barberApp .ba-crm-k b{display:block;font-family:var(--font-display);font-size:1.3rem;font-weight:500;line-height:1.1}
@@ -5086,9 +5089,13 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Todos os clientes num lugar: quem tem plano, quem está demorando a voltar e quem é novo. O sistema descobre de quanto em quanto tempo cada cliente costuma vir e avisa quando ele passa do dia.</p>
           <div id="ba-crm-kpis" class="ba-crm-kpis"></div>
           <div id="ba-crm-chips" style="display:flex;flex-wrap:wrap;gap:.35rem;margin:.6rem 0"></div>
-          <div class="ba-field" style="max-width:100%;margin-bottom:.6rem"><input type="text" id="ba-crm-busca" placeholder="Buscar por nome ou telefone" oninput="baCrmListar()"></div>
-          <div id="ba-crm-lista"></div>
-          <div id="ba-crm-ficha" style="margin-top:.8rem"></div>
+          <div class="ba-crm-grid">
+            <div style="min-width:0">
+              <div class="ba-field" style="max-width:100%;margin-bottom:.6rem"><input type="text" id="ba-crm-busca" placeholder="Buscar por nome ou telefone" oninput="baCrmListar()"></div>
+              <div id="ba-crm-lista"></div>
+            </div>
+            <div class="ba-crm-dir"><div id="ba-crm-ficha"><p style="color:var(--prata-dim);font-size:.82rem;padding:.8rem;border:1px dashed var(--hair);border-radius:8px">Clique num cliente da lista para ver o plano, as visitas e mandar mensagem.</p></div></div>
+          </div>
         </div>
 
         <div class="ba-card" id="ba-ia-config" style="display:none">
@@ -8775,7 +8782,7 @@ async function baPlanoCadastrar(){
 }
 
 // ══ CRM (Gestão > CRM, admin): todos os clientes, o ritmo de cada um e o botão de WhatsApp ══
-const BA_CRM_TOLERANCIA = 2, BA_CRM_NOVO_DIAS = 21;   // dias de folga depois do dia esperado; cliente sem ritmo some após 21 dias
+const BA_CRM_TOLERANCIA = 2, BA_CRM_NOVO_DIAS = 21, BA_CRM_PERDIDO_SEM_RITMO = 60;   // dias de folga depois do dia esperado; sem ritmo: 'não voltou' após 21 dias e 'muito tempo sem vir' após 60
 const BA_CRM_MODELOS = {
   plano:   { rotulo:'Está demorando a voltar · lembrar do plano', texto:'Oi, {nome}! Faz um tempinho que você não passa por aqui. Você ainda tem {saldo} no {plano} até {vence}. Quer que eu reserve um horário essa semana? 💈' },
   voltar:  { rotulo:'Está demorando a voltar · convidar a voltar', texto:'Oi, {nome}! Sentimos sua falta aqui na Prime. Quer marcar um horário essa semana? 💈' },
@@ -8796,7 +8803,7 @@ function baCrmRitmo(datas){
 function baCrmSituacao(datas, hoje){
   const ultima = datas[datas.length-1], desde = baCrmDias(ultima, hoje), ritmo = baCrmRitmo(datas);
   if(!ritmo){
-    return { tipo: desde>=BA_CRM_NOVO_DIAS ? 'novo_sumiu' : 'novo', desde, ritmo:null, passou:null, esperado:null };
+    return { tipo: desde>BA_CRM_PERDIDO_SEM_RITMO ? 'muito' : desde>=BA_CRM_NOVO_DIAS ? 'novo_sumiu' : 'novo', desde, ritmo:null, passou:null, esperado:null };
   }
   const esperado = baCrmSomaDias(ultima, ritmo.dias), passou = baCrmDias(esperado, hoje);
   let tipo = 'emdia';
@@ -8897,7 +8904,7 @@ function baCrmDesenhar(){
 function baCrmFiltrar(f){ baCrmFiltroAtual = f; baCrmDesenhar(); }
 function baCrmQuando(c){
   const s = c.sit; if(!s) return '';
-  if(!s.ritmo) return `Veio uma vez só, ainda não dá para saber o ritmo · veio há <b>${s.desde} dias</b>`;
+  if(!s.ritmo) return `Veio ${c.datas.length===1?'uma vez só':c.datas.length+' vezes'}, ainda não dá para saber o ritmo · última vez há <b>${s.desde} dias</b>`;
   const dias = `Costuma vir a cada <b>${s.ritmo.dias} dias</b> · está há ${s.desde} dias sem vir`;
   return s.passou>0 ? `${dias} · <b>passou ${s.passou} dia${s.passou===1?'':'s'}</b>` : s.passou===0 ? `${dias} · <b>é hoje</b>` : `${dias} · <b>deve voltar em ${-s.passou} dia${s.passou===-1?'':'s'}</b>`;
 }
@@ -8905,7 +8912,8 @@ function baCrmTags(c){
   const t = c.sit && c.sit.tipo, tags = [];
   if(t==='passou') tags.push('<span class="ba-crm-tag risk">Passou do dia</span>');
   if(t==='muito') tags.push('<span class="ba-crm-tag lost">Muito tempo sem vir</span>');
-  if(t==='novo' || t==='novo_sumiu') tags.push('<span class="ba-crm-tag new">Cliente novo</span>');
+  if(c.primeira && baCrmDias(c.primeira, primeLocalDate())<=30 && c.datas.length<3) tags.push('<span class="ba-crm-tag new">Cliente novo</span>');
+  else if(c.sit && !c.sit.ritmo) tags.push(`<span class="ba-crm-tag new">${c.datas.length===1?'Veio uma vez só':'Veio '+c.datas.length+' vezes'}</span>`);
   if(t==='novo_sumiu') tags.push('<span class="ba-crm-tag risk">Não voltou</span>');
   if(c.plano) tags.push(`<span class="ba-crm-tag plan">${primeEsc(c.plano.nome)}</span>`);
   return tags.join('');
@@ -8929,6 +8937,7 @@ function baCrmAbrir(chave){
     <div style="font-size:.84rem">${Object.entries(c.plano.total).map(([k,n])=>`${k==='corte'?'Cortes':k==='barba'?'Barbas':'Sobrancelhas'}: sobram <b>${c.plano.saldo[k]}</b> de ${n}`).join(' · ')}<br><span style="color:${c.plano.pago?'var(--verde-neon)':'var(--alerta)'}">${c.plano.pago?'Plano pago':'Plano ainda não pago'}</span></div>` : '';
   const hist = c.ultimas.length ? c.ultimas.map(v=>`<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.82rem;padding:.15rem 0"><span>${primeEsc(v.service)} · ${primeEsc(baCrmBarbeiros[v.barberId]||'')}</span><span style="color:var(--prata-dim);white-space:nowrap">${String(v.date).slice(0,10).split('-').reverse().slice(0,2).join('/')} · ${v.type==='uso_plano'?'pelo plano':baFormatMoney(Number(v.value||0))}</span></div>`).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Sem visitas ainda.</p>';
   const ct = baCrmContatos[c.fone];
+  const dir = document.querySelector('.ba-crm-dir'); if(dir && window.innerWidth<=900) setTimeout(()=>dir.scrollIntoView({behavior:'smooth',block:'start'}),50);
   document.getElementById('ba-crm-ficha').innerHTML = `<div class="ba-card" style="margin:0">
     <div style="font-family:var(--font-display);font-size:1.05rem">${primeEsc(c.nome)}</div>
     <div style="font-size:.8rem;color:var(--prata-dim)">${c.fone?`(${c.fone.slice(0,2)}) ${c.fone.slice(2,-4)}-${c.fone.slice(-4)}`:'Sem telefone cadastrado'} · ${c.primeira?`cliente desde ${c.primeira.split('-').reverse().join('/')} · `:''}gastou ${baFormatMoney(c.gasto)}</div>
