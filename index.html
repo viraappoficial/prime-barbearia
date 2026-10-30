@@ -8946,20 +8946,27 @@ function baCrmAbrir(chave){
     <div class="ba-slabel" style="margin-top:.9rem">Mandar mensagem no WhatsApp</div>
     <select id="ba-crm-modelo" class="add-input" style="width:100%;margin-bottom:.4rem" onchange="baCrmTrocarModelo('${chave.replace(/'/g,"\\'")}')">${Object.entries(BA_CRM_MODELOS).filter(([k])=>c.plano || k!=='plano' && k!=='acabando').map(([k,m])=>`<option value="${k}"${k===modelo?' selected':''}>${m.rotulo}</option>`).join('')}</select>
     <textarea id="ba-crm-texto" class="add-input" rows="4" style="width:100%">${primeEsc(baCrmTexto(modelo,c))}</textarea>
-    ${c.fone?`<button class="ba-btn" style="margin-top:.5rem" onclick="baCrmWhatsapp('${chave.replace(/'/g,"\\'")}')">Abrir no WhatsApp</button>`:'<p class="ba-err" style="display:block">Sem telefone: não dá para chamar.</p>'}
-    <p style="font-size:.76rem;color:var(--prata-dim);margin-top:.4rem">O WhatsApp abre com o texto pronto e você aperta enviar. O sistema anota quem chamou e quando.${ct?` Último chamado: ${ct.created_at.slice(0,10).split('-').reverse().join('/')}${baCrmBarbeiros[ct.barber_id]?' pelo '+primeEsc(baCrmBarbeiros[ct.barber_id]):''}.`:''}</p></div>`;
+    ${c.fone?`<button class="ba-btn" id="ba-crm-enviar" style="margin-top:.5rem" onclick="baCrmWhatsapp('${chave.replace(/'/g,"\\'")}')">Enviar pelo WhatsApp da Prime</button>`:'<p class="ba-err" style="display:block">Sem telefone: não dá para chamar.</p>'}
+    <p id="ba-crm-aviso" style="font-size:.78rem;margin-top:.4rem"></p><p style="font-size:.76rem;color:var(--prata-dim);margin-top:.4rem">A mensagem sai pelo WhatsApp da Prime (aparece no Zap) e o sistema anota quem chamou e quando. Se o cliente nunca falou com a Prime, o envio pode esperar um pouco na fila (proteção do número).${ct?` Último chamado: ${ct.created_at.slice(0,10).split('-').reverse().join('/')}${baCrmBarbeiros[ct.barber_id]?' pelo '+primeEsc(baCrmBarbeiros[ct.barber_id]):''}.`:''}</p></div>`;
 }
 function baCrmTrocarModelo(chave){
   const c = baCrmDados.find(x=>x.chave===chave); if(!c) return;
   document.getElementById('ba-crm-texto').value = baCrmTexto(document.getElementById('ba-crm-modelo').value, c);
 }
 async function baCrmWhatsapp(chave){
+  // sai pelo WhatsApp da Prime (WAHA): vira uma mensagem "pendente" no Zap e o servidor do bot envia, com as proteções do número
   const c = baCrmDados.find(x=>x.chave===chave); if(!c || !c.fone) return;
-  const texto = document.getElementById('ba-crm-texto').value, modelo = document.getElementById('ba-crm-modelo').value;
-  window.open(`https://wa.me/55${c.fone}?text=${encodeURIComponent(texto)}`, '_blank');
-  const { error } = await sb.from('crm_contatos').insert({ phone:c.fone, client_name:c.nome, modelo });
-  if(error) console.error('crm_contatos', error);
-  else { baCrmContatos[c.fone] = { phone:c.fone, barber_id:baCurrentBarberId, created_at:new Date().toISOString() }; baCrmListar(); }
+  const texto = document.getElementById('ba-crm-texto').value.trim(), modelo = document.getElementById('ba-crm-modelo').value;
+  const btn = document.getElementById('ba-crm-enviar'), aviso = document.getElementById('ba-crm-aviso');
+  if(!texto){ aviso.textContent = 'Escreva a mensagem.'; aviso.style.color = 'var(--erro)'; return; }
+  btn.disabled = true;
+  const { error } = await sb.from('whatsapp_messages').insert({ chat_id:`55${c.fone}@c.us`, contact_phone:`55${c.fone}`, direction:'outbound', status:'pending', body:texto, created_by:baCurrentBarberId });
+  if(error){ console.error('crm envio', error); btn.disabled = false; aviso.textContent = 'Não foi possível enviar agora. Tente de novo.'; aviso.style.color = 'var(--erro)'; return; }
+  const { error: e2 } = await sb.from('crm_contatos').insert({ phone:c.fone, client_name:c.nome, modelo });
+  if(e2) console.error('crm_contatos', e2);
+  baCrmContatos[c.fone] = { phone:c.fone, barber_id:baCurrentBarberId, created_at:new Date().toISOString() };
+  btn.textContent = 'Enviado ✓'; aviso.textContent = 'Na fila do WhatsApp da Prime: a mensagem sai em instantes e aparece na conversa do Zap.'; aviso.style.color = 'var(--verde-neon)';
+  baCrmListar();
 }
 
 // ══ Fechamento de comissão por barbeiro (admin) — vira uma Conta a Pagar de verdade (expenses,
