@@ -3898,6 +3898,10 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .pdv-it .tp{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;display:inline-block;border:1px solid var(--hair);border-radius:3px;padding:0 .35rem;color:var(--prata-dim)}
 #barberApp .pdv-it .tp.s{color:var(--dourado);border-color:rgba(198,167,94,.4)}
 #barberApp .pdv-it .tp.p{color:#8FA6C7;border-color:rgba(143,166,199,.4)}
+#barberApp .pdv-it .tp.a{color:var(--verde-neon);border-color:rgba(53,197,88,.45)}
+#barberApp .pdv-plano{margin-top:.6rem;border:1px solid var(--dourado-dim);border-radius:8px;padding:.7rem .9rem;font-size:.86rem;line-height:1.5;color:var(--prata)}
+#barberApp .pdv-plano b{font-weight:500;color:var(--dourado-claro)}
+#barberApp .pdv-plano.novo{border-color:rgba(53,197,88,.45)}
 #barberApp .pdv-it .pc{color:var(--prata-dim);font-size:.82rem}
 #barberApp .pdv-it .tl{font-family:var(--font-display);font-size:1.05rem;text-align:right;color:var(--dourado-claro)}
 #barberApp .pdv-it .ct{grid-column:1/-1;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
@@ -4491,6 +4495,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="pdv-tabs" id="pdv-tabs">
             <button type="button" class="on" data-t="s" onclick="baPdvTab('s')">Serviços</button>
             <button type="button" data-t="p" onclick="baPdvTab('p')">Produtos</button>
+            <button type="button" data-t="a" onclick="baPdvTab('a')">Planos</button>
           </div>
           <input type="text" class="pdv-in" id="pdv-busca" placeholder="Buscar serviço ou produto…" autocomplete="off" oninput="baPdvCatalog()">
           <div class="pdv-cat" id="pdv-cat"></div>
@@ -4503,6 +4508,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="pdv-foot">
             <div class="pdv-tot"><span>Total bruto</span><span id="pdv-bruto">R$ 0,00</span></div>
             <div class="pdv-tot"><span>Desconto</span><span id="pdv-desc">R$ 0,00</span></div>
+            <div class="pdv-tot" id="pdv-cob-row" style="display:none"><span>Coberto pelo plano</span><span id="pdv-cob">R$ 0,00</span></div>
             <div class="pdv-tot final"><span>Total líquido</span><b id="pdv-liq">R$ 0,00</b></div>
           </div>
         </section>
@@ -12574,7 +12580,7 @@ function baPdvNew(){
   // início "45 min atrás" não pode cair no dia anterior: perto da meia-noite trava em 00:00
   const ini = i.getDate()===n.getDate() ? baPdvHM(i) : '00:00';
   return { client:null, items:[], tab:'s', date:primeLocalDate(n), start:ini, end:baPdvHM(n),
-    barberId: baActingBarberId || null, q:'', results:[], form:null, last:null, flash:-1 };
+    barberId: baActingBarberId || null, q:'', results:[], form:null, last:null, flash:-1, plano:null };
 }
 function baPdvAct(){      // a venda inteira (carteira, vendas, pagamentos) sai no nome do barbeiro escolhido
   if(baPdvPrevActing===undefined) baPdvPrevActing = baActingBarberId;
@@ -12624,13 +12630,88 @@ function baPdvWhenCheck(){
 }
 
 // ── cliente: busca (nome ou telefone) · cadastro rápido · última visita ──
+// ── Planos: plano ativo do cliente e cobertura dos serviços da comanda ──
+// Qualquer corte vale 1 corte e qualquer barba vale 1 barba (services.conta_no_plano). O que o plano cobre sai a R$ 0,00 e vira
+// "uso de plano" (tipo próprio, fora de receita/comissão/ticket médio); o que não tem saldo é cobrado pelo preço avulso.
+const PLANO_REF = {corte:'Corte Social', barba:'Barba Express', sobrancelha:'Sobrancelha'};   // preço avulso de cada parte de um combo
+let baPlanosCache = null, baPdvPlanoTok = 0;
+async function baFetchPlanos(){
+  if(baPlanosCache) return baPlanosCache;
+  const { data, error } = await sb.from('planos').select('id,nome,valor,validade_dias,plano_itens(item,qtd)').eq('ativo', true).order('ordem');
+  if(error){ console.error('baFetchPlanos', error); return []; }
+  baPlanosCache = data || [];
+  return baPlanosCache;
+}
+async function baPdvLoadPlano(){
+  const c = baPdv && baPdv.client, tok = ++baPdvPlanoTok;
+  if(baPdv) baPdv.plano = null;
+  if(!c || !c.phone){ baPdvRenderClient(); baPdvRenderItems(); return; }
+  const { data, error } = await sb.rpc('plano_do_cliente', {p_phone:c.phone});
+  if(tok!==baPdvPlanoTok || !baPdv || baPdv.client!==c) return;
+  if(error) console.error('plano_do_cliente', error);
+  baPdv.plano = error ? null : (data || null);
+  if(baPdv.plano) baPdv.items = baPdv.items.filter(x=>x.kind!=='a');   // já tem plano ativo: não vende outro
+  baPdvRenderClient(); baPdvRenderItems();
+}
+function baPdvSaldoTxt(saldo){
+  const nm = {corte:['corte','cortes'], barba:['barba','barbas'], sobrancelha:['sobrancelha','sobrancelhas']};
+  return Object.keys(nm).filter(k=>k in saldo).map(k=>`${saldo[k]} ${nm[k][saldo[k]===1?0:1]}`).join(' · ') || 'sem itens';
+}
+function baPdvPlanoHtml(){
+  const p = baPdv, novo = p.items.find(x=>x.kind==='a');
+  if(novo){
+    const pl = (baPlanosCache||[]).find(x=>x.id===novo.planoId);
+    const sd = {}; ((pl&&pl.plano_itens)||[]).forEach(i=>{ sd[i.item] = i.qtd; });
+    return `<div class="pdv-plano novo">Vendendo <b>${primeEsc(novo.name)}</b> (${baFormatMoney(novo.price)}). Ativa na hora, por ${pl?pl.validade_dias:30} dias. Saldo: ${baPdvSaldoTxt(sd)}.</div>`;
+  }
+  if(p.plano){
+    const f = String(p.plano.fim||'').split('-');
+    return `<div class="pdv-plano"><b>${primeEsc(p.plano.plano)}</b> ativo até ${f.length===3?f[2]+'/'+f[1]:''}. Saldo: ${baPdvSaldoTxt(p.plano.saldo||{})}.</div>`;
+  }
+  return '';
+}
+function baPdvCobertura(){
+  const p = baPdv, saldo = {}, novo = p.items.find(x=>x.kind==='a');
+  if(novo){ const pl = (baPlanosCache||[]).find(x=>x.id===novo.planoId); ((pl&&pl.plano_itens)||[]).forEach(i=>{ saldo[i.item] = i.qtd; }); }
+  else if(p.plano) Object.assign(saldo, p.plano.saldo || {});
+  const comPlano = !!(novo || p.plano);
+  const linhas = p.items.map(it=>{
+    if(it.kind!=='s') return null;
+    const svc = primeServicesCache.find(x=>x.name===it.name), comps = (svc && svc.conta_no_plano) || [];
+    if(!comPlano || !comps.length) return {plano:false, cobertos:[], fora:[], cobrar:baPdvItemTotal(it)};
+    const cobertos = [], fora = [];
+    comps.forEach(c=>{ if((saldo[c]||0)>0){ saldo[c]--; cobertos.push(c); } else fora.push(c); });
+    let cobrar = 0;
+    if(fora.length){
+      if(comps.length===1) cobrar = baPdvItemTotal(it);                       // serviço simples sem saldo: preço dele
+      else cobrar = baPdvR2(baValorFromDescontoPct(fora.reduce((s,c)=>s+(SVC_PRICES[PLANO_REF[c]]||0),0), it.disc||0));   // combo: só a parte sem saldo, no avulso
+    }
+    return {plano:true, cobertos, fora, cobrar};
+  });
+  return {linhas, comPlano};
+}
+function baPdvPlanosCatalogHtml(){
+  const p = baPdv;
+  if(!p.client) return '<div class="vazio">Escolha o cliente antes de vender um plano.</div>';
+  if(p.plano) return '<div class="vazio">Este cliente já tem plano ativo.</div>';
+  if(!baPlanosCache) return '<div class="vazio">Carregando planos…</div>';
+  return baPlanosCache.map(pl=>`<button type="button" class="${p.items.some(x=>x.kind==='a'&&x.planoId===pl.id)?'sel':''}" onclick="baPdvAddPlano(${pl.id})"><b>${primeEsc(pl.nome)}</b><span>${baFormatMoney(pl.valor)}<small>${primeEsc(baPdvSaldoTxt(Object.fromEntries((pl.plano_itens||[]).map(i=>[i.item,i.qtd]))))}</small></span></button>`).join('') || '<div class="vazio">Nenhum plano cadastrado.</div>';
+}
+function baPdvAddPlano(id){
+  const pl = (baPlanosCache||[]).find(x=>x.id===id); if(!pl || !baPdv.client || baPdv.plano) return;
+  const i = baPdv.items.findIndex(x=>x.kind==='a');
+  const mesmo = i>=0 && baPdv.items[i].planoId===id;
+  if(i>=0) baPdv.items.splice(i,1);                                          // um plano por venda: tocar de novo desmarca, outro troca
+  if(!mesmo) baPdv.items.push({kind:'a', planoId:id, name:pl.nome, price:Number(pl.valor), qty:1, disc:0, cod:'PL'+baPdvPad(pl.id)});
+  baPdv.flash = baPdv.items.length-1; baPdvRenderClient(); baPdvRenderItems();
+}
 function baPdvRenderClient(){
   const box = baPdvEl('pdv-cli'), p = baPdv;
   if(p.client){
     const c = p.client;
     const tag = c.isNew ? 'novo' : (c.id ? 'cadastrado' : 'sem conta');
     box.innerHTML = `<div class="pdv-cli"><div><b>${primeEsc(c.name)}<span class="pdv-tag">${tag}</span></b><span>${primeEsc(baPdvFmtPhone(c.phone)||'sem telefone')}</span></div><button type="button" class="pdv-lk" onclick="baPdvClearClient()">Trocar</button></div>
-      <div class="pdv-last" id="pdv-last">${p.last===null ? 'Buscando última visita…' : p.last}</div>`;
+      <div class="pdv-last" id="pdv-last">${p.last===null ? 'Buscando última visita…' : p.last}</div>${baPdvPlanoHtml()}`;
     return;
   }
   if(p.form){
@@ -12712,7 +12793,7 @@ function baPdvPick(i){
   baPdv.client = {id:r.id, crmId:r.crmId||null, name:r.name, phone:r.phone, email:r.email, instagram:r.instagram};
   baPdv.q = ''; baPdv.results = []; baPdvLoadLast(); baPdvRenderClient();
 }
-function baPdvClearClient(){ baPdv.client = null; baPdv.last = null; baPdv.q = ''; baPdv.results = []; baPdvRenderClient(); }
+function baPdvClearClient(){ baPdvPlanoTok++; baPdv.plano = null; baPdv.items = baPdv.items.filter(x=>x.kind!=='a'); baPdvRenderItems(); baPdv.client = null; baPdv.last = null; baPdv.q = ''; baPdv.results = []; baPdvRenderClient(); }
 function baPdvNewForm(){
   const q = baPdv.q.trim(), digits = q.replace(/\D/g,'');
   baPdv.form = digits.length>=8 && !/[a-zA-ZÀ-ÿ]/.test(q) ? {name:'', phone:q, note:''} : {name:q, phone:'', note:''};
@@ -12753,6 +12834,7 @@ async function baPdvSaveNew(){
 }
 async function baPdvLoadLast(){
   const c = baPdv.client; if(!c) return;
+  baFetchPlanos().then(()=>baPdvLoadPlano());
   const tok = ++baPdvLastTok;
   baPdv.last = null;
   const paint = html => { if(tok!==baPdvLastTok) return; baPdv.last = html; const el = baPdvEl('pdv-last'); if(el) el.innerHTML = html; };
@@ -12780,6 +12862,7 @@ async function baPdvLoadLast(){
 // ── catálogo e comanda ──
 function baPdvTab(t){
   baPdv.tab = t;
+  if(t==='a' && !baPlanosCache) baFetchPlanos().then(()=>baPdvCatalog());
   document.querySelectorAll('#pdv-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
   baPdvCatalog();
 }
@@ -12792,6 +12875,8 @@ function baPdvCatalog(){
     primeSvcCategoriesInOrder().forEach(cat=>{      // mesma ordem/nomes de categoria do resto do sistema (Serviços, Combos, Tratamentos…)
       h += grupo(primeSvcCatLabel(cat), primeServicesCache.filter(s=>s.category===cat && s.name.toLowerCase().includes(q)).map(s=>btn(s.name)));
     });
+  } else if(baPdv.tab==='a'){
+    h = baPdvPlanosCatalogHtml();
   } else {
     const prods = baGetProducts().filter(p=>p.stock>0 && p.name.toLowerCase().includes(q));
     [...new Set(prods.map(p=>p.category||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(cat=>{
@@ -12823,25 +12908,28 @@ function baPdvQty(i, d){
   if(it.qty<1 || d<=-99) baPdv.items.splice(i,1);
   baPdvRenderItems();
 }
-function baPdvSetDisc(i, v){ const it = baPdv.items[i]; if(!it) return; it.disc = Math.min(100, baParseSignedPct(v)); baPdvRenderItems(); }
+function baPdvSetDisc(i, v){ const it = baPdv.items[i]; if(!it || it.kind==='a') return; it.disc = Math.min(100, baParseSignedPct(v)); baPdvRenderItems(); }
 function baPdvClear(){ baPdv.items = []; baPdvRenderItems(); }
 const baPdvItemTotal = it => baPdvR2(baValorFromDescontoPct(it.price*it.qty, it.disc||0));
 function baPdvRenderItems(){
   const p = baPdv;
+  const cob = baPdvCobertura();
   baPdvEl('pdv-itens').innerHTML = p.items.length ? p.items.map((it,i)=>`
     <div class="pdv-it${i===p.flash?' novo':''}"><span class="cod">${it.cod}</span>
-      <div class="nm"><b>${primeEsc(it.name)}</b><span class="tp ${it.kind}">${it.kind==='s'?'Serviço':'Produto'}</span></div>
+      <div class="nm"><b>${primeEsc(it.name)}</b><span class="tp ${it.kind}">${it.kind==='s'?'Serviço':it.kind==='a'?'Plano':'Produto'}</span>${cob.linhas[i]&&cob.linhas[i].plano?`<span class="tp a">${cob.linhas[i].fora.length?'Plano parcial':'Pago pelo plano'}</span>`:''}</div>
       <span class="pc">${baFormatMoney(it.price)}</span>
       <div class="ct"><span class="qt">${it.kind==='p' ? `<button type="button" onclick="baPdvQty(${i},-1)" aria-label="menos">−</button><b style="min-width:1.2rem;text-align:center;font-weight:400">${it.qty}</b><button type="button" onclick="baPdvQty(${i},1)" aria-label="mais">+</button>` : '<b style="font-weight:400;min-width:1.2rem;text-align:center">1</b>'}</span>
         <span class="dl">Desc. %</span><input class="ds" inputmode="decimal" value="${it.disc?String(it.disc).replace('.',','):''}" placeholder="0" onchange="baPdvSetDisc(${i},this.value)">
         <button type="button" class="x" onclick="baPdvQty(${i},-99)" aria-label="Remover">✕</button></div>
-      <span class="tl">${baFormatMoney(baPdvItemTotal(it))}</span></div>`).join('')
+      <span class="tl">${baFormatMoney(cob.linhas[i] ? cob.linhas[i].cobrar : baPdvItemTotal(it))}</span></div>`).join('')
     : '<div class="pdv-vazio">Nenhum item ainda. Toque num serviço ou produto acima.</div>';
   p.flash = -1;
-  const bruto = p.items.reduce((s,x)=>s+x.price*x.qty,0), liq = p.items.reduce((s,x)=>s+baPdvItemTotal(x),0);
+  const bruto = p.items.reduce((s,x)=>s+x.price*x.qty,0), liqItens = p.items.reduce((s,x)=>s+baPdvItemTotal(x),0);
+  const liq = baPdvR2(p.items.reduce((s,x,i)=>s+(cob.linhas[i] ? cob.linhas[i].cobrar : baPdvItemTotal(x)),0)), coberto = baPdvR2(liqItens-liq);
   const n = p.items.reduce((s,x)=>s+x.qty,0), lbl = n+(n===1?' item':' itens');
   baPdvEl('pdv-bruto').textContent = baFormatMoney(bruto);
-  baPdvEl('pdv-desc').textContent = baFormatMoney(baPdvR2(bruto-liq));
+  baPdvEl('pdv-desc').textContent = baFormatMoney(baPdvR2(bruto-liqItens));
+  baPdvEl('pdv-cob').textContent = baFormatMoney(coberto); baPdvEl('pdv-cob-row').style.display = coberto>0.004 ? '' : 'none';
   baPdvEl('pdv-liq').textContent = baFormatMoney(liq);
   baPdvCatalog();   // mantém o catálogo marcado com o que já está na comanda
   baPdvEl('pdv-nit').textContent = lbl; baPdvEl('pdv-bar-n').textContent = lbl; baPdvEl('pdv-bar-v').textContent = baFormatMoney(liq);
@@ -12874,10 +12962,16 @@ async function baAtRegistrar(){
       if(!mine.some(m=>m.clientId===c.id || m.name.toLowerCase()===c.name.toLowerCase()))
         await baCreateCrmClient({name:c.name, phone:c.phone||null, email:c.email||null, instagram:c.instagram||null});
     }
-    const svcItems = p.items.filter(x=>x.kind==='s'), prodItems = p.items.filter(x=>x.kind==='p');
+    const svcItems = p.items.filter(x=>x.kind==='s'), prodItems = p.items.filter(x=>x.kind==='p'), planoItem = p.items.find(x=>x.kind==='a');
     const svcs = svcItems.map(x=>x.name);
-    const svcValue = baPdvR2(svcItems.reduce((s,x)=>s+baPdvItemTotal(x),0));
-    if(svcs.length && svcValue<=0) return fail('O valor do serviço precisa ser maior que zero.');
+    const cob = baPdvCobertura();
+    const svcLinhas = svcItems.map(it=>cob.linhas[p.items.indexOf(it)]);
+    const svcValue = baPdvR2(svcLinhas.reduce((s,l)=>s+l.cobrar,0));
+    const cobertosPlano = [];
+    svcItems.forEach((it,k)=>{ svcLinhas[k].cobertos.forEach(item=>cobertosPlano.push({item, service:it.name})); });
+    if(planoItem && String(c.phone||'').replace(/\D/g,'').length<10) return fail('Para vender plano o cliente precisa ter telefone cadastrado.');
+    if(svcs.length && svcValue<=0 && !cobertosPlano.length) return fail('O valor do serviço precisa ser maior que zero.');
+    const svcCobrados = svcItems.filter((it,k)=>svcLinhas[k].cobrar>0);
     const notes = baPdvEl('at-notes').value.trim() || null;
 
     // serviço pra cliente com conta vira também um agendamento já concluído (histórico/fidelidade/Zap do cliente)
@@ -12895,16 +12989,28 @@ async function baAtRegistrar(){
     const notaId = primeNextId();
     const cph = c.phone ? baPdvLocalPhone(c.phone) : null;   // telefone na venda: é o que reencontra o cliente depois
     const rows = [];
-    if(svcs.length) rows.push({barberId:p.barberId, client:c.name, clientPhone:cph, service:svcs.join(' + '), value:svcValue, date:p.date, time:p.end, notaId, appointmentId:retroApptId});
+    if(svcCobrados.length) rows.push({barberId:p.barberId, client:c.name, clientPhone:cph, service:svcCobrados.map(x=>x.name).join(' + '), value:svcValue, date:p.date, time:p.end, notaId, appointmentId:retroApptId});
     for(const it of prodItems){
       const pr = products.find(x=>x.id===it.productId); if(!pr) continue;
       rows.push({barberId:p.barberId, client:c.name, clientPhone:cph, service:pr.name, value:baPdvItemTotal(it), qty:it.qty, date:p.date, time:p.end, notaId, type:'produto',
         category:pr.category||'Outros', cost:(pr.cost||0)*it.qty});
     }
-    const totalAt = rows.reduce((s,r)=>s+r.value,0);
+    const totalAt = baPdvR2(rows.reduce((s,r)=>s+r.value,0) + (planoItem ? planoItem.price : 0));
     const linkedClientId = c.id || null;
-    opened = true;
-    baOpenPagamentoModal(notaId, totalAt, async ()=>{
+    const finalizar = async ()=>{
+      // plano: vende (ativa e lança a mensalidade para o barbeiro que vendeu) e baixa o saldo do que foi coberto, tudo antes das demais vendas
+      let assinaturaId = planoItem ? null : (p.plano ? p.plano.id : null);
+      if(planoItem){
+        const { data:aid, error:ve } = await sb.rpc('vender_plano', {p_plano_id:planoItem.planoId, p_phone:c.phone, p_name:c.name, p_client_id:c.id||null,
+          p_barber_id:p.barberId, p_origem:'balcao', p_forma:'loja', p_pago:true, p_nota_id:notaId});
+        if(ve) throw ve;
+        assinaturaId = aid;
+      }
+      if(cobertosPlano.length && assinaturaId){
+        const { data:uso, error:ue } = await sb.rpc('registrar_uso_plano', {p_assinatura_id:assinaturaId, p_items:cobertosPlano, p_appointment_id:retroApptId, p_nota_id:notaId, p_barber_id:p.barberId});
+        if(ue) throw ue;
+        if(uso && uso.fora && uso.fora.length) alert('O saldo do plano mudou enquanto você fechava: ' + uso.fora.map(x=>x.service).join(', ') + ' ficou sem cobertura. Cobre esse item à parte.');
+      }
       for(const it of prodItems){ await baDecrementStock(it.productId, it.qty); }
       await baInsertSales(rows);
       await baFetchProducts();
@@ -12916,7 +13022,9 @@ async function baAtRegistrar(){
       baPdvWhenCheck(); baPdvRenderClient(); baPdvRenderItems(); baPdvCatalog();
       const ok = baPdvEl('at-success'); ok.style.display = 'block';
       setTimeout(()=>{ ok.style.display = 'none'; }, 3000);
-    }, {clientName:c.name});
+    };
+    if(totalAt <= 0){ await finalizar(); }   // tudo coberto pelo plano: nada a receber, não abre o pagamento
+    else { opened = true; baOpenPagamentoModal(notaId, totalAt, finalizar, {clientName:c.name}); }
   } catch(e) {
     // qualquer falha antes do pagamento aparecia como "não acontece nada": agora mostra o motivo
     console.error('baAtRegistrar', e);
