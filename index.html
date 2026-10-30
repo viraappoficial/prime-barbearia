@@ -5118,6 +5118,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn ghost" data-fin="fluxo" onclick="baFinanceiroTab('fluxo')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Fluxo de caixa</button>
             <button class="ba-btn ghost" data-fin="corrigir" onclick="baFinanceiroTab('corrigir')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Corrigir vendas</button>
             <button class="ba-btn ghost" data-fin="concilia" onclick="baFinanceiroTab('concilia')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Conciliação</button>
+            <button class="ba-btn ghost" data-fin="planos" onclick="baFinanceiroTab('planos')" style="width:auto;max-width:none;padding:.4rem .8rem;margin:0;font-size:.68rem">Planos</button>
           </div>
 
           <div id="ba-fin-contasapagar">
@@ -5385,6 +5386,27 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.6rem">No app da InfinitePay, abra "Suas vendas", exporte o relatório do mês em <b>CSV</b> e escolha o arquivo aqui. O arquivo é lido só no seu aparelho; nada é enviado.</p>
             <input type="file" id="ba-conc-arquivo" accept=".csv,text/csv,text/plain" onchange="baConcLerArquivo(this)">
             <div id="ba-conc-resultado" style="margin-top:.8rem"></div>
+          </div>
+
+          <div id="ba-fin-planos" style="display:none">
+            <div class="ba-slabel" style="margin-top:0">Planos dos clientes</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Assinaturas ativas. Em "Editar" você acerta quantos dias faltam, quantos cortes, barbas e sobrancelhas já foram usados e se o plano já foi pago. O que você marcar como usado entra no saldo do cliente.</p>
+            <div id="ba-planos-list"></div>
+            <div class="ba-slabel">Nova assinatura (cliente que já tinha plano)</div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.4rem">
+              <select id="ba-pl-plano" class="add-input" style="flex:1;min-width:130px"></select>
+              <input type="text" id="ba-pl-nome" class="add-input" placeholder="Nome" style="flex:2;min-width:150px">
+              <input type="tel" id="ba-pl-fone" class="add-input" placeholder="Telefone com DDD" style="flex:1;min-width:140px">
+            </div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+              <label style="font-size:.76rem;color:var(--prata-dim)">Dias restantes <input type="number" min="1" id="ba-pl-dias" class="add-input" value="30" style="width:70px"></label>
+              <label style="font-size:.76rem;color:var(--prata-dim)">Cortes usados <input type="number" min="0" id="ba-pl-u-corte" class="add-input" value="0" style="width:60px"></label>
+              <label style="font-size:.76rem;color:var(--prata-dim)">Barbas usadas <input type="number" min="0" id="ba-pl-u-barba" class="add-input" value="0" style="width:60px"></label>
+              <label style="font-size:.76rem;color:var(--prata-dim)">Sobrancelhas usadas <input type="number" min="0" id="ba-pl-u-sobrancelha" class="add-input" value="0" style="width:60px"></label>
+              <label style="font-size:.78rem"><input type="checkbox" id="ba-pl-pago"> Já foi pago</label>
+            </div>
+            <p class="ba-err" id="ba-pl-err" style="display:none;margin-top:.5rem"></p>
+            <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin-top:.5rem;font-size:.68rem" onclick="baPlanoCadastrar()">Cadastrar</button>
           </div>
 
           <div id="ba-fin-corrigir" style="display:none">
@@ -6860,6 +6882,7 @@ function baFinanceiroTab(sub){
   document.getElementById('ba-fin-fluxo').style.display = sub==='fluxo' ? 'block' : 'none';
   document.getElementById('ba-fin-corrigir').style.display = sub==='corrigir' ? 'block' : 'none';
   document.getElementById('ba-fin-concilia').style.display = sub==='concilia' ? 'block' : 'none';
+  document.getElementById('ba-fin-planos').style.display = sub==='planos' ? 'block' : 'none';
   if(sub==='contasapagar') baRenderContasPagar();
   if(sub==='caixa') baRenderCaixa();
   if(sub==='aprazo') baRenderAPrazo();
@@ -6868,6 +6891,7 @@ function baFinanceiroTab(sub){
   if(sub==='fluxo') baRenderFluxoCaixa();
   if(sub==='corrigir') baRenderCorrigirVendas();
   if(sub==='concilia') baRenderConciliacao();
+  if(sub==='planos') baRenderPlanosAdmin();
 }
 function baRenderGestao(){
   if(baCurrentRole!=='admin') return;
@@ -8617,6 +8641,84 @@ function baConcLerArquivo(input){
       <div class="ba-slabel">No sistema e não no relatório (${r.soSistema.length})</div>${li(r.soSistema, x=>`<tr><td>${x.data.split('-').reverse().join('/')}</td><td>${baConcMoney(x.valor)}</td><td>${x.origem==='online'?'Online':'Maquininha'}</td></tr>`)}`;
   };
   rd.readAsText(f, 'utf-8');
+}
+
+// ══ Planos dos clientes (admin): ver e acertar validade, uso e pagamento de cada assinatura ══
+const BA_PLANO_ITENS = [['corte','Cortes'],['barba','Barbas'],['sobrancelha','Sobrancelhas']];
+let baPlanosAdmin = [];
+function baPlanoDiasRestantes(fim){
+  return Math.round((Date.parse(fim+'T12:00:00Z') - Date.parse(primeLocalDate()+'T12:00:00Z'))/86400000) + 1;
+}
+async function baRenderPlanosAdmin(){
+  const box = document.getElementById('ba-planos-list');
+  box.innerHTML = '<p style="color:var(--prata-dim)">Carregando…</p>';
+  const [pl, ass, itens, uso] = await Promise.all([
+    sb.from('planos').select('id,nome,valor').order('ordem'),
+    sb.from('assinaturas').select('*').in('status',['ativa','aguardando_pagamento']).order('fim'),
+    sb.from('plano_itens').select('plano_id,item,qtd'),
+    sb.from('uso_plano').select('assinatura_id,item'),
+  ]);
+  if(ass.error){ console.error('planos admin', ass.error); box.innerHTML = '<p class="ba-err" style="display:block">Não foi possível carregar os planos.</p>'; return; }
+  const sel = document.getElementById('ba-pl-plano');
+  if(sel && pl.data) sel.innerHTML = pl.data.map(x=>`<option value="${x.id}">${primeEsc(x.nome)} · ${baFormatMoney(Number(x.valor))}</option>`).join('');
+  const qtd = {}; (itens.data||[]).forEach(i=>{ (qtd[i.plano_id] = qtd[i.plano_id]||{})[i.item] = i.qtd; });
+  const usado = {}; (uso.data||[]).forEach(u=>{ const m = usado[u.assinatura_id] = usado[u.assinatura_id]||{}; m[u.item] = (m[u.item]||0)+1; });
+  baPlanosAdmin = (ass.data||[]).map(a=>({ ...a, qtd: qtd[a.plano_id]||{}, usado: usado[a.id]||{} }));
+  box.innerHTML = baPlanosAdmin.length ? baPlanosAdmin.map((a,i)=>{
+    const dias = a.fim ? baPlanoDiasRestantes(a.fim) : null;
+    const saldo = BA_PLANO_ITENS.filter(([k])=>a.qtd[k]).map(([k,n])=>`${n}: ${a.usado[k]||0}/${a.qtd[k]}`).join(' · ');
+    const pago = a.pago_em ? '<span style="color:var(--verde-neon)">Pago ✓</span>' : '<span style="color:var(--alerta)">Não pago</span>';
+    const vence = a.fim ? `vence ${a.fim.split('-').reverse().join('/')}${dias!=null?` (${dias>0?dias+' dia'+(dias===1?'':'s'):'vencido'})`:''}` : 'aguardando pagamento';
+    return `<div class="ba-item" style="flex-wrap:wrap;gap:.5rem"><div class="info" style="min-width:190px"><div class="n">${primeEsc(a.client_name)} · ${primeEsc(a.plano_nome)} · ${pago}</div><div class="d">${primeEsc(a.client_phone)} · ${vence}<br>Usados: ${saldo}</div></div>
+      <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .9rem;font-size:.72rem" onclick="baPlanoEditar(${i})">Editar</button>
+      <div id="ba-pl-ed-${i}" style="display:none;width:100%"></div></div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhuma assinatura ativa.</p>';
+}
+function baPlanoEditar(i){
+  const a = baPlanosAdmin[i], box = document.getElementById('ba-pl-ed-'+i);
+  if(box.style.display==='block'){ box.style.display='none'; return; }
+  const dias = a.fim ? Math.max(baPlanoDiasRestantes(a.fim),0) : 0;
+  box.innerHTML = `<div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.5rem">
+    <label style="font-size:.76rem;color:var(--prata-dim)">Dias restantes <input type="number" min="0" id="ba-pe-dias-${i}" class="add-input" value="${dias}" style="width:70px"></label>
+    ${BA_PLANO_ITENS.filter(([k])=>a.qtd[k]).map(([k,n])=>`<label style="font-size:.76rem;color:var(--prata-dim)">${n} usados (de ${a.qtd[k]}) <input type="number" min="0" max="${a.qtd[k]}" id="ba-pe-${k}-${i}" class="add-input" value="${a.usado[k]||0}" style="width:60px"></label>`).join('')}
+    <label style="font-size:.78rem"><input type="checkbox" id="ba-pe-pago-${i}"${a.pago_em?' checked':''}> Já foi pago</label>
+    ${a.pago_em?'':`<label style="font-size:.76rem;color:var(--prata-dim)"><input type="checkbox" id="ba-pe-venda-${i}"> Recebi agora: lançar o valor no financeiro</label>`}
+    <button class="ba-btn" style="width:auto;max-width:none;padding:.4rem .9rem;font-size:.72rem" onclick="baPlanoSalvar(${i})">Salvar</button>
+    <p class="ba-err" id="ba-pe-err-${i}" style="display:none;width:100%"></p></div>`;
+  box.style.display = 'block';
+}
+async function baPlanoSalvar(i){
+  const a = baPlanosAdmin[i], err = document.getElementById('ba-pe-err-'+i);
+  err.style.display = 'none';
+  const dias = parseInt(document.getElementById('ba-pe-dias-'+i).value, 10);
+  if(isNaN(dias) || dias<0) { err.textContent = 'Digite os dias restantes.'; err.style.display = 'block'; return; }
+  const usados = {};
+  for(const [k] of BA_PLANO_ITENS){
+    const el = document.getElementById(`ba-pe-${k}-${i}`); if(!el) continue;
+    const n = parseInt(el.value,10);
+    if(isNaN(n) || n<0 || n>(a.qtd[k]||0)) { err.textContent = `Quantidade inválida em ${k}.`; err.style.display = 'block'; return; }
+    usados[k] = n;
+  }
+  const fim = new Date(Date.parse(primeLocalDate()+'T12:00:00Z') + (dias-1)*86400000).toISOString().slice(0,10);
+  const vendaEl = document.getElementById('ba-pe-venda-'+i);
+  const { error } = await sb.rpc('assinatura_admin_ajustar', { p_id:a.id, p_fim:fim, p_usados:usados, p_pago:document.getElementById('ba-pe-pago-'+i).checked, p_lancar_venda:!!(vendaEl && vendaEl.checked) });
+  if(error){ console.error('assinatura_admin_ajustar', error); err.textContent = 'Não foi possível salvar: ' + (error.message||'tente de novo'); err.style.display = 'block'; return; }
+  await baRenderPlanosAdmin();
+}
+async function baPlanoCadastrar(){
+  const err = document.getElementById('ba-pl-err'); err.style.display = 'none';
+  const fail = m=>{ err.textContent = m; err.style.display = 'block'; };
+  const nome = document.getElementById('ba-pl-nome').value.trim(), fone = document.getElementById('ba-pl-fone').value.replace(/\D/g,'');
+  const dias = parseInt(document.getElementById('ba-pl-dias').value,10);
+  if(!nome) return fail('Digite o nome do cliente.');
+  if(fone.length<10) return fail('Digite o telefone com DDD.');
+  if(isNaN(dias) || dias<1) return fail('Digite os dias restantes (1 ou mais).');
+  const usados = {}; BA_PLANO_ITENS.forEach(([k])=>{ usados[k] = parseInt(document.getElementById('ba-pl-u-'+k).value,10)||0; });
+  const fim = new Date(Date.parse(primeLocalDate()+'T12:00:00Z') + (dias-1)*86400000).toISOString().slice(0,10);
+  const { error } = await sb.rpc('assinatura_admin_cadastrar', { p_plano_id:Number(document.getElementById('ba-pl-plano').value), p_phone:fone, p_name:nome, p_fim:fim, p_usados:usados, p_pago:document.getElementById('ba-pl-pago').checked, p_barber_id:baCurrentBarberId || null });
+  if(error){ console.error('assinatura_admin_cadastrar', error); return fail('Não foi possível cadastrar: ' + (error.message||'tente de novo')); }
+  ['ba-pl-nome','ba-pl-fone'].forEach(id=>document.getElementById(id).value='');
+  await baRenderPlanosAdmin();
 }
 
 // ══ Fechamento de comissão por barbeiro (admin) — vira uma Conta a Pagar de verdade (expenses,
