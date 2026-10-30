@@ -5392,6 +5392,9 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div class="ba-slabel" style="margin-top:0">Planos dos clientes</div>
             <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Assinaturas ativas. Em "Editar" você acerta quantos dias faltam, quantos cortes, barbas e sobrancelhas já foram usados e se o plano já foi pago. O que você marcar como usado entra no saldo do cliente.</p>
             <div id="ba-planos-list"></div>
+            <div class="ba-slabel">Comissão por uso: valor de cada item dentro do plano</div>
+            <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.6rem">Cada vez que o cliente usa um corte, barba ou sobrancelha do plano, o barbeiro que atendeu recebe a comissão dele sobre o valor abaixo, mesmo que outro tenha vendido o plano. A mensalidade não gera comissão. O faturamento continua entrando uma vez só, no pagamento do plano.</p>
+            <div id="ba-planos-rateio"></div>
             <div class="ba-slabel">Nova assinatura (cliente que já tinha plano)</div>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.4rem">
               <select id="ba-pl-plano" class="add-input" style="flex:1;min-width:130px"></select>
@@ -5453,7 +5456,7 @@ function baSaleCommissionPct(sale, barber){
   return typeof pct==='number' ? pct : 0;
 }
 function baSaleCommissionValue(sale, barber){
-  return sale.value * baSaleCommissionPct(sale, barber);
+  return (sale.comissaoBase!=null ? sale.comissaoBase : sale.value) * baSaleCommissionPct(sale, barber);
 }
 function baCommissionSum(sales, barber, excludeNotaIds){
   const list = (excludeNotaIds && excludeNotaIds.size) ? sales.filter(x=>!excludeNotaIds.has(x.notaId)) : sales;
@@ -5501,7 +5504,8 @@ function baSaleFromRow(r){
   if(!r) return r;
   return { id:r.id, barberId:r.barber_id, client:r.client_name, appointmentId:r.appointment_id,
     service:r.service, value:r.value, date:r.date, time:r.time, notaId:r.nota_id, clientPhone:r.client_phone,
-    qty:r.qty, type:r.type, category:r.category, cost:r.cost, createdAt:r.created_at };
+    qty:r.qty, type:r.type, category:r.category, cost:r.cost, createdAt:r.created_at,
+    comissaoBase: r.comissao_base==null ? null : Number(r.comissao_base) };   // base da comissão (plano: mensalidade 0, uso = valor do item); null = o próprio valor
 }
 function baSaleToRow(s){
   const row = {};
@@ -8649,27 +8653,52 @@ let baPlanosAdmin = [];
 function baPlanoDiasRestantes(fim){
   return Math.round((Date.parse(fim+'T12:00:00Z') - Date.parse(primeLocalDate()+'T12:00:00Z'))/86400000) + 1;
 }
+function baPlanosRateioHtml(planos, itens){
+  const box = document.getElementById('ba-planos-rateio'); if(!box) return;
+  box.innerHTML = planos.map(pl=>{
+    const its = itens.filter(i=>i.plano_id===pl.id);
+    const soma = its.reduce((t,i)=>t+i.qtd*Number(i.valor_unit||0),0);
+    const rotulo = Object.fromEntries(BA_PLANO_ITENS);
+    return `<div class="card" style="margin-bottom:.6rem;padding:.7rem .8rem"><div style="font-size:.84rem;margin-bottom:.4rem"><b>${primeEsc(pl.nome)}</b> · ${baFormatMoney(Number(pl.valor))}</div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">${its.map(i=>`<label style="font-size:.76rem;color:var(--prata-dim)">${rotulo[i.item]||i.item} (${i.qtd}x) <input type="text" inputmode="decimal" id="ba-rt-${pl.id}-${i.item}" class="add-input" value="${Number(i.valor_unit||0).toFixed(2).replace('.',',')}" style="width:80px"></label>`).join('')}
+      <button class="ba-btn" style="width:auto;max-width:none;padding:.4rem .9rem;font-size:.72rem" onclick="baPlanoSalvarRateio(${pl.id})">Salvar</button></div>
+      <div style="font-size:.76rem;color:${Math.abs(soma-Number(pl.valor))<0.05?'var(--prata-dim)':'var(--alerta)'};margin-top:.4rem">Soma dos itens: ${baFormatMoney(soma)} · valor do plano ${baFormatMoney(Number(pl.valor))}${Math.abs(soma-Number(pl.valor))<0.05?'':' (a soma não bate com o valor do plano)'}</div>
+      <p class="ba-err" id="ba-rt-err-${pl.id}" style="display:none"></p></div>`;
+  }).join('');
+}
+async function baPlanoSalvarRateio(planoId){
+  const err = document.getElementById('ba-rt-err-'+planoId); err.style.display = 'none';
+  for(const [k] of BA_PLANO_ITENS){
+    const el = document.getElementById(`ba-rt-${planoId}-${k}`); if(!el) continue;
+    const v = parseFloat(el.value.replace(',','.'));
+    if(isNaN(v) || v<0){ err.textContent = 'Digite um valor válido em '+k+'.'; err.style.display = 'block'; return; }
+    const { error } = await sb.from('plano_itens').update({ valor_unit: v }).eq('plano_id', planoId).eq('item', k);
+    if(error){ console.error('rateio', error); err.textContent = 'Não foi possível salvar.'; err.style.display = 'block'; return; }
+  }
+  await baRenderPlanosAdmin();
+}
 async function baRenderPlanosAdmin(){
   const box = document.getElementById('ba-planos-list');
   box.innerHTML = '<p style="color:var(--prata-dim)">Carregando…</p>';
   const [pl, ass, itens, uso] = await Promise.all([
     sb.from('planos').select('id,nome,valor').order('ordem'),
     sb.from('assinaturas').select('*').in('status',['ativa','aguardando_pagamento']).order('fim'),
-    sb.from('plano_itens').select('plano_id,item,qtd'),
-    sb.from('uso_plano').select('assinatura_id,item'),
+    sb.from('plano_itens').select('plano_id,item,qtd,valor_unit'),
+    sb.from('uso_plano').select('assinatura_id,item,valor_rateado'),
   ]);
   if(ass.error){ console.error('planos admin', ass.error); box.innerHTML = '<p class="ba-err" style="display:block">Não foi possível carregar os planos.</p>'; return; }
   const sel = document.getElementById('ba-pl-plano');
   if(sel && pl.data) sel.innerHTML = pl.data.map(x=>`<option value="${x.id}">${primeEsc(x.nome)} · ${baFormatMoney(Number(x.valor))}</option>`).join('');
   const qtd = {}; (itens.data||[]).forEach(i=>{ (qtd[i.plano_id] = qtd[i.plano_id]||{})[i.item] = i.qtd; });
-  const usado = {}; (uso.data||[]).forEach(u=>{ const m = usado[u.assinatura_id] = usado[u.assinatura_id]||{}; m[u.item] = (m[u.item]||0)+1; });
-  baPlanosAdmin = (ass.data||[]).map(a=>({ ...a, qtd: qtd[a.plano_id]||{}, usado: usado[a.id]||{} }));
+  const usado = {}, apropriado = {}; (uso.data||[]).forEach(u=>{ const m = usado[u.assinatura_id] = usado[u.assinatura_id]||{}; m[u.item] = (m[u.item]||0)+1; apropriado[u.assinatura_id] = (apropriado[u.assinatura_id]||0) + Number(u.valor_rateado||0); });
+  baPlanosRateioHtml(pl.data||[], itens.data||[]);
+  baPlanosAdmin = (ass.data||[]).map(a=>({ ...a, qtd: qtd[a.plano_id]||{}, usado: usado[a.id]||{}, apropriado: apropriado[a.id]||0 }));
   box.innerHTML = baPlanosAdmin.length ? baPlanosAdmin.map((a,i)=>{
     const dias = a.fim ? baPlanoDiasRestantes(a.fim) : null;
     const saldo = BA_PLANO_ITENS.filter(([k])=>a.qtd[k]).map(([k,n])=>`${n}: ${a.usado[k]||0}/${a.qtd[k]}`).join(' · ');
     const pago = a.pago_em ? '<span style="color:var(--verde-neon)">Pago ✓</span>' : '<span style="color:var(--alerta)">Não pago</span>';
     const vence = a.fim ? `vence ${a.fim.split('-').reverse().join('/')}${dias!=null?` (${dias>0?dias+' dia'+(dias===1?'':'s'):'vencido'})`:''}` : 'aguardando pagamento';
-    return `<div class="ba-item" style="flex-wrap:wrap;gap:.5rem"><div class="info" style="min-width:190px"><div class="n">${primeEsc(a.client_name)} · ${primeEsc(a.plano_nome)} · ${pago}</div><div class="d">${primeEsc(a.client_phone)} · ${vence}<br>Usados: ${saldo}</div></div>
+    return `<div class="ba-item" style="flex-wrap:wrap;gap:.5rem"><div class="info" style="min-width:190px"><div class="n">${primeEsc(a.client_name)} · ${primeEsc(a.plano_nome)} · ${pago}</div><div class="d">${primeEsc(a.client_phone)} · ${vence}<br>Usados: ${saldo}<br>Já apropriado aos barbeiros: ${baFormatMoney(a.apropriado)} de ${baFormatMoney(Number(a.valor))}</div></div>
       <button class="ba-btn ghost" style="width:auto;max-width:none;padding:.4rem .9rem;font-size:.72rem" onclick="baPlanoEditar(${i})">Editar</button>
       <div id="ba-pl-ed-${i}" style="display:none;width:100%"></div></div>`;
   }).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhuma assinatura ativa.</p>';
