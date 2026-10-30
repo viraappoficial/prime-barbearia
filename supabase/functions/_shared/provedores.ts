@@ -39,3 +39,46 @@ export function provedorPagBank(cfg: { token: string; sandbox: boolean; fetch?: 
     },
   };
 }
+
+type FetchInfinitePay = (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<{ ok: boolean; status: number; json(): Promise<any> }>;
+export const INFINITEPAY_API = "https://api.infinitepay.io/invoices/public/checkout";
+
+/** InfinitePay (Checkout Integrado): não devolve QR Code, devolve um LINK do checkout deles (Pix ou cartão). O link vai em `ticket_url`;
+ * `qr_code` fica vazio e o site redireciona o cliente. O `order_nsu` é o id da nossa cobrança (referencia), e o valor vai em centavos.
+ * O token é opcional: só entra se a conta exigir (cabeçalho Authorization: Bearer). */
+export function provedorInfinitePay(cfg: { handle: string; token?: string; urlRetorno?: string; fetch?: FetchInfinitePay }): Provedor {
+  const f = cfg.fetch ?? (fetch as unknown as FetchInfinitePay);
+  return {
+    async criarPix(e) {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (cfg.token) headers.Authorization = `Bearer ${cfg.token}`;
+      const r = await f(`${INFINITEPAY_API}/links`, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          handle: cfg.handle.replace(/^\$/, ""),
+          order_nsu: e.referencia,
+          items: [{ quantity: 1, price: Math.round(e.valor * 100), description: e.descricao.slice(0, 100) }],
+          webhook_url: e.urlAviso,
+          ...(cfg.urlRetorno ? { redirect_url: cfg.urlRetorno } : {}),
+          customer: { name: e.nome.trim() || "Cliente", email: e.email },
+        }),
+      });
+      const json = await r.json().catch(() => ({}));
+      const link = json?.link ?? json?.url ?? json?.payment_url ?? json?.checkout_url;
+      if (!r.ok || typeof link !== "string" || !link) return { ok: false, status: r.status, erro: JSON.stringify(json?.message ?? json?.error ?? json ?? "").slice(0, 300) };
+      return { ok: true, status: r.status, id: String(json?.slug ?? e.referencia), ticket_url: link };
+    },
+  };
+}
+
+/** Consulta de uma cobrança no InfinitePay: o que vale é o que ELES dizem agora, nunca o corpo do aviso. */
+export async function consultarPagamentoInfinitePay(
+  cfg: { handle: string; token?: string; fetch?: FetchInfinitePay },
+  q: { order_nsu: string; transaction_nsu: string; slug: string },
+): Promise<{ ok: boolean; status: number; json: any }> {
+  const f = cfg.fetch ?? (fetch as unknown as FetchInfinitePay);
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (cfg.token) headers.Authorization = `Bearer ${cfg.token}`;
+  const r = await f(`${INFINITEPAY_API}/payment_check`, { method: "POST", headers, body: JSON.stringify({ handle: cfg.handle.replace(/^\$/, ""), ...q }) });
+  return { ok: r.ok, status: r.status, json: await r.json().catch(() => ({})) };
+}
