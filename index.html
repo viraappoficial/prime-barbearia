@@ -873,6 +873,7 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
       <div style="text-align:center;padding:1.2rem 0">
         <div style="font-size:1.1rem;color:var(--verde-neon);font-weight:600;margin-bottom:.7rem">Agendamento enviado! ✓</div>
         <p style="color:var(--prata-dim);font-size:.85rem;margin-bottom:1.6rem">A confirmação do horário é feita pela nossa equipe. Se quiser, também dá pra avisar a gente direto pelo WhatsApp.</p>
+        <p id="wPaidNote" style="display:none;margin:0 0 1rem;padding:.7rem 1rem;border:1px solid var(--verde-neon);border-radius:6px;color:var(--verde-neon);font-size:.88rem">Pagamento já realizado ✓ O valor que você pagou foi mantido neste novo horário.</p>
         <button class="btn btn-primary" id="wPayNow" style="margin-bottom:.8rem">Pagar agora</button>
         <button class="btn btn-ghost" id="wSendWhats" style="margin-bottom:.8rem">Encaminhar pelo WhatsApp</button>
         <button class="btn btn-ghost" id="wFinish">Concluir</button>
@@ -1064,7 +1065,7 @@ function barbersScheduledAt(weekday, timeStr){
 }
 
 // ══ Estado do wizard ══
-const state = {step:1, services:[], day:null, dayLabel:null, time:null, barber:null, barberId:null, barberIntroAnswered:null, couponCode:null, discountPrice:null};
+const state = {reagendarDe:null, step:1, services:[], day:null, dayLabel:null, time:null, barber:null, barberId:null, barberIntroAnswered:null, couponCode:null, discountPrice:null};
 let pendingBooking = null;
 let pendingProductCatalog = false;
 const AUTH_PROMPT_COPY = {
@@ -1088,7 +1089,7 @@ const steps = [...document.querySelectorAll('.wstep')];
 const labels = ["Escolha o serviço","Escolha o barbeiro","Escolha o dia","Escolha o horário","Seus dados"];
 
 function openModal(){ modal.classList.add('open'); document.body.style.overflow='hidden'; buildDays(); primeRenderServiceChips(); }
-function closeModal(){ modal.classList.remove('open'); const appOpen = document.querySelector('#clientApp.open,#barberApp.open'); if(!appOpen) document.body.style.overflow=''; }
+function closeModal(){ if(!pendingBooking) state.reagendarDe = null; modal.classList.remove('open'); const appOpen = document.querySelector('#clientApp.open,#barberApp.open'); if(!appOpen) document.body.style.overflow=''; }
 function closeAuthPrompt(){ document.getElementById('authPromptModal').classList.remove('open'); }
 function dismissAuthPrompt(){ pendingBooking=null; pendingProductCatalog=false; closeAuthPrompt(); }
 function authPromptGo(kind){
@@ -1107,6 +1108,12 @@ authModal.addEventListener('click',e=>{ if(e.target===authModal) dismissAuthProm
 addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal(); dismissAuthPrompt(); primeCloseProductCatalog(); primeCloseServiceCatalog(); } });
 
 function render(){
+  if(state.step===6){
+    const pagoMsg = document.getElementById('wPaidNote');
+    if(pagoMsg) pagoMsg.style.display = lastBookedPago ? 'block' : 'none';
+    const payBtn = document.getElementById('wPayNow');
+    if(payBtn) payBtn.style.display = lastBookedPago ? 'none' : '';
+  }
   steps.forEach(s=>s.classList.toggle('active', +s.dataset.step===state.step));
   document.getElementById('stepLabel').textContent = state.step===6 ? 'Tudo certo!' : state.step===7 ? 'Pagamento' : `Passo ${state.step} de 5 — ${labels[state.step-1]}`;
   for(let i=1;i<=5;i++) document.getElementById('p'+i).classList.toggle('done', i<=state.step);
@@ -1383,7 +1390,7 @@ async function primeAssignBarber(){
 }
 
 let lastBookingWaMsg = null;
-let lastBookedAppt = null, lastBookedTotal = 0;   // agendamento recém-criado: é ele que o botão "Pagar agora" cobra
+let lastBookedAppt = null, lastBookedTotal = 0, lastBookedPago = false;   // agendamento recém-criado: é ele que o botão "Pagar agora" cobra
 document.getElementById('wBack').addEventListener('click',()=>{ state.step=Math.max(1,state.step-1); render(); });
 document.getElementById('wNext').addEventListener('click', async ()=>{
   if(state.step<5){
@@ -1435,7 +1442,18 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
   if(acc && !acc.favoriteBarber){ acc.favoriteBarber = state.barber; primeSaveAccount(acc); }
   if(acc && acc.email) await primeCheckAchievements({bookedTime: state.time, bookedDay: state.day});
   lastBookingWaMsg = msg;
-  lastBookedAppt = savedAppt; lastBookedTotal = waTotal;
+  lastBookedAppt = savedAppt; lastBookedTotal = waTotal; lastBookedPago = false;
+  if(state.reagendarDe){
+    const velhoId = state.reagendarDe; state.reagendarDe = null;
+    try{
+      const { data: ok } = await sb.rpc('transferir_pagamento_reagendamento', { p_antigo: velhoId, p_novo: savedAppt.id });
+      if(ok){
+        lastBookedPago = true;
+        const velho = await primeFetchAppointmentById(velhoId);
+        if(velho) await primeAddNotif({forRole:'barber', recipientBarberId:velho.barberId, type:'cancelado', apptId:velhoId, text:`${velho.name||'Cliente'} reagendou o horário de ${velho.dayLabel} às ${velho.time} (pagamento mantido)`});
+      }
+    }catch(e){ console.error('transferir_pagamento_reagendamento', e); }
+  }
   state.step = 6;
   render();
 });
@@ -2196,7 +2214,8 @@ function primeApptFromRow(r){
     ratingComment:r.rating_comment, ratingBy:r.rating_by, clientRating:r.client_rating,
     clientRatingComment:r.client_rating_comment, barberReply:r.barber_reply, name:r.client_name,
     clientEmail:r.client_email, createdAt:r.created_at, notes:r.notes,
-    couponCode:r.coupon_code, discountPrice:r.discount_price, reminderSentAt:r.reminder_sent_at
+    couponCode:r.coupon_code, discountPrice:r.discount_price, reminderSentAt:r.reminder_sent_at,
+    paymentStatus:r.payment_status
   };
 }
 function primeApptToRow(a){
@@ -2633,7 +2652,25 @@ async function renderMyAppointments(){
   if(!box) return;
   const list=(await primeMyAppointments()).filter(a=>a.status==='pendente'||a.status==='confirmado');
   label.style.display = list.length ? 'block' : 'none';
-  box.innerHTML = list.map(a=>`<div class="ca-hist"><div class="ic">✂</div><div class="info"><div class="s">${a.services.join(' + ')}</div><div class="d">${a.dayLabel} · ${a.time} · com ${apBarberName(a)}</div></div><div class="val">Solicitado</div></div>`).join('');
+  box.innerHTML = list.map(a=>{
+    const pago = a.paymentStatus==='pago';
+    const acao = pago ? '<div class="val" style="color:var(--verde-neon)">Pago ✓</div>'
+      : `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.35rem"><div class="val">Solicitado</div><button type="button" class="btn btn-primary" style="padding:.4rem .8rem;font-size:.72rem" id="ca-pay-${a.id}" onclick="caPagarAgendamento(${a.id})">Pagar agora</button></div>`;
+    return `<div class="ca-hist"><div class="ic">✂</div><div class="info"><div class="s">${a.services.join(' + ')}</div><div class="d">${a.dayLabel} · ${a.time} · com ${apBarberName(a)}</div></div>${acao}</div>`;
+  }).join('');
+}
+// quem saiu do checkout sem querer volta ao mesmo pagamento: se o link ainda vale, o servidor devolve o mesmo; se venceu, gera um novo
+async function caPagarAgendamento(id){
+  const btn = document.getElementById('ca-pay-'+id);
+  if(btn){ btn.disabled = true; btn.classList.add('btn-loading'); }
+  try{
+    const { data, error } = await sb.functions.invoke('criar-pix', { body: { appointment_id: id } });
+    if(error || !data || !data.ticket_url) throw error || new Error('sem link de pagamento');
+    window.location.href = data.ticket_url;
+  }catch(e){
+    console.error('criar-pix', e);
+    if(btn){ btn.disabled = false; btn.classList.remove('btn-loading'); btn.textContent = 'Tentar de novo'; }
+  }
 }
 
 // ══ Timeline de cortes anteriores (histórico real, não mais placeholder) ══
@@ -2753,7 +2790,7 @@ async function caRenderNextAppointment(){
   const status = next.status || 'confirmado';
   area.innerHTML = `
     <div class="ca-next">
-      <div class="tag">${STATUS_LABEL[status]||'Confirmado'}</div>
+      <div class="tag">${STATUS_LABEL[status]||'Confirmado'}${next.paymentStatus==='pago' ? ' · Pago ✓' : ''}</div>
       <div class="svc">${next.services.join(' + ')}</div>
       <div class="with">com ${apBarberName(next)}</div>
       <div class="when"><div><span class="lbl">Data</span>${next.dayLabel}</div><div><span class="lbl">Horário</span>${next.time}</div></div>
@@ -2799,6 +2836,12 @@ async function caDoCancel(id){
 }
 async function caReagendar(id){
   const ap = await primeFetchAppointmentById(id);
+  if(ap && ap.paymentStatus==='pago'){
+    // já pago: o agendamento antigo só é cancelado depois que o novo for salvo, e o pagamento passa para o novo
+    state.reagendarDe = id;
+    caGoBook();
+    return;
+  }
   await primeUpdateAppointment(id, {status:'cancelado'});
   if(ap){
     await primeAddNotif({forRole:'barber', recipientBarberId:ap.barberId, type:'cancelado', apptId:id,
@@ -11514,7 +11557,8 @@ async function baBuildAgendaTimes(){
       const svcName = svcs.join(' + ');
       const dur = a.duration ? ` · ~${a.duration}min` : '';
       const dots = svcs.map(s=>`<span class="svc-dot" style="background:${SVC_COLORS[s]||'var(--prata-dim)'}" title="${s}"></span>`).join('');
-      const badge = emAndamento ? `<span class="andamento-badge"><span class="dot"></span>Em atendimento</span>` : '';
+      const pagoChip = a.paymentStatus==='pago' ? `<span style="display:inline-block;margin-left:.4rem;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--verde-neon);border:1px solid var(--verde-neon);border-radius:99px;padding:1px .45rem" title="Pagamento online confirmado">Pago online</span>` : '';
+      const badge = (emAndamento ? `<span class="andamento-badge"><span class="dot"></span>Em atendimento</span>` : '') + pagoChip;
       const detailText = emAndamento
         ? `${svcName} · iniciado há ${baElapsedMin(a.iniciadoEm)}min`
         : `${svcName}${dur} · <span style="color:${statusColor[st]}">${statusLabel[st]||st}</span>`;
