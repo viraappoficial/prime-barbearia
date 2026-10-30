@@ -8960,7 +8960,7 @@ async function baCrmWhatsapp(chave){
   const btn = document.getElementById('ba-crm-enviar'), aviso = document.getElementById('ba-crm-aviso');
   if(!texto){ aviso.textContent = 'Escreva a mensagem.'; aviso.style.color = 'var(--erro)'; return; }
   btn.disabled = true;
-  const { error } = await sb.from('whatsapp_messages').insert({ chat_id:`55${c.fone}@c.us`, contact_phone:`55${c.fone}`, direction:'outbound', status:'pending', body:texto, created_by:baCurrentBarberId });
+  const { error } = await sb.from('whatsapp_messages').insert({ chat_id:`55${c.fone}@c.us`, contact_phone:`55${c.fone}`, direction:'outbound', status:'pending', body:texto, origem:'crm' });   // sem created_by de propósito: não é conversa digitada, então vale a proteção do número (limites, horário, quem pediu para parar)
   if(error){ console.error('crm envio', error); btn.disabled = false; aviso.textContent = 'Não foi possível enviar agora. Tente de novo.'; aviso.style.color = 'var(--erro)'; return; }
   const { error: e2 } = await sb.from('crm_contatos').insert({ phone:c.fone, client_name:c.nome, modelo });
   if(e2) console.error('crm_contatos', e2);
