@@ -4267,6 +4267,17 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .obs-textarea{width:100%;background:var(--verde-noite);border:1px solid rgba(237,237,232,.15);color:var(--prata);padding:.6rem .8rem;font-family:var(--font-body);font-size:.82rem;border-radius:4px;resize:vertical;min-height:60px;margin-top:.4rem}
 #barberApp .review-reply-form button{align-self:flex-end;background:var(--dourado);color:#1a1506;border:none;font-size:.68rem;font-weight:600;text-transform:uppercase;padding:.5rem .8rem;border-radius:4px;cursor:pointer;white-space:nowrap}
 #barberApp .ba-item{display:flex;align-items:center;gap:.9rem;padding:.9rem 0;border-bottom:1px solid rgba(198,167,94,.12)}
+#barberApp .ba-crm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.5rem}
+#barberApp .ba-crm-k{background:var(--verde-noite);border:1px solid var(--hair);border-radius:8px;padding:.55rem .7rem}
+#barberApp .ba-crm-k b{display:block;font-family:var(--font-display);font-size:1.3rem;font-weight:500;line-height:1.1}
+#barberApp .ba-crm-k span{font-size:.72rem;color:var(--prata-dim)}
+#barberApp .ba-crm-k.risk b{color:var(--alerta)} #barberApp .ba-crm-k.lost b{color:var(--erro)} #barberApp .ba-crm-k.plan b{color:var(--dourado-claro)}
+#barberApp .ba-crm-chip{font-size:.74rem;border:1px solid var(--hair);border-radius:99px;padding:.3rem .75rem;color:var(--prata-dim);background:transparent;cursor:pointer;width:auto;max-width:none;margin:0}
+#barberApp .ba-crm-chip.on{border-color:var(--verde-neon);color:var(--verde-neon)}
+#barberApp .ba-crm-row{display:flex;justify-content:space-between;gap:.7rem;align-items:center;padding:.65rem .75rem;margin-bottom:.4rem;background:var(--verde-noite);border:1px solid var(--hair);border-radius:8px;cursor:pointer}
+#barberApp .ba-crm-row.sel{border-color:var(--dourado-dim)}
+#barberApp .ba-crm-tag{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:.1rem .5rem;border:1px solid var(--verde-neon);color:var(--verde-neon);white-space:nowrap;display:inline-block;margin-left:.25rem}
+#barberApp .ba-crm-tag.risk{border-color:var(--alerta);color:var(--alerta)} #barberApp .ba-crm-tag.lost{border-color:var(--erro);color:var(--erro)} #barberApp .ba-crm-tag.plan{border-color:var(--dourado);color:var(--dourado-claro)} #barberApp .ba-crm-tag.new{border-color:var(--violeta);color:var(--violeta)}
 #barberApp .ba-item:last-child{border-bottom:none}
 #barberApp .ba-roster-row{border-bottom:1px solid rgba(198,167,94,.12);padding-left:.2rem}
 #barberApp .ba-item .ic{width:38px;height:38px;flex:none;border-radius:50%;background:rgba(198,167,94,.1);border:1px solid var(--dourado-dim);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);color:var(--dourado);font-size:.85rem}
@@ -4948,6 +4959,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <button class="ba-btn ghost" data-sub="cupons" onclick="baGestaoTab('cupons')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Cupons</button>
           <button class="ba-btn ghost" data-sub="instagram" onclick="baGestaoTab('instagram')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Instagram</button>
           <button class="ba-btn ghost" data-sub="financeiro" onclick="baGestaoTab('financeiro')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">Financeiro</button>
+          <button class="ba-btn ghost" data-sub="crm" onclick="baGestaoTab('crm')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">CRM</button>
           <button class="ba-btn ghost" data-sub="ia" onclick="baGestaoTab('ia')" style="width:auto;max-width:none;padding:.45rem .9rem;margin:0;font-size:.72rem">IA</button>
         </div>
 
@@ -5067,6 +5079,16 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <button class="ba-btn" style="width:auto;max-width:none;padding:.5rem .9rem;margin:0;font-size:.68rem" onclick="baAddInstagramPost()">Adicionar</button>
           </div>
           <p class="ba-err" id="ba-instagram-err" style="display:none;margin-top:.5rem"></p>
+        </div>
+
+        <div class="ba-card" id="ba-crm-config" style="display:none">
+          <div class="ba-slabel" style="margin-top:0">CRM de clientes</div>
+          <p style="color:var(--prata-dim);font-size:.8rem;margin-bottom:.9rem">Todos os clientes num lugar: quem tem plano, quem está demorando a voltar e quem é novo. O sistema descobre de quanto em quanto tempo cada cliente costuma vir e avisa quando ele passa do dia.</p>
+          <div id="ba-crm-kpis" class="ba-crm-kpis"></div>
+          <div id="ba-crm-chips" style="display:flex;flex-wrap:wrap;gap:.35rem;margin:.6rem 0"></div>
+          <div class="ba-field" style="max-width:100%;margin-bottom:.6rem"><input type="text" id="ba-crm-busca" placeholder="Buscar por nome ou telefone" oninput="baCrmListar()"></div>
+          <div id="ba-crm-lista"></div>
+          <div id="ba-crm-ficha" style="margin-top:.8rem"></div>
         </div>
 
         <div class="ba-card" id="ba-ia-config" style="display:none">
@@ -6745,6 +6767,8 @@ function baGestaoTab(sub){
   document.getElementById('ba-instagram-config').style.display = sub==='instagram' ? 'block' : 'none';
   document.getElementById('ba-financeiro-config').style.display = sub==='financeiro' ? 'block' : 'none';
   document.getElementById('ba-ia-config').style.display = sub==='ia' ? 'block' : 'none';
+  document.getElementById('ba-crm-config').style.display = sub==='crm' ? 'block' : 'none';
+  if(sub==='crm') baRenderCrm();
   if(sub==='ia'){ baIaPopularRecarga(); baIaRender(); }
   if(sub==='financeiro') baFinanceiroTab('contasapagar');
 }
@@ -8748,6 +8772,185 @@ async function baPlanoCadastrar(){
   if(error){ console.error('assinatura_admin_cadastrar', error); return fail('Não foi possível cadastrar: ' + (error.message||'tente de novo')); }
   ['ba-pl-nome','ba-pl-fone'].forEach(id=>document.getElementById(id).value='');
   await baRenderPlanosAdmin();
+}
+
+// ══ CRM (Gestão > CRM, admin): todos os clientes, o ritmo de cada um e o botão de WhatsApp ══
+const BA_CRM_TOLERANCIA = 2, BA_CRM_NOVO_DIAS = 21;   // dias de folga depois do dia esperado; cliente sem ritmo some após 21 dias
+const BA_CRM_MODELOS = {
+  plano:   { rotulo:'Está demorando a voltar · lembrar do plano', texto:'Oi, {nome}! Faz um tempinho que você não passa por aqui. Você ainda tem {saldo} no {plano} até {vence}. Quer que eu reserve um horário essa semana? 💈' },
+  voltar:  { rotulo:'Está demorando a voltar · convidar a voltar', texto:'Oi, {nome}! Sentimos sua falta aqui na Prime. Quer marcar um horário essa semana? 💈' },
+  acabando:{ rotulo:'O plano está acabando', texto:'Oi, {nome}! Seu {plano} acaba dia {vence} e ainda sobram {saldo}. Vamos marcar para aproveitar? 💈' },
+  oferecer:{ rotulo:'Oferecer o plano', texto:'Oi, {nome}! Já pensou em ter um plano mensal com corte, barba e sobrancelha aqui na Prime? Posso te explicar como funciona. 💈' },
+};
+function baCrmFone(t){ const d = String(t||'').replace(/\D/g,''); const l = d.length>11 && d.startsWith('55') ? d.slice(2) : d; return l.length>=10 ? l.slice(-11) : ''; }
+function baCrmDias(de, ate){ return Math.round((Date.parse(ate+'T12:00:00Z') - Date.parse(de+'T12:00:00Z'))/86400000); }
+function baCrmSomaDias(dia, n){ return new Date(Date.parse(dia+'T12:00:00Z') + n*86400000).toISOString().slice(0,10); }
+// ritmo: média dos últimos 4 intervalos entre visitas (precisa de pelo menos 3 visitas)
+function baCrmRitmo(datas){
+  if(datas.length<3) return null;
+  const iv = []; for(let i=1;i<datas.length;i++) iv.push(baCrmDias(datas[i-1], datas[i]));
+  const ult = iv.slice(-4);
+  return { intervalos: ult, dias: Math.max(1, Math.round(ult.reduce((a,b)=>a+b,0)/ult.length)) };
+}
+// situação do cliente hoje: em dia | passou | muito | novo | novo_sumiu
+function baCrmSituacao(datas, hoje){
+  const ultima = datas[datas.length-1], desde = baCrmDias(ultima, hoje), ritmo = baCrmRitmo(datas);
+  if(!ritmo){
+    return { tipo: desde>=BA_CRM_NOVO_DIAS ? 'novo_sumiu' : 'novo', desde, ritmo:null, passou:null, esperado:null };
+  }
+  const esperado = baCrmSomaDias(ultima, ritmo.dias), passou = baCrmDias(esperado, hoje);
+  let tipo = 'emdia';
+  if(desde >= 2*ritmo.dias && passou>BA_CRM_TOLERANCIA) tipo = 'muito';
+  else if(passou>BA_CRM_TOLERANCIA) tipo = 'passou';
+  return { tipo, desde, ritmo, passou, esperado };
+}
+// junta vendas, cadastros e contas em um cliente por telefone (ou por nome, quando não há telefone)
+function baCrmMontar(vendas, cadastros, planos, hoje){
+  const fonePorNome = {};
+  cadastros.forEach(c=>{ const f = baCrmFone(c.phone); if(f && c.name) fonePorNome[c.name.trim().toLowerCase()] = f; });
+  const mapa = {};
+  const pega = (chave, nome)=> mapa[chave] = mapa[chave] || { chave, nome, fone:'', vendas:[], gasto:0 };
+  vendas.forEach(v=>{
+    const nome = String(v.client||'').trim(); if(!nome) return;
+    const f = baCrmFone(v.clientPhone) || fonePorNome[nome.toLowerCase()] || '';
+    const c = pega(f || 'n:'+nome.toLowerCase(), nome); if(f) c.fone = f;
+    c.vendas.push(v); c.gasto += Number(v.value||0);
+  });
+  cadastros.forEach(cd=>{ const f = baCrmFone(cd.phone); if(!f || !cd.name) return; const c = pega(f, cd.name.trim()); c.fone = f; });
+  return Object.values(mapa).map(c=>{
+    const visitas = c.vendas.filter(v=>v.type!=='produto' && v.type!=='assinatura');
+    const datas = [...new Set(visitas.map(v=>String(v.date).slice(0,10)))].sort();
+    const sit = datas.length ? baCrmSituacao(datas, hoje) : null;
+    const ordem = visitas.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.time||'').localeCompare(String(a.time||'')));
+    return { ...c, datas, sit, plano: c.fone ? (planos[c.fone]||null) : null, ultimas: ordem.slice(0,5), primeira: datas[0]||null };
+  }).filter(c=>c.datas.length || c.plano);
+}
+function baCrmFiltro(c, f, hoje){
+  const t = c.sit && c.sit.tipo;
+  if(f==='passou') return t==='passou' || t==='novo_sumiu';
+  if(f==='muito') return t==='muito';
+  if(f==='semana') return t==='emdia' && c.sit.esperado && baCrmDias(hoje, c.sit.esperado)<=7;
+  if(f==='plano') return !!c.plano;
+  if(f==='acabando') return !!c.plano && baCrmDias(hoje, c.plano.fim)<=7;
+  if(f==='novos') return !!c.primeira && baCrmDias(c.primeira, hoje)<=30;
+  if(f==='uma') return c.datas.length===1;
+  return true;
+}
+const BA_CRM_FILTROS = [['passou','Passaram do dia'],['muito','Muito tempo sem vir'],['semana','Vão voltar esta semana'],['plano','Com plano'],['acabando','Plano acabando'],['novos','Clientes novos'],['uma','Vieram uma vez só'],['todos','Todos']];
+let baCrmDados = [], baCrmFiltroAtual = 'passou', baCrmSel = null, baCrmContatos = {}, baCrmBarbeiros = {};
+function baCrmSaldoTxt(saldo){
+  const nomes = { corte:['corte','cortes'], barba:['barba','barbas'], sobrancelha:['sobrancelha','sobrancelhas'] };
+  const itens = Object.entries(saldo||{}).filter(([,n])=>n>0).map(([k,n])=>`${n} ${(nomes[k]||[k,k])[n===1?0:1]}`);
+  return itens.length ? itens.join(' e ') : 'nada de saldo';
+}
+function baCrmTexto(modelo, c){
+  const p = c.plano;
+  return BA_CRM_MODELOS[modelo].texto.split('{nome}').join(String(c.nome).split(' ')[0])
+    .split('{saldo}').join(p ? baCrmSaldoTxt(p.saldo) : '').split('{plano}').join(p ? p.nome : '')
+    .split('{vence}').join(p ? p.fim.split('-').reverse().slice(0,2).join('/') : '');
+}
+function baCrmModeloPadrao(c, hoje){
+  if(c.plano && baCrmDias(hoje, c.plano.fim)<=7) return 'acabando';
+  return c.plano ? 'plano' : 'voltar';
+}
+async function baCrmBuscarTudo(tabela, cols, ordem){
+  const out = [];
+  for(let de=0; ; de+=1000){
+    let q = sb.from(tabela).select(cols).range(de, de+999); if(ordem) q = q.order(ordem);
+    const { data, error } = await q; if(error){ console.error('crm '+tabela, error); break; }
+    out.push(...(data||[])); if(!data || data.length<1000) break;
+  }
+  return out;
+}
+async function baRenderCrm(){
+  const lista = document.getElementById('ba-crm-lista');
+  lista.innerHTML = '<p style="color:var(--prata-dim)">Carregando…</p>';
+  const hoje = primeLocalDate();
+  const [vendasRaw, crm, contas, ass, itens, uso, contatos, equipe] = await Promise.all([
+    baCrmBuscarTudo('sales','*','date'), baCrmBuscarTudo('crm_clients','name,phone'), baCrmBuscarTudo('clients','name,phone'),
+    sb.from('assinaturas').select('id,plano_id,plano_nome,client_phone,fim,status,pago_em').eq('status','ativa'),
+    sb.from('plano_itens').select('plano_id,item,qtd'), sb.from('uso_plano').select('assinatura_id,item'),
+    sb.from('crm_contatos').select('phone,barber_id,created_at').order('created_at',{ascending:false}).limit(1000),
+    Promise.resolve(baGetRoster()),
+  ]);
+  const qtd = {}; (itens.data||[]).forEach(i=>{ (qtd[i.plano_id] = qtd[i.plano_id]||{})[i.item] = i.qtd; });
+  const usado = {}; (uso.data||[]).forEach(u=>{ const m = usado[u.assinatura_id] = usado[u.assinatura_id]||{}; m[u.item] = (m[u.item]||0)+1; });
+  const planos = {};
+  (ass.data||[]).filter(a=>a.fim>=hoje).forEach(a=>{
+    const f = baCrmFone(a.client_phone); if(!f) return;
+    const saldo = {}; Object.entries(qtd[a.plano_id]||{}).forEach(([k,n])=>{ saldo[k] = n-((usado[a.id]||{})[k]||0); });
+    planos[f] = { nome:a.plano_nome, fim:a.fim, saldo, total:qtd[a.plano_id]||{}, pago:!!a.pago_em };
+  });
+  baCrmContatos = {}; (contatos.data||[]).forEach(c=>{ if(!baCrmContatos[c.phone]) baCrmContatos[c.phone] = c; });
+  baCrmBarbeiros = Object.fromEntries((equipe||[]).map(b=>[b.id,b.name]));
+  baCrmDados = baCrmMontar(vendasRaw.map(baSaleFromRow), [...crm, ...contas], planos, hoje);
+  baCrmDesenhar();
+}
+function baCrmDesenhar(){
+  const hoje = primeLocalDate();
+  const conta = f => baCrmDados.filter(c=>baCrmFiltro(c,f,hoje)).length;
+  document.getElementById('ba-crm-kpis').innerHTML = [['',baCrmDados.length,'clientes'],['plan',conta('plano'),'com plano'],['risk',conta('passou'),'passaram do dia de voltar'],['lost',conta('muito'),'há muito tempo sem vir'],['',conta('novos'),'clientes novos (30 dias)']]
+    .map(([k,n,t])=>`<div class="ba-crm-k ${k}"><b>${n}</b><span>${t}</span></div>`).join('');
+  document.getElementById('ba-crm-chips').innerHTML = BA_CRM_FILTROS.map(([k,t])=>`<button type="button" class="ba-crm-chip${k===baCrmFiltroAtual?' on':''}" onclick="baCrmFiltrar('${k}')">${t} (${conta(k)})</button>`).join('');
+  baCrmListar();
+}
+function baCrmFiltrar(f){ baCrmFiltroAtual = f; baCrmDesenhar(); }
+function baCrmQuando(c){
+  const s = c.sit; if(!s) return '';
+  if(!s.ritmo) return `Veio uma vez só, ainda não dá para saber o ritmo · veio há <b>${s.desde} dias</b>`;
+  const dias = `Costuma vir a cada <b>${s.ritmo.dias} dias</b> · está há ${s.desde} dias sem vir`;
+  return s.passou>0 ? `${dias} · <b>passou ${s.passou} dia${s.passou===1?'':'s'}</b>` : s.passou===0 ? `${dias} · <b>é hoje</b>` : `${dias} · <b>deve voltar em ${-s.passou} dia${s.passou===-1?'':'s'}</b>`;
+}
+function baCrmTags(c){
+  const t = c.sit && c.sit.tipo, tags = [];
+  if(t==='passou') tags.push('<span class="ba-crm-tag risk">Passou do dia</span>');
+  if(t==='muito') tags.push('<span class="ba-crm-tag lost">Muito tempo sem vir</span>');
+  if(t==='novo' || t==='novo_sumiu') tags.push('<span class="ba-crm-tag new">Cliente novo</span>');
+  if(t==='novo_sumiu') tags.push('<span class="ba-crm-tag risk">Não voltou</span>');
+  if(c.plano) tags.push(`<span class="ba-crm-tag plan">${primeEsc(c.plano.nome)}</span>`);
+  return tags.join('');
+}
+function baCrmListar(){
+  const hoje = primeLocalDate(), q = (document.getElementById('ba-crm-busca').value||'').trim().toLowerCase(), qd = q.replace(/\D/g,'');
+  const ordem = c => { const s = c.sit; return s && s.passou!=null ? -s.passou : s ? -s.desde : 0; };
+  const itens = baCrmDados.filter(c=>baCrmFiltro(c, baCrmFiltroAtual, hoje) && (!q || c.nome.toLowerCase().includes(q) || (qd && c.fone.includes(qd)))).sort((a,b)=>ordem(a)-ordem(b)).slice(0,100);
+  document.getElementById('ba-crm-lista').innerHTML = itens.length ? itens.map(c=>{
+    const ct = baCrmContatos[c.fone];
+    return `<div class="ba-crm-row${baCrmSel===c.chave?' sel':''}" onclick="baCrmAbrir('${c.chave.replace(/'/g,"\\'")}')"><div style="min-width:0"><div>${primeEsc(c.nome)}${baCrmTags(c)}</div><div style="font-size:.74rem;color:var(--prata-dim);margin-top:.15rem">${c.sit?baCrmQuando(c):'Só tem plano, ainda sem visita'}${ct?` · chamado em ${ct.created_at.slice(0,10).split('-').reverse().slice(0,2).join('/')}`:''}</div></div></div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhum cliente neste filtro.</p>';
+}
+function baCrmAbrir(chave){
+  baCrmSel = chave; baCrmListar();
+  const c = baCrmDados.find(x=>x.chave===chave); if(!c) return;
+  const hoje = primeLocalDate(), s = c.sit, modelo = baCrmModeloPadrao(c, hoje);
+  const ritmo = s && s.ritmo ? `<div class="ba-slabel" style="margin-top:.9rem">De quanto em quanto tempo ele vem</div>
+    <div style="font-size:.84rem;line-height:1.6">Costuma vir a cada <b>${s.ritmo.dias} dias</b><br>Dias entre as últimas visitas: ${s.ritmo.intervalos.join(' · ')}<br>Devia ter voltado em <b>${s.esperado.split('-').reverse().join('/')}</b></div>` : '';
+  const plano = c.plano ? `<div class="ba-slabel" style="margin-top:.9rem">${primeEsc(c.plano.nome)} · até ${c.plano.fim.split('-').reverse().join('/')}</div>
+    <div style="font-size:.84rem">${Object.entries(c.plano.total).map(([k,n])=>`${k==='corte'?'Cortes':k==='barba'?'Barbas':'Sobrancelhas'}: sobram <b>${c.plano.saldo[k]}</b> de ${n}`).join(' · ')}<br><span style="color:${c.plano.pago?'var(--verde-neon)':'var(--alerta)'}">${c.plano.pago?'Plano pago':'Plano ainda não pago'}</span></div>` : '';
+  const hist = c.ultimas.length ? c.ultimas.map(v=>`<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.82rem;padding:.15rem 0"><span>${primeEsc(v.service)} · ${primeEsc(baCrmBarbeiros[v.barberId]||'')}</span><span style="color:var(--prata-dim);white-space:nowrap">${String(v.date).slice(0,10).split('-').reverse().slice(0,2).join('/')} · ${v.type==='uso_plano'?'pelo plano':baFormatMoney(Number(v.value||0))}</span></div>`).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Sem visitas ainda.</p>';
+  const ct = baCrmContatos[c.fone];
+  document.getElementById('ba-crm-ficha').innerHTML = `<div class="ba-card" style="margin:0">
+    <div style="font-family:var(--font-display);font-size:1.05rem">${primeEsc(c.nome)}</div>
+    <div style="font-size:.8rem;color:var(--prata-dim)">${c.fone?`(${c.fone.slice(0,2)}) ${c.fone.slice(2,-4)}-${c.fone.slice(-4)}`:'Sem telefone cadastrado'} · ${c.primeira?`cliente desde ${c.primeira.split('-').reverse().join('/')} · `:''}gastou ${baFormatMoney(c.gasto)}</div>
+    ${ritmo}${plano}
+    <div class="ba-slabel" style="margin-top:.9rem">Últimas visitas</div>${hist}
+    <div class="ba-slabel" style="margin-top:.9rem">Mandar mensagem no WhatsApp</div>
+    <select id="ba-crm-modelo" class="add-input" style="width:100%;margin-bottom:.4rem" onchange="baCrmTrocarModelo('${chave.replace(/'/g,"\\'")}')">${Object.entries(BA_CRM_MODELOS).filter(([k])=>c.plano || k!=='plano' && k!=='acabando').map(([k,m])=>`<option value="${k}"${k===modelo?' selected':''}>${m.rotulo}</option>`).join('')}</select>
+    <textarea id="ba-crm-texto" class="add-input" rows="4" style="width:100%">${primeEsc(baCrmTexto(modelo,c))}</textarea>
+    ${c.fone?`<button class="ba-btn" style="margin-top:.5rem" onclick="baCrmWhatsapp('${chave.replace(/'/g,"\\'")}')">Abrir no WhatsApp</button>`:'<p class="ba-err" style="display:block">Sem telefone: não dá para chamar.</p>'}
+    <p style="font-size:.76rem;color:var(--prata-dim);margin-top:.4rem">O WhatsApp abre com o texto pronto e você aperta enviar. O sistema anota quem chamou e quando.${ct?` Último chamado: ${ct.created_at.slice(0,10).split('-').reverse().join('/')}${baCrmBarbeiros[ct.barber_id]?' pelo '+primeEsc(baCrmBarbeiros[ct.barber_id]):''}.`:''}</p></div>`;
+}
+function baCrmTrocarModelo(chave){
+  const c = baCrmDados.find(x=>x.chave===chave); if(!c) return;
+  document.getElementById('ba-crm-texto').value = baCrmTexto(document.getElementById('ba-crm-modelo').value, c);
+}
+async function baCrmWhatsapp(chave){
+  const c = baCrmDados.find(x=>x.chave===chave); if(!c || !c.fone) return;
+  const texto = document.getElementById('ba-crm-texto').value, modelo = document.getElementById('ba-crm-modelo').value;
+  window.open(`https://wa.me/55${c.fone}?text=${encodeURIComponent(texto)}`, '_blank');
+  const { error } = await sb.from('crm_contatos').insert({ phone:c.fone, client_name:c.nome, modelo });
+  if(error) console.error('crm_contatos', error);
+  else { baCrmContatos[c.fone] = { phone:c.fone, barber_id:baCurrentBarberId, created_at:new Date().toISOString() }; baCrmListar(); }
 }
 
 // ══ Fechamento de comissão por barbeiro (admin) — vira uma Conta a Pagar de verdade (expenses,
