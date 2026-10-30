@@ -873,8 +873,20 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
       <div style="text-align:center;padding:1.2rem 0">
         <div style="font-size:1.1rem;color:var(--verde-neon);font-weight:600;margin-bottom:.7rem">Agendamento enviado! ✓</div>
         <p style="color:var(--prata-dim);font-size:.85rem;margin-bottom:1.6rem">A confirmação do horário é feita pela nossa equipe. Se quiser, também dá pra avisar a gente direto pelo WhatsApp.</p>
-        <button class="btn btn-primary" id="wSendWhats" style="margin-bottom:.8rem">Encaminhar pelo WhatsApp</button>
+        <button class="btn btn-primary" id="wPayNow" style="margin-bottom:.8rem">Pagar agora</button>
+        <button class="btn btn-ghost" id="wSendWhats" style="margin-bottom:.8rem">Encaminhar pelo WhatsApp</button>
         <button class="btn btn-ghost" id="wFinish">Concluir</button>
+      </div>
+    </div>
+
+    <div class="wstep" data-step="7">
+      <div style="text-align:center;padding:1.2rem 0">
+        <div style="font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dourado);margin-bottom:.5rem">Pagamento</div>
+        <div id="wPayTotal" style="font-family:var(--font-display);font-size:2rem;color:var(--dourado);margin-bottom:.8rem"></div>
+        <p style="color:var(--prata-dim);font-size:.88rem;line-height:1.5;margin-bottom:1.4rem">Você escolhe como pagar na próxima tela, que é segura e da InfinitePay: <b style="color:var(--prata)">Pix</b> ou <b style="color:var(--prata)">cartão de crédito</b> (em até 12x). O pagamento é confirmado sozinho e você pode pagar depois, no local, se preferir.</p>
+        <p id="wPayErr" style="color:var(--erro);font-size:.82rem;margin-bottom:.8rem;display:none">Não foi possível abrir o pagamento agora. Tente de novo ou pague no local.</p>
+        <button class="btn btn-primary" id="wPayGo" style="margin-bottom:.8rem">Ir para o pagamento</button>
+        <button class="btn btn-ghost" id="wPayBack">Voltar</button>
       </div>
     </div>
 
@@ -1046,9 +1058,9 @@ addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal(); dismissAuthP
 
 function render(){
   steps.forEach(s=>s.classList.toggle('active', +s.dataset.step===state.step));
-  document.getElementById('stepLabel').textContent = state.step===6 ? 'Tudo certo!' : `Passo ${state.step} de 5 — ${labels[state.step-1]}`;
+  document.getElementById('stepLabel').textContent = state.step===6 ? 'Tudo certo!' : state.step===7 ? 'Pagamento' : `Passo ${state.step} de 5 — ${labels[state.step-1]}`;
   for(let i=1;i<=5;i++) document.getElementById('p'+i).classList.toggle('done', i<=state.step);
-  document.getElementById('wWizardNav').style.display = state.step===6 ? 'none' : 'flex';
+  document.getElementById('wWizardNav').style.display = state.step>=6 ? 'none' : 'flex';
   document.getElementById('wBack').disabled = state.step===1;
   const next = document.getElementById('wNext');
   const ready = (state.step===1&&state.services.length>0)||(state.step===2&&state.barber)||(state.step===3&&state.day)||(state.step===4&&state.time)||state.step===5;
@@ -1321,6 +1333,7 @@ async function primeAssignBarber(){
 }
 
 let lastBookingWaMsg = null;
+let lastBookedAppt = null, lastBookedTotal = 0;   // agendamento recém-criado: é ele que o botão "Pagar agora" cobra
 document.getElementById('wBack').addEventListener('click',()=>{ state.step=Math.max(1,state.step-1); render(); });
 document.getElementById('wNext').addEventListener('click', async ()=>{
   if(state.step<5){
@@ -1372,8 +1385,31 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
   if(acc && !acc.favoriteBarber){ acc.favoriteBarber = state.barber; primeSaveAccount(acc); }
   if(acc && acc.email) await primeCheckAchievements({bookedTime: state.time, bookedDay: state.day});
   lastBookingWaMsg = msg;
+  lastBookedAppt = savedAppt; lastBookedTotal = waTotal;
   state.step = 6;
   render();
+});
+document.getElementById('wPayNow').addEventListener('click', ()=>{
+  if(!lastBookedAppt) return;
+  document.getElementById('wPayTotal').textContent = 'R$ ' + Number(lastBookedTotal).toFixed(2).replace('.',',');
+  document.getElementById('wPayErr').style.display = 'none';
+  state.step = 7; render();
+});
+document.getElementById('wPayBack').addEventListener('click', ()=>{ state.step = 6; render(); });
+document.getElementById('wPayGo').addEventListener('click', async ()=>{
+  if(!lastBookedAppt) return;
+  const btn = document.getElementById('wPayGo'), err = document.getElementById('wPayErr');
+  err.style.display = 'none'; btn.disabled = true; btn.classList.add('btn-loading');
+  try{
+    // o valor é recalculado no servidor a partir do agendamento; o navegador só diz QUAL agendamento
+    const { data, error } = await sb.functions.invoke('criar-pix', { body: { appointment_id: lastBookedAppt.id } });
+    if(error || !data || !data.ticket_url) throw error || new Error('sem link de pagamento');
+    window.location.href = data.ticket_url;
+  }catch(e){
+    console.error('criar-pix', e);
+    err.style.display = 'block';
+    btn.disabled = false; btn.classList.remove('btn-loading');
+  }
 });
 document.getElementById('wSendWhats').addEventListener('click', ()=>{
   if(lastBookingWaMsg) window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(lastBookingWaMsg)}`,'_blank');
@@ -1395,6 +1431,27 @@ document.getElementById('wFinish').addEventListener('click', ()=>{
   caRenderNextAppointment();
   caRenderPlanCard();
 });
+
+// volta do checkout da InfinitePay: a URL traz order_nsu, transaction_nsu e slug; o servidor confere com a InfinitePay antes de dar baixa
+(async function primeConferirRetornoPagamento(){
+  const q = new URLSearchParams(location.search);
+  const orderNsu = q.get('order_nsu'), transactionNsu = q.get('transaction_nsu'), slug = q.get('slug');
+  if(!orderNsu || !transactionNsu || !slug) return;
+  const aviso = (txt, ok)=>{
+    const d = document.createElement('div');
+    d.setAttribute('role','status');
+    d.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:3000;max-width:92vw;padding:.9rem 1.2rem;background:var(--grafite);border:1px solid '+(ok?'var(--verde-neon)':'var(--dourado-dim)')+';color:var(--prata);font-size:.9rem;text-align:center';
+    d.textContent = txt; document.body.appendChild(d); setTimeout(()=>d.remove(), 9000);
+  };
+  history.replaceState(null, '', location.pathname);   // limpa a URL (não reprocessa ao atualizar a página)
+  try{
+    const r = await fetch('https://yojvzwkvtedxqlohpuug.supabase.co/functions/v1/aviso-infinitepay', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ order_nsu: orderNsu, transaction_nsu: transactionNsu, slug }) });
+    const j = await r.json().catch(()=>({}));
+    if(j.resultado==='ok' || j.resultado==='ja_aprovado') aviso('Pagamento confirmado! ✓ Obrigado.', true);
+    else if(j.resultado==='pendente') aviso('Recebemos o seu retorno. O pagamento ainda está sendo confirmado.', false);
+    else aviso('Não conseguimos confirmar o pagamento agora. Se você pagou, a nossa equipe confere.', false);
+  }catch(e){ aviso('Não conseguimos confirmar o pagamento agora. Se você pagou, a nossa equipe confere.', false); }
+})();
 
 // nav solid on scroll
 const nav=document.getElementById('nav');
