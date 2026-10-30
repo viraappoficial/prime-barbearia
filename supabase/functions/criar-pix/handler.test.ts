@@ -84,3 +84,21 @@ test("Mercado Pago fora do ar: cobrança cancelada, nada reservado, erro claro p
   assert.equal(estado.pagamentos.get("11111111-1111-4111-8111-111111111111").status, "cancelado");
   assert.deepEqual(estado.agendamento, { payment_status: "nenhum" });
 });
+
+test("sem exigir CPF (InfinitePay): cria a cobrança sem CPF; exigindo, continua recusando", async () => {
+  const mk = (exigeCpf: boolean) => {
+    const gravados: any[] = [];
+    const repo: any = {
+      async expirar() {}, async agendamento() { return { id: 7, status: "pendente", payment_status: "nenhum", services: ["Corte Social"], coupon_code: null, client_name: "Ana", client_email: "a@b.com", day: "2026-11-02" }; },
+      async catalogo() { return { "Corte Social": 30 }; }, async cupom() { return null; }, async pagamentoPendente() { return null; },
+      async inserirPagamento(p: any) { gravados.push(p); }, async atualizarPagamento() {}, async marcarAgendamento() {},
+    };
+    const provedor: any = { async criarPix() { return { ok: true, status: 200, id: "S1", ticket_url: "https://checkout.infinitepay.io/x" }; } };
+    return { gravados, deps: { repo, provedor, agora: () => new Date("2026-10-30T12:00:00Z"), urlAviso: "u", novoId: () => "id-1", exigeCpf } as any };
+  };
+  const a = mk(false);
+  const r = await criarPix({ appointment_id: 7 }, a.deps);
+  assert.equal(r.status, 200); assert.equal((r.body as any).ticket_url, "https://checkout.infinitepay.io/x"); assert.equal((r.body as any).qr_code, null);
+  assert.equal(a.gravados[0].payer_cpf_last3, "");
+  assert.equal((await criarPix({ appointment_id: 7 }, mk(true).deps)).status, 400);
+});

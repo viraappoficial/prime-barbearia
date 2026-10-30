@@ -15,7 +15,7 @@ export interface Repo {
   atualizarPagamento(id: string, patch: Record<string, unknown>): Promise<void>;
   marcarAgendamento(id: number, patch: { payment_status: string; reserved_until: string | null }): Promise<void>;
 }
-export type Deps = { repo: Repo; provedor: Provedor; agora: () => Date; urlAviso: string; novoId: () => string; log?: (m: string) => void };
+export type Deps = { repo: Repo; provedor: Provedor; agora: () => Date; urlAviso: string; novoId: () => string; log?: (m: string) => void; exigeCpf?: boolean };   // exigeCpf: Mercado Pago/PagBank pedem; o checkout do InfinitePay coleta os dados do pagador sozinho
 export type Resposta = { status: number; body: Record<string, unknown> };
 
 const resposta = (p: Pagamento) => ({ payment_id: p.id, status: p.status, amount: p.amount, expires_at: p.expires_at, qr_code: p.pix_qr_code, qr_base64: p.pix_qr_base64, ticket_url: p.ticket_url });
@@ -24,7 +24,8 @@ export async function criarPix(entrada: { appointment_id?: unknown; cpf?: unknow
   const { repo, provedor, agora } = deps;
   const appId = Number(entrada.appointment_id);
   if (!Number.isInteger(appId) || appId <= 0) return { status: 400, body: { erro: "agendamento inválido" } };
-  if (!cpfValido(String(entrada.cpf ?? ""))) return { status: 400, body: { erro: "cpf_invalido" } };
+  const exigeCpf = deps.exigeCpf !== false;
+  if (exigeCpf && !cpfValido(String(entrada.cpf ?? ""))) return { status: 400, body: { erro: "cpf_invalido" } };
 
   await repo.expirar();   // vence o que está pendente há mais de 30 min antes de decidir qualquer coisa
   const ag = await repo.agendamento(appId);
@@ -44,7 +45,7 @@ export async function criarPix(entrada: { appointment_id?: unknown; cpf?: unknow
 
   const id = deps.novoId();
   const expira = dataExpiracao(agora(), 30);
-  const cpf = String(entrada.cpf).replace(/\D/g, "");
+  const cpf = String(entrada.cpf ?? "").replace(/\D/g, "");
   await repo.inserirPagamento({ id, appointment_id: appId, amount: calc.total, expires_at: new Date(Date.parse(expira)).toISOString(), payer_cpf_last3: cpf.slice(-3) });
 
   const email = String(entrada.email ?? "").trim() || ag.client_email || `pix+${appId}@primebarbearia.app.br`;

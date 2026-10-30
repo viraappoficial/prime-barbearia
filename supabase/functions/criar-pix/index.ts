@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
       agora: () => new Date(),
       novoId: () => crypto.randomUUID(),
       log: (m) => console.error(m),
+      exigeCpf: PROVEDOR !== "infinitepay",
       provedor: PROVEDOR === "infinitepay"
         ? provedorInfinitePay({ handle: Deno.env.get("INFINITEPAY_HANDLE") ?? "", token: Deno.env.get("INFINITEPAY_TOKEN") || undefined, urlRetorno: Deno.env.get("INFINITEPAY_REDIRECT_URL") || undefined })
         : PROVEDOR === "mercadopago"
