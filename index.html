@@ -459,6 +459,29 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 .pc.atual{border-color:var(--verde-neon)}
 .pc .pc-tag{position:absolute;top:.8rem;right:.8rem;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--verde-neon);border:1px solid rgba(53,197,88,.45);padding:.2rem .5rem}
 .pc-grid.compact .pc{padding:1.2rem 1.1rem 1.1rem}
+/* ── Calendário do agendamento e aviso de mês aberto ── */
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;font-family:var(--font-display);letter-spacing:.12em;text-transform:uppercase;font-size:.95rem}
+.cal-nav{width:40px;height:40px;border:1px solid var(--dourado-dim);background:none;color:var(--prata);font-size:1.3rem;cursor:pointer;line-height:1}
+.cal-nav:hover:not(:disabled){border-color:var(--verde-neon);color:var(--verde-neon)}
+.cal-nav:disabled{opacity:.28;cursor:not-allowed}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.3rem}
+.cal-w{font-size:.56rem;letter-spacing:.14em;text-transform:uppercase;color:var(--prata-dim);text-align:center;padding:.15rem 0 .3rem}
+.cal-g .cal-d{aspect-ratio:1;min-height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-family:var(--font-body)}
+.cal-g .cal-d.off{color:rgba(237,237,232,.2);background:none;border:1px solid transparent;cursor:not-allowed}
+.cal-g .cal-d.pay{box-shadow:inset 0 -2px 0 var(--dourado)}
+.cal-leg{display:flex;align-items:center;gap:.5rem;margin-top:.9rem;font-size:.74rem;color:var(--prata-dim)}
+.cal-leg i{width:18px;height:12px;border:1px solid rgba(237,237,232,.2);box-shadow:inset 0 -2px 0 var(--dourado)}
+.w-aviso{margin:0 0 1.1rem;padding:.8rem 1rem;border:1px solid var(--dourado-dim);background:rgba(198,167,94,.07);font-size:.82rem;line-height:1.5;color:var(--prata)}
+.w-aviso b{color:var(--dourado-claro);font-weight:500}
+.om-card{max-width:440px;text-align:left;background:radial-gradient(ellipse 90% 50% at 50% 0%,rgba(198,167,94,.14),transparent 70%),var(--grafite-card)}
+.om-eyebrow{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--dourado);margin-bottom:.5rem}
+.om-card h3{font-family:var(--font-display);font-size:1.45rem;letter-spacing:.05em;line-height:1.25;margin-bottom:.6rem}
+.om-lead{color:var(--prata-dim);font-size:.92rem;line-height:1.55;margin-bottom:1.1rem}
+.om-list{list-style:none;margin:0 0 1.2rem;padding:0;display:flex;flex-direction:column;gap:.8rem}
+.om-list li{position:relative;padding-left:1.6rem}
+.om-list li::before{content:"✓";position:absolute;left:0;top:.05rem;color:var(--verde-neon)}
+.om-list b{display:block;font-weight:500;font-size:.92rem;color:var(--prata)}
+.om-list span{display:block;font-size:.82rem;line-height:1.45;color:var(--prata-dim)}
 .w-plano{border:1px solid var(--dourado-dim);background:rgba(198,167,94,.07);padding:.7rem .9rem;margin-bottom:1rem;font-size:.85rem;color:var(--prata-dim)}
 .w-plano b{display:block;font-family:var(--font-display);font-weight:500;letter-spacing:.04em;font-size:.95rem;color:var(--prata);margin-bottom:.15rem}
 .w-plano em{font-style:normal;color:var(--verde-neon)}
@@ -955,7 +978,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     </div>
 
     <div class="wstep" data-step="3">
-      <div class="chips" id="wDay"></div>
+      <div id="wDay"></div>
     </div>
 
     <div class="wstep" data-step="4">
@@ -981,8 +1004,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
     <div class="wstep" data-step="6">
       <div style="text-align:center;padding:1.2rem 0">
-        <div style="font-size:1.1rem;color:var(--verde-neon);font-weight:600;margin-bottom:.7rem">Agendamento enviado! ✓</div>
-        <p style="color:var(--prata-dim);font-size:.85rem;margin-bottom:1.6rem">A confirmação do horário é feita pela nossa equipe. Se quiser, também dá pra avisar a gente direto pelo WhatsApp.</p>
+        <div id="wDoneTitle" style="font-size:1.1rem;color:var(--verde-neon);font-weight:600;margin-bottom:.7rem">Agendamento enviado! ✓</div>
+        <p id="wDoneText" style="color:var(--prata-dim);font-size:.85rem;margin-bottom:1.6rem">A confirmação do horário é feita pela nossa equipe. Se quiser, também dá pra avisar a gente direto pelo WhatsApp.</p>
         <p id="wPaidNote" style="display:none;margin:0 0 1rem;padding:.7rem 1rem;border:1px solid var(--verde-neon);border-radius:6px;color:var(--verde-neon);font-size:.88rem">Pagamento já realizado ✓ O valor que você pagou foi mantido neste novo horário.</p>
         <button class="btn btn-primary" id="wPayNow" style="margin-bottom:.8rem">Pagar agora</button>
         <button class="btn btn-ghost" id="wSendWhats" style="margin-bottom:.8rem">Encaminhar pelo WhatsApp</button>
@@ -1007,6 +1030,23 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       <button class="btn btn-ghost" id="wBack" disabled>← Voltar</button>
       <button class="btn btn-primary" id="wNext" disabled>Próximo →</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: AGENDA DE UM MÊS ESPECIAL ABERTA (ex.: dezembro) -->
+<div class="modal-backdrop" id="openMonthModal" role="dialog" aria-modal="true" aria-labelledby="omTitle" style="z-index:3050">
+  <div class="modal om-card">
+    <button class="close" aria-label="Fechar" onclick="primeFecharAgendaAberta()">✕</button>
+    <div class="om-eyebrow">Novidade</div>
+    <h3 id="omTitle">A agenda de dezembro está aberta</h3>
+    <p class="om-lead" id="omLead">Dezembro é o mês mais disputado do ano. Garanta o seu horário antes que acabe.</p>
+    <ul class="om-list">
+      <li><b>Pagamento antecipado</b><span>Pix ou cartão, pelo próprio site, em poucos toques.</span></li>
+      <li><b>Horário confirmado após o pagamento</b><span>Enquanto você paga, o horário fica reservado por 30 minutos.</span></li>
+      <li><b>Imprevistos têm solução</b><span>Se houver cancelamento, seu ou nosso, o horário é remanejado e você é avisado com antecedência.</span></li>
+    </ul>
+    <button class="btn btn-primary" id="omGo" style="width:100%;margin-top:.4rem">Reservar meu horário</button>
+    <button class="btn btn-ghost" style="width:100%;margin-top:.6rem" onclick="primeFecharAgendaAberta()">Agora não</button>
   </div>
 </div>
 
@@ -1234,8 +1274,30 @@ function wRenderResumo(){
     + (state.day && state.time ? row('Dia e hora', esc(state.dayLabel||state.day)+' · '+esc(state.time)) : (state.day ? row('Dia', esc(state.dayLabel||state.day)) : ''))
     + (()=>{ const c = wPlanoCobertura(state.services); return `<div class="wr-r wr-v"><span>Valor</span><b>${c && c.usa ? (c.total<=0 ? 'Pelo plano' : money(c.total)) : money(total)}</b></div>`; })();
 }
+// Aviso "a agenda de <mês> está aberta": aparece depois de cada agendamento concluído, enquanto a janela estendida estiver em vigor
+function primeAgendaEstendida(){
+  const hoje = primeLocalDate(), d = new Date(); d.setDate(d.getDate() + primeAgendaCfg.horizon);
+  const u = primeAgendaCfg.openUntil;
+  return !!(u && u >= hoje && u > primeLocalDate(d));
+}
+function primeMostrarAgendaAberta(diaReservado){
+  if(!primeAgendaEstendida()) return;
+  const u = primeAgendaCfg.openUntil, inicioMes = u.slice(0,8)+'01';
+  if(diaReservado && diaReservado >= inicioMes) return;   // já marcou dentro do mês aberto: não precisa avisar
+  const mes = (primeAgendaCfg.openLabel || MESES_PT[Number(u.slice(5,7))-1]).toLowerCase();
+  document.getElementById('omTitle').textContent = `A agenda de ${mes} está aberta`;
+  document.getElementById('omLead').textContent = `${mes.charAt(0).toUpperCase()+mes.slice(1)} é o mês mais disputado do ano. Garanta o seu horário antes que acabe.`;
+  document.getElementById('omGo').onclick = ()=>{ primeFecharAgendaAberta(); wCalMes = inicioMes > primeLocalDate() ? inicioMes.slice(0,7) : null; openModal(); state.step = 1; render(); };
+  document.getElementById('openMonthModal').classList.add('open');
+}
+function primeFecharAgendaAberta(){ document.getElementById('openMonthModal').classList.remove('open'); }
 function render(){
   if(state.step===6){
+    const exige = lastBookedDay && primeDiaExigePagamento(lastBookedDay) && !lastBookedPlano && !lastBookedPago;
+    document.getElementById('wDoneTitle').textContent = exige ? 'Falta só o pagamento' : 'Agendamento enviado! ✓';
+    document.getElementById('wDoneText').textContent = exige
+      ? 'Seu horário está reservado por 30 minutos e só é confirmado depois do pagamento. Pague agora para garantir; se o tempo acabar, o horário volta para a agenda.'
+      : 'A confirmação do horário é feita pela nossa equipe. Se quiser, também dá pra avisar a gente direto pelo WhatsApp.';
     const pagoMsg = document.getElementById('wPaidNote');
     if(pagoMsg) pagoMsg.style.display = lastBookedPago ? 'block' : 'none';
     const payBtn = document.getElementById('wPayNow');
@@ -1250,7 +1312,8 @@ function render(){
   const next = document.getElementById('wNext');
   const ready = (state.step===1&&state.services.length>0)||(state.step===2&&state.barber)||(state.step===3&&state.day)||(state.step===4&&state.time)||state.step===5;
   next.disabled = !ready;
-  next.textContent = state.step===5 ? 'Agendar' : 'Próximo →';
+  const exigePag = state.step>=5 && state.day && primeDiaExigePagamento(state.day) && !((wPlanoCobertura(state.services)||{}).usa);
+  next.textContent = state.step===5 ? (exigePag ? 'Agendar e pagar' : 'Agendar') : 'Próximo →';
   if(state.step===5){
     const total = state.services.reduce((s,n)=>s+(SVC_PRICES[n]||0),0);
     const hasCoupon = typeof state.discountPrice==='number';
@@ -1261,7 +1324,8 @@ function render(){
     const valorFinal = cobP && cobP.usa
       ? `Valor: <b style="color:var(--verde-neon)">${cobP.total<=0 ? 'Pelo plano' : 'R$ '+cobP.total.toFixed(2).replace('.',',')}</b>${cobP.total<=0 ? '' : ' <span style="color:var(--prata-dim)">(o resto sai pelo plano)</span>'}<br>Saldo depois: <b>${wSaldoTxt(cobP.saldoDepois)}</b>`
       : valorLine;
-    document.getElementById('wSummary').innerHTML =
+    const avisoPag = exigePag ? `<div class="w-aviso"><b>Pagamento antecipado.</b> Para esta data o horário só é confirmado após o pagamento (Pix ou cartão). Ao agendar, ele fica reservado por 30 minutos para você pagar. Se houver cancelamento, seu ou nosso, o horário é remanejado e você é avisado com antecedência.</div>` : '';
+    document.getElementById('wSummary').innerHTML = avisoPag +
       `Serviço: <b>${state.services.join(' + ')}</b><br>Dia: <b>${state.dayLabel}</b><br>Horário: <b>${state.time}</b><br>Barbeiro: <b>${state.barber}</b><br>${valorFinal}`;
     const nameInput = document.getElementById('wName');
     if(!nameInput.value.trim()){
@@ -1380,21 +1444,56 @@ function primeWizardBarber(){
   const roster = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
   return roster.find(b=>b.id===state.barberId) || null;
 }
-function buildDays(){
-  const box=document.getElementById('wDay'); box.innerHTML='';
-  const today=new Date();
-  for(let i=0;i<10;i++){
-    const d=new Date(today); d.setDate(today.getDate()+i);
-    if(!HORARIOS[d.getDay()]) continue;
-    if(primeWizardBarber() && !resolveBarberHours(primeWizardBarber(), d.getDay())) continue;   // barbeiro folga nesse dia
-    const label=`${DIAS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-    const btn=document.createElement('button');
-    btn.className='chip'; btn.dataset.iso=primeLocalDate(d); btn.dataset.label=label;
-    btn.innerHTML=`${DIAS[d.getDay()]}<small>${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</small>`;
-    if(state.day===btn.dataset.iso) btn.classList.add('active');
-    box.appendChild(btn);
-  }
+// Janela do agendamento (agenda_config), dias com pagamento antecipado (payment_rules) e interruptor do Pix online
+let primeAgendaCfg = { horizon:30, openUntil:null, openLabel:null, rules:[], pix:false, loaded:false };
+async function primeLoadAgendaCfg(){
+  if(primeAgendaCfg.loaded) return;
+  try{
+    const [c, r, st] = await Promise.all([
+      sb.from('agenda_config').select('horizon_days,open_until,open_label').maybeSingle(),
+      sb.from('payment_rules').select('label,start_day,end_day').eq('active', true),
+      sb.from('payment_settings').select('online_pix_enabled').maybeSingle()
+    ]);
+    primeAgendaCfg = { horizon: (c.data && c.data.horizon_days) || 30, openUntil: (c.data && c.data.open_until) || null, openLabel: (c.data && c.data.open_label) || null,
+      rules: (r.data||[]).map(x=>({label:x.label, start:x.start_day, end:x.end_day})), pix: !!(st.data && st.data.online_pix_enabled), loaded:true };
+    if(typeof buildDays==='function') buildDays();
+  }catch(e){ console.error('agenda_config', e); }
 }
+function primeAgendaMax(){
+  const d = new Date(); d.setDate(d.getDate() + primeAgendaCfg.horizon);
+  const lim = primeLocalDate(d);
+  return primeAgendaCfg.openUntil && primeAgendaCfg.openUntil > lim ? primeAgendaCfg.openUntil : lim;
+}
+function primeDiaExigePagamento(iso){ return primeAgendaCfg.pix && primeAgendaCfg.rules.some(r=>iso>=r.start && iso<=r.end); }
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let wCalMes = null;   // 'AAAA-MM' do mês mostrado
+function buildDays(){
+  const box=document.getElementById('wDay'); if(!box) return;
+  const hoje = primeLocalDate(), max = primeAgendaMax(), pad = n=>String(n).padStart(2,'0');
+  if(!wCalMes) wCalMes = (state.day || hoje).slice(0,7);
+  if(wCalMes < hoje.slice(0,7)) wCalMes = hoje.slice(0,7);
+  if(wCalMes > max.slice(0,7)) wCalMes = max.slice(0,7);
+  const [y,m] = wCalMes.split('-').map(Number), diasMes = new Date(y,m,0).getDate(), inicio = new Date(y,m-1,1).getDay();
+  const barber = primeWizardBarber();
+  let h = `<div class="cal-h"><button type="button" class="cal-nav" data-nav="-1" aria-label="Mês anterior" ${wCalMes<=hoje.slice(0,7)?'disabled':''}>‹</button><span>${MESES_PT[m-1]} ${y}</span><button type="button" class="cal-nav" data-nav="1" aria-label="Próximo mês" ${wCalMes>=max.slice(0,7)?'disabled':''}>›</button></div><div class="cal-g">`;
+  h += DIAS.map(d=>`<div class="cal-w">${d}</div>`).join('') + '<div></div>'.repeat(inicio);
+  let temPag = false;
+  for(let d=1; d<=diasMes; d++){
+    const iso = `${y}-${pad(m)}-${pad(d)}`, dow = new Date(y,m-1,d).getDay();
+    const ok = iso>=hoje && iso<=max && !!HORARIOS[dow] && !(barber && !resolveBarberHours(barber, dow));
+    const pag = primeDiaExigePagamento(iso); if(pag && ok) temPag = true;
+    if(ok) h += `<button type="button" class="chip cal-d${pag?' pay':''}${state.day===iso?' active':''}" data-iso="${iso}" data-label="${DIAS[dow]} ${pad(d)}/${pad(m)}">${d}</button>`;
+    else h += `<button type="button" class="cal-d off" disabled tabindex="-1">${d}</button>`;
+  }
+  h += '</div>' + (temPag ? '<div class="cal-leg"><i></i>Pagamento antecipado neste período</div>' : '') + `<div class="cal-leg" style="margin-top:.4rem">Agenda aberta até ${max.slice(8)}/${max.slice(5,7)}</div>`;
+  box.innerHTML = h;
+}
+document.getElementById('wDay').addEventListener('click', e=>{
+  const n = e.target.closest('.cal-nav'); if(!n || n.disabled) return;
+  const [y,m] = wCalMes.split('-').map(Number), d = new Date(y, m-1+Number(n.dataset.nav), 1);
+  wCalMes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; buildDays();
+});
+primeLoadAgendaCfg();
 async function primeEnsureBarberRoster(){
   // visitante público nunca loga no painel do barbeiro, então baRosterCache (só populado no login)
   // fica vazio pra ele — sem isso, todo horário parece "sem barbeiro escalado". Carrega sob demanda.
@@ -1572,7 +1671,7 @@ async function primeAssignBarber(){
 }
 
 let lastBookingWaMsg = null;
-let lastBookedAppt = null, lastBookedTotal = 0, lastBookedPago = false, lastBookedPlano = false;   // agendamento recém-criado: é ele que o botão "Pagar agora" cobra
+let lastBookedAppt = null, lastBookedTotal = 0, lastBookedPago = false, lastBookedPlano = false, lastBookedDay = null;   // agendamento recém-criado: é ele que o botão "Pagar agora" cobra
 document.getElementById('wBack').addEventListener('click',()=>{ state.step=Math.max(1,state.step-1); render(); });
 document.getElementById('wNext').addEventListener('click', async ()=>{
   if(state.step<5){
@@ -1624,7 +1723,7 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
   if(acc && !acc.favoriteBarber){ acc.favoriteBarber = state.barber; primeSaveAccount(acc); }
   if(acc && acc.email) await primeCheckAchievements({bookedTime: state.time, bookedDay: state.day});
   lastBookingWaMsg = msg;
-  lastBookedAppt = savedAppt; lastBookedTotal = waTotal; lastBookedPago = false; lastBookedPlano = !!((wPlanoCobertura(state.services)||{}).usa);   // com plano o pagamento é no balcão
+  lastBookedAppt = savedAppt; lastBookedDay = state.day; lastBookedTotal = waTotal; lastBookedPago = false; lastBookedPlano = !!((wPlanoCobertura(state.services)||{}).usa);   // com plano o pagamento é no balcão
   if(state.reagendarDe){
     const velhoId = state.reagendarDe; state.reagendarDe = null;
     try{
@@ -1666,7 +1765,9 @@ document.getElementById('wSendWhats').addEventListener('click', ()=>{
 });
 document.getElementById('wFinish').addEventListener('click', ()=>{
   lastBookingWaMsg = null;
+  const diaReservado = lastBookedDay; wCalMes = null;
   closeModal();
+  setTimeout(()=>primeMostrarAgendaAberta(diaReservado), 350);
   state.step=1; state.services=[]; state.day=null; state.dayLabel=null; state.time=null; state.barber=null; state.barberId=null; state.barberIntroAnswered=null;
   state.couponCode=null; state.discountPrice=null;
   document.querySelectorAll('#wService .chip, #wDay .chip, #wTime .chip').forEach(c=>c.classList.remove('active'));
