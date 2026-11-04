@@ -430,6 +430,12 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 .wsvc-empty{color:var(--prata-dim);font-size:.85rem;padding:.4rem 0}
 .chip.taken::after{content:"";position:absolute;top:14%;bottom:14%;left:50%;width:2px;background:var(--erro);transform:translateX(-50%) rotate(14deg)}
 .wbarber-list{display:flex;flex-direction:column;gap:.7rem}
+.w-plano{border:1px solid var(--dourado-dim);background:rgba(198,167,94,.07);padding:.7rem .9rem;margin-bottom:1rem;font-size:.85rem;color:var(--prata-dim)}
+.w-plano b{display:block;font-family:var(--font-display);font-weight:500;letter-spacing:.04em;font-size:.95rem;color:var(--prata);margin-bottom:.15rem}
+.w-plano em{font-style:normal;color:var(--verde-neon)}
+.w-plano-note{margin-top:.8rem;font-size:.78rem;color:var(--prata-dim)}
+.w-plano-note a{color:var(--dourado)}
+.chip small.plano{color:var(--verde-neon)}
 .wplano{display:flex;flex-direction:column;gap:.25rem;width:100%;text-align:left;background:none;border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.8rem 1rem;font-family:var(--font-body);cursor:pointer;transition:border-color .2s}
 .wplano:hover:not(:disabled){border-color:var(--verde-neon)}
 .wplano:disabled{opacity:.55;cursor:not-allowed}
@@ -910,6 +916,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <div class="prog-lbls" id="wProgLbls" aria-hidden="true"><span>Serviço</span><span>Barbeiro</span><span>Dia</span><span>Horário</span><span>Confirmar</span></div>
 
     <div class="wstep active" data-step="1">
+      <div id="wPlanoCard"></div>
       <div class="wsvc-cats" id="wServiceCats"></div>
       <div class="chips" id="wService"></div>
     </div>
@@ -1164,7 +1171,7 @@ const modal = document.getElementById('bookingModal');
 const steps = [...document.querySelectorAll('.wstep')];
 const labels = ["Escolha o serviço","Escolha o barbeiro","Escolha o dia","Escolha o horário","Seus dados"];
 
-function openModal(){ modal.classList.add('open'); document.body.style.overflow='hidden'; buildDays(); primeRenderServiceChips(); }
+function openModal(){ modal.classList.add('open'); document.body.style.overflow='hidden'; buildDays(); primeRenderServiceChips(); if(primeIsLoggedIn() && typeof caCarregaPlanoReal==='function') caCarregaPlanoReal().then(()=>{ primeRenderServiceChips(); render(); }); }
 function closeModal(){ if(!pendingBooking) state.reagendarDe = null; modal.classList.remove('open'); const appOpen = document.querySelector('#clientApp.open,#barberApp.open'); if(!appOpen) document.body.style.overflow=''; }
 function closeAuthPrompt(){ document.getElementById('authPromptModal').classList.remove('open'); }
 function dismissAuthPrompt(){ pendingBooking=null; pendingProductCatalog=false; closeAuthPrompt(); }
@@ -1196,14 +1203,14 @@ function wRenderResumo(){
   box.innerHTML = `<div class="wr-t">Seu pedido</div>` + row('Serviço', esc(state.services.join(' + ')))
     + (state.barber ? row('Barbeiro', esc(state.barber)) : '')
     + (state.day && state.time ? row('Dia e hora', esc(state.dayLabel||state.day)+' · '+esc(state.time)) : (state.day ? row('Dia', esc(state.dayLabel||state.day)) : ''))
-    + `<div class="wr-r wr-v"><span>Valor</span><b>${money(total)}</b></div>`;
+    + (()=>{ const c = wPlanoCobertura(state.services); return `<div class="wr-r wr-v"><span>Valor</span><b>${c && c.usa ? (c.total<=0 ? 'Pelo plano' : money(c.total)) : money(total)}</b></div>`; })();
 }
 function render(){
   if(state.step===6){
     const pagoMsg = document.getElementById('wPaidNote');
     if(pagoMsg) pagoMsg.style.display = lastBookedPago ? 'block' : 'none';
     const payBtn = document.getElementById('wPayNow');
-    if(payBtn) payBtn.style.display = lastBookedPago ? 'none' : '';
+    if(payBtn) payBtn.style.display = (lastBookedPago || lastBookedPlano) ? 'none' : '';
   }
   steps.forEach(s=>s.classList.toggle('active', +s.dataset.step===state.step));
   document.getElementById('stepLabel').textContent = state.step===6 ? 'Tudo certo!' : state.step===7 ? 'Pagamento' : `Passo ${state.step} de 5 — ${labels[state.step-1]}`;
@@ -1221,8 +1228,12 @@ function render(){
     const valorLine = hasCoupon
       ? `Valor total: <s style="color:var(--prata-dim)">R$ ${total.toFixed(2).replace('.',',')}</s> <b style="color:var(--verde-neon)">R$ ${state.discountPrice.toFixed(2).replace('.',',')}</b> <span style="color:var(--dourado);font-size:.8rem">(cupom ${state.couponCode})</span>`
       : `Valor total: <b style="color:var(--verde-neon)">R$ ${total.toFixed(2).replace('.',',')}</b>`;
+    const cobP = wPlanoCobertura(state.services);
+    const valorFinal = cobP && cobP.usa
+      ? `Valor: <b style="color:var(--verde-neon)">${cobP.total<=0 ? 'Pelo plano' : 'R$ '+cobP.total.toFixed(2).replace('.',',')}</b>${cobP.total<=0 ? '' : ' <span style="color:var(--prata-dim)">(o resto sai pelo plano)</span>'}<br>Saldo depois: <b>${wSaldoTxt(cobP.saldoDepois)}</b>`
+      : valorLine;
     document.getElementById('wSummary').innerHTML =
-      `Serviço: <b>${state.services.join(' + ')}</b><br>Dia: <b>${state.dayLabel}</b><br>Horário: <b>${state.time}</b><br>Barbeiro: <b>${state.barber}</b><br>${valorLine}`;
+      `Serviço: <b>${state.services.join(' + ')}</b><br>Dia: <b>${state.dayLabel}</b><br>Horário: <b>${state.time}</b><br>Barbeiro: <b>${state.barber}</b><br>${valorFinal}`;
     const nameInput = document.getElementById('wName');
     if(!nameInput.value.trim()){
       const acc = typeof primeGetAccount==='function' ? primeGetAccount() : null;
@@ -1275,10 +1286,40 @@ async function wRenderPlanosNoAgendamento(box){
     </button>`).join('') : '<p class="wsvc-empty">Nenhum plano disponível no momento.</p>';
 }
 function wEscolherPlano(id){ closeModal(); openPlansModal(); caChoosePlanBarber(id); }
+// Cobertura do plano do cliente (mesma regra do balcão): um corte vale 1 corte, uma barba vale 1 barba; combo cobre as partes que têm saldo
+function wPlanoCobertura(nomes){
+  const pl = (typeof caPlanoReal!=='undefined') ? caPlanoReal : null;
+  if(!pl) return null;
+  const saldo = {}; (pl.itens||[]).forEach(i=>{ saldo[i.item] = i.restante; });
+  let total = 0, usa = false; const linhas = [];
+  (nomes||[]).forEach(n=>{
+    const svc = primeServicesCache.find(x=>x.name===n), comps = (svc && svc.conta_no_plano) || [], preco = SVC_PRICES[n]||0;
+    if(!comps.length){ linhas.push({name:n, plano:false, inteiro:false, cobrar:preco}); total += preco; return; }
+    const cobertos = [], fora = [];
+    comps.forEach(c=>{ if((saldo[c]||0)>0){ saldo[c]--; cobertos.push(c); } else fora.push(c); });
+    const cobrar = fora.length ? (comps.length===1 ? preco : fora.reduce((t,c)=>t+(SVC_PRICES[PLANO_REF[c]]||0),0)) : 0;
+    if(cobertos.length) usa = true;
+    linhas.push({name:n, plano:cobertos.length>0, inteiro:fora.length===0, cobertos, fora, cobrar}); total += cobrar;
+  });
+  return { linhas, total: Math.round(total*100)/100, usa, saldoDepois: saldo };
+}
+const W_ITEM_NOME = {corte:['corte','cortes'], barba:['barba','barbas'], sobrancelha:['sobrancelha','sobrancelhas']};
+function wSaldoTxt(saldo){
+  const parts = Object.entries(saldo).filter(([,n])=>n>0).map(([k,n])=>`${n} ${(W_ITEM_NOME[k]||[k,k])[n===1?0:1]}`);
+  return parts.length ? parts.join(' · ') : 'sem saldo';
+}
+function wRenderPlanoCard(){
+  const box = document.getElementById('wPlanoCard'); if(!box) return;
+  const pl = (typeof caPlanoReal!=='undefined') ? caPlanoReal : null;
+  if(!pl){ box.innerHTML = ''; return; }
+  const saldo = {}; (pl.itens||[]).forEach(i=>{ saldo[i.item] = i.restante; });
+  box.innerHTML = `<div class="w-plano"><b>Seu ${primeEsc(pl.plano)}</b>Saldo: <em>${wSaldoTxt(saldo)}</em>${pl.barber_nome?` · com o ${primeEsc(pl.barber_nome)}`:''}</div>`;
+}
 function primeRenderServiceChips(){
   const box = document.getElementById('wService');
   const catsBox = document.getElementById('wServiceCats');
   if(!box || !catsBox) return;
+  wRenderPlanoCard();
   const cats = [...primeSvcCategoriesInOrder(), 'planos'];
   if(!cats.includes(wServiceCat)) wServiceCat = cats[0] || 'servico';
   catsBox.innerHTML = cats.map(cat=>
@@ -1288,7 +1329,8 @@ function primeRenderServiceChips(){
   const items = primeServicesCache.filter(s=>s.category===wServiceCat);
   box.innerHTML = items.length ? items.map(s=>{
     const active = state.services.includes(s.name) ? ' active' : '';
-    return `<button class="chip${active}" data-v="${s.name.replace(/"/g,'&quot;')}">${s.name}<small>${primeFormatPriceDisplay(s.price)}</small></button>`;
+    const cob = wPlanoCobertura([s.name]), pelo = cob && cob.linhas[0] && cob.linhas[0].inteiro;
+    return `<button class="chip${active}" data-v="${s.name.replace(/"/g,'&quot;')}">${s.name}<small${pelo?' class="plano"':''}>${pelo?'pelo plano':primeFormatPriceDisplay(s.price)}</small></button>`;
   }).join('') : '<p class="wsvc-empty">Nenhum serviço nessa categoria ainda.</p>';
 }
 document.getElementById('wCouponApply').addEventListener('click', async ()=>{
@@ -1434,7 +1476,13 @@ async function renderBarberStep(){
   const acc = typeof primeGetAccount==='function' ? primeGetAccount() : null;
   const favorite = acc && acc.favoriteBarber;
   if(acc && !state.barberIntroAnswered) state.barberIntroAnswered = 'detailed';   // quem tem conta já vê os barbeiros com foto, sem a pergunta
-  const available = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
+  let available = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
+  // com plano ativo o cliente escolhe somente o barbeiro do plano
+  const planoB = (typeof caPlanoReal!=='undefined' && caPlanoReal && caPlanoReal.barber_id) ? available.find(b=>b.id===caPlanoReal.barber_id) : null;
+  if(planoB){
+    available = [planoB]; state.barberIntroAnswered = 'detailed';
+    if(state.barberId!==planoB.id){ state.barber = planoB.name; state.barberId = planoB.id; state.day = null; state.dayLabel = null; state.time = null; }
+  }
   const nomeAttr = n => n.replace(/"/g,'&quot;');
 
   if(!favorite && !state.barberIntroAnswered){
@@ -1469,7 +1517,7 @@ async function renderBarberStep(){
         <div class="wbarber-info"><h4>${b.name}</h4><p>${p.esp} · ${p.exp} de experiência</p></div>
       </div>`;
     }).join('')}
-      <div class="wbarber-card${anyActive?' active':''}" data-name="Sem preferência" data-id="any"><div class="wbarber-info"><h4>Sem preferência</h4><p>O primeiro barbeiro livre no horário que você escolher</p></div></div></div>`;
+      ${planoB ? '' : `<div class="wbarber-card${anyActive?' active':''}" data-name="Sem preferência" data-id="any"><div class="wbarber-info"><h4>Sem preferência</h4><p>O primeiro barbeiro livre no horário que você escolher</p></div></div>`}</div>${planoB ? `<p class="w-plano-note">Com o plano, o atendimento é com o barbeiro do seu plano. Para marcar com outro barbeiro, <a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">fale com a gente no WhatsApp</a>.</p>` : ''}`;
   } else {
     area.innerHTML = `<div class="chips">${available.map(b=>
       `<button class="chip${state.barberId===b.id?' active':''}" data-name="${nomeAttr(b.name)}" data-id="${b.id}">${b.name===favorite?'<span class="wbarber-chip-star">★</span>':''}${b.name}</button>`
@@ -1504,7 +1552,7 @@ async function primeAssignBarber(){
 }
 
 let lastBookingWaMsg = null;
-let lastBookedAppt = null, lastBookedTotal = 0, lastBookedPago = false;   // agendamento recém-criado: é ele que o botão "Pagar agora" cobra
+let lastBookedAppt = null, lastBookedTotal = 0, lastBookedPago = false, lastBookedPlano = false;   // agendamento recém-criado: é ele que o botão "Pagar agora" cobra
 document.getElementById('wBack').addEventListener('click',()=>{ state.step=Math.max(1,state.step-1); render(); });
 document.getElementById('wNext').addEventListener('click', async ()=>{
   if(state.step<5){
@@ -1556,7 +1604,7 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
   if(acc && !acc.favoriteBarber){ acc.favoriteBarber = state.barber; primeSaveAccount(acc); }
   if(acc && acc.email) await primeCheckAchievements({bookedTime: state.time, bookedDay: state.day});
   lastBookingWaMsg = msg;
-  lastBookedAppt = savedAppt; lastBookedTotal = waTotal; lastBookedPago = false;
+  lastBookedAppt = savedAppt; lastBookedTotal = waTotal; lastBookedPago = false; lastBookedPlano = !!((wPlanoCobertura(state.services)||{}).usa);   // com plano o pagamento é no balcão
   if(state.reagendarDe){
     const velhoId = state.reagendarDe; state.reagendarDe = null;
     try{
