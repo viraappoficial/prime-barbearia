@@ -453,6 +453,18 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 .wizard-nav{display:flex;justify-content:space-between;gap:1rem;margin-top:1.8rem}
 .wizard-nav .btn{padding:.8rem 1.6rem;font-size:.78rem}
 .wizard-nav .btn:disabled{opacity:.35;cursor:not-allowed}
+/* ── Visual: agendamento do cliente (fatia 7) — etapas nomeadas e resumo do pedido sempre à vista ── */
+.prog-lbls{display:flex;gap:.4rem;margin:-1.4rem 0 1.4rem}
+.prog-lbls span{flex:1;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(237,237,232,.35);text-align:left;transition:color .3s}
+.prog-lbls span.done{color:var(--prata-dim)}
+.prog-lbls span.cur{color:var(--dourado)}
+@media(max-width:420px){.prog-lbls span{font-size:.52rem;letter-spacing:.04em}}
+.w-resumo{position:sticky;bottom:-1px;margin:1.2rem -1px 0;padding:.7rem .9rem;background:var(--grafite);border:1px solid var(--dourado-dim);border-radius:10px;box-shadow:0 -12px 18px var(--grafite-card);z-index:3}
+.w-resumo .wr-t{font-size:.58rem;letter-spacing:.24em;text-transform:uppercase;color:var(--dourado);margin-bottom:.35rem}
+.w-resumo .wr-r{display:flex;justify-content:space-between;gap:.8rem;font-size:.82rem;padding:.1rem 0;color:var(--prata-dim)}
+.w-resumo .wr-r b{font-weight:400;color:var(--prata);text-align:right;min-width:0}
+.w-resumo .wr-v b{font-family:var(--font-display);color:var(--dourado-claro);font-size:1.05rem}
+.w-resumo .wr-v s{color:var(--prata-dim);font-size:.78rem;margin-right:.4rem}
 .summary{background:var(--verde-noite);border:1px solid var(--dourado-dim);padding:1.1rem 1.3rem;margin-bottom:1.4rem;font-size:.9rem;color:var(--prata-dim)}
 .summary b{color:var(--verde-neon);font-weight:500}
 </style>
@@ -874,6 +886,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <h3 id="bkTitle">Agende seu horário</h3>
     <div class="step-label" id="stepLabel">Passo 1 de 5 — Escolha o serviço</div>
     <div class="progress"><span id="p1"></span><span id="p2"></span><span id="p3"></span><span id="p4"></span><span id="p5"></span></div>
+    <div class="prog-lbls" id="wProgLbls" aria-hidden="true"><span>Serviço</span><span>Barbeiro</span><span>Dia</span><span>Horário</span><span>Confirmar</span></div>
 
     <div class="wstep active" data-step="1">
       <div class="wsvc-cats" id="wServiceCats"></div>
@@ -930,6 +943,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <button class="btn btn-ghost" id="wPayBack">Voltar</button>
       </div>
     </div>
+
+    <div class="w-resumo" id="wResumo" style="display:none" aria-live="polite"></div>
 
     <div class="wizard-nav" id="wWizardNav">
       <button class="btn btn-ghost" id="wBack" disabled>← Voltar</button>
@@ -1147,6 +1162,21 @@ const authModal = document.getElementById('authPromptModal');
 authModal.addEventListener('click',e=>{ if(e.target===authModal) dismissAuthPrompt(); });
 addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal(); dismissAuthPrompt(); primeCloseProductCatalog(); primeCloseServiceCatalog(); } });
 
+// resumo do pedido: acompanha o cliente em todos os passos (só mostra o que já foi escolhido); no passo final o resumo grande já aparece
+function wRenderResumo(){
+  const box = document.getElementById('wResumo'); if(!box) return;
+  document.querySelectorAll('#wProgLbls span').forEach((sp,i)=>{ sp.classList.toggle('done', i+1<state.step); sp.classList.toggle('cur', i+1===state.step); });
+  if(state.step>=5 || !state.services.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const total = state.services.reduce((s,n)=>s+(SVC_PRICES[n]||0),0);
+  const money = v=>'R$ '+v.toFixed(2).replace('.',',');
+  const esc = t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const row = (l,v)=>`<div class="wr-r"><span>${l}</span><b>${v}</b></div>`;
+  box.style.display = 'block';
+  box.innerHTML = `<div class="wr-t">Seu pedido</div>` + row('Serviço', esc(state.services.join(' + ')))
+    + (state.barber ? row('Barbeiro', esc(state.barber)) : '')
+    + (state.day && state.time ? row('Dia e hora', esc(state.dayLabel||state.day)+' · '+esc(state.time)) : (state.day ? row('Dia', esc(state.dayLabel||state.day)) : ''))
+    + `<div class="wr-r wr-v"><span>Valor</span><b>${money(total)}</b></div>`;
+}
 function render(){
   if(state.step===6){
     const pagoMsg = document.getElementById('wPaidNote');
@@ -1157,6 +1187,7 @@ function render(){
   steps.forEach(s=>s.classList.toggle('active', +s.dataset.step===state.step));
   document.getElementById('stepLabel').textContent = state.step===6 ? 'Tudo certo!' : state.step===7 ? 'Pagamento' : `Passo ${state.step} de 5 — ${labels[state.step-1]}`;
   for(let i=1;i<=5;i++) document.getElementById('p'+i).classList.toggle('done', i<=state.step);
+  wRenderResumo();
   document.getElementById('wWizardNav').style.display = state.step>=6 ? 'none' : 'flex';
   document.getElementById('wBack').disabled = state.step===1;
   const next = document.getElementById('wNext');
