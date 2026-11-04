@@ -4076,6 +4076,26 @@ addEventListener('resize', caApplyMode, {passive:true});
   #baPagamentoModal #ba-pgto-confirm{position:sticky;bottom:0;margin:.8rem 0 0 !important;box-shadow:0 -16px 14px 6px var(--grafite-card);min-height:52px}
 }
 @media (prefers-reduced-motion:reduce){#baPagamentoModal.open .modal{animation:none}}
+/* ── Visual: tela Hoje (fatia 6) ── */
+#barberApp .hj-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-bottom:1rem}
+#barberApp.desktop .hj-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+#barberApp .hj-stat{border:1px solid var(--hair);border-radius:10px;background:var(--grafite-card);padding:.8rem .9rem;box-shadow:inset 0 1px 0 rgba(237,237,232,.06)}
+#barberApp .hj-stat small{display:block;font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--prata-dim)}
+#barberApp .hj-stat b{display:block;font-family:var(--font-display);font-weight:500;font-size:1.5rem;color:var(--dourado-claro);margin-top:.2rem}
+#barberApp .hj-stat span{font-size:.74rem;color:var(--prata-dim)}
+#barberApp .hj-grid{display:grid;grid-template-columns:1fr;gap:1rem}
+#barberApp.desktop .hj-grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+#barberApp .hj-card{border:1px solid var(--dourado-dim);border-radius:10px;background:var(--grafite-card);padding:1rem}
+#barberApp .hj-lb{font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--dourado);margin-bottom:.6rem}
+#barberApp .hj-prox .nm{font-size:1.25rem}
+#barberApp .hj-prox .hr{font-family:var(--font-display);font-size:2rem;color:var(--dourado-claro);line-height:1}
+#barberApp .hj-prox .dt{color:var(--prata-dim);font-size:.85rem;margin:.3rem 0 .8rem}
+#barberApp .hj-acts{display:flex;gap:.4rem;flex-wrap:wrap}
+#barberApp .hj-at{display:flex;justify-content:space-between;align-items:center;gap:.6rem;border-top:1px solid var(--hair);padding:.6rem 0}
+#barberApp .hj-at:first-of-type{border-top:0}
+#barberApp .hj-at div{min-width:0;font-size:.85rem}
+#barberApp .hj-at small{display:block;color:var(--prata-dim);font-size:.74rem}
+#barberApp .hj-ok{color:var(--verde-neon);font-size:.85rem}
 /* ── Visual: Atendimento (fatia 3) — celular igual; no desktop catálogo à esquerda e comanda fixa à direita ── */
 #barberApp .pdv-sec{box-shadow:inset 0 1px 0 rgba(237,237,232,.06)}
 #barberApp .pdv-lb{align-items:center}
@@ -4461,9 +4481,10 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <div class="ca-notif-panel" id="ba-notif-panel" style="display:none"></div>
 
     <div class="ba-topbar" id="ba-topbar">
-      <div class="ba-brand" onclick="baTab('agenda')"><svg class="ba-brand-ico" viewBox="70 17 152 152" aria-hidden="true"><g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"><path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188 -712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309 -77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76 92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205 -113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15 101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80 -27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28 -166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43 -7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5 -49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95 154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82 0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0 -11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13 1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117 -125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4 0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51 -33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58 -39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4 -27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34 28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7 -398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97 75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10 -40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124 l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16 -119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9 26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106 -67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28 c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190 23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4 14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234 1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22 -37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33 28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30 -35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45 -19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11 -17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18 23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/></g></svg><span class="ba-brand-nm">PRIME <span class="ba-brand-sub">staff</span></span></div>
+      <div class="ba-brand" onclick="baTab('hoje')"><svg class="ba-brand-ico" viewBox="70 17 152 152" aria-hidden="true"><g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"><path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188 -712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309 -77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76 92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205 -113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15 101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80 -27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28 -166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43 -7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5 -49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95 154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82 0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0 -11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13 1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117 -125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4 0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51 -33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58 -39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4 -27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34 28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7 -398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97 75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10 -40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124 l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16 -119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9 26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106 -67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28 c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190 23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4 14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234 1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22 -37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33 28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30 -35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45 -19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11 -17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18 23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/></g></svg><span class="ba-brand-nm">PRIME <span class="ba-brand-sub">staff</span></span></div>
       <div class="ba-links">
         <div class="ba-grp">Atendimento</div>
+        <button data-tab="hoje" onclick="baTab('hoje')" title="Hoje"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg><span class="lb">Hoje</span></button>
         <button class="active" data-tab="agenda" onclick="baTab('agenda')" title="Agenda"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span class="lb">Agenda</span></button>
         <button data-tab="atendimento" onclick="baTab('atendimento')" title="Atendimento"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="lb">Atendimento</span></button>
         <button data-tab="zap" onclick="baTab('zap')" id="ba-link-zap" style="display:none" title="Zap"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.4 8.4 0 01-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 013 11.5 8.5 8.5 0 0111.5 3h.5a8.5 8.5 0 019 8.5z"/></svg><span class="lb">Zap</span></button>
@@ -4557,6 +4578,12 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <p class="ba-hint">Já tem conta? <a href="#" onclick="baShowLoginForm();return false">Entrar</a></p>
         </div>
       </div>
+    </div>
+
+    <!-- HOJE -->
+    <div class="screen" id="ba-screen-hoje">
+      <div class="ba-head"><div><div class="hi" id="hj-data">Hoje</div><div class="name" id="hj-saud">Hoje</div></div></div>
+      <div class="ba-body" id="hj-body"></div>
     </div>
 
     <!-- AGENDA -->
@@ -5568,7 +5595,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
     <!-- TABBAR (mobile) -->
     <nav class="ba-tabbar" id="ba-tabbar">
-      <button class="ba-tab active" data-tab="agenda" onclick="baTab('agenda')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Agenda</span></button>
+      <button class="ba-tab active" data-tab="hoje" onclick="baTab('hoje')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg><span>Hoje</span></button>
+      <button class="ba-tab" data-tab="agenda" onclick="baTab('agenda')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Agenda</span></button>
       <button class="ba-tab" data-tab="atendimento" onclick="baTab('atendimento')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Atender</span></button>
       <button class="ba-tab" data-tab="zap" onclick="baTab('zap')" style="display:none"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><span>Zap</span></button>
       <button class="ba-tab" data-tab="cadastros" onclick="baTab('cadastros')" style="display:none"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/><path d="M8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3z"/><path d="M8 13c-2.67 0-8 1.34-8 4v2h10"/><path d="M16 13c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45v2h7v-2c0-2.66-5.33-4-8-4z"/></svg><span>Cadastros</span></button>
@@ -5832,7 +5860,7 @@ function baTab(tab){
   if(tab==='cadastros' && baCurrentRole!=='admin' && baCurrentRole!=='vendas') tab='agenda';
   if(tab!=='zap') baZapTeardown(); // sai do Zap: para o polling, não deixa rodando em outra aba
   if(tab!=='zap') document.getElementById('barberApp').classList.remove('ba-in-thread');
-  const m={agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',caixa:'ba-screen-caixa',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao',zap:'ba-screen-zap',cadastros:'ba-screen-cadastros'};
+  const m={hoje:'ba-screen-hoje',agenda:'ba-screen-agenda',vendas:'ba-screen-vendas',clientes:'ba-screen-clientes',caixa:'ba-screen-caixa',perfil:'ba-screen-perfil',dashboard:'ba-screen-dashboard',atendimento:'ba-screen-atendimento',gestao:'ba-screen-gestao',zap:'ba-screen-zap',cadastros:'ba-screen-cadastros'};
   baShow(m[tab]);
   document.querySelectorAll('#barberApp .ba-tab,#barberApp .ba-links button').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   const baAt=document.querySelector('#barberApp .ba-tab.active'), baTb=document.getElementById('ba-tabbar'); // aba ativa sempre visível na barra que rola
@@ -5840,6 +5868,7 @@ function baTab(tab){
   if(tab==='vendas') baRenderVendas();
   if(tab==='clientes') primeSkeletonThen(['ba-clientes-list'], [[5,58]], baRenderClientes);
   if(tab==='caixa') csRenderScreen();
+  if(tab==='hoje') baRenderHoje();
   if(tab==='agenda') baRenderAgenda();
   if(tab==='perfil'){ baRenderPerfil(); baRenderAlertConfig(); baRenderZapAlertConfig(); }
   if(tab==='dashboard') baRenderDashboard();
@@ -12222,6 +12251,54 @@ async function baChamarEnviar(){
   setTimeout(baChamarFechar, 1400);
 }
 
+// ── Tela Hoje: o resumo do dia do barbeiro (o que já foi, o próximo cliente e o que pede atenção) ──
+async function baRenderHoje(){
+  const body = document.getElementById('hj-body'); if(!body) return;
+  const dia = primeLocalDate(), d = new Date();
+  const hora = d.getHours();
+  const nome = (baCurrentBarber||'').split(' ')[0];
+  document.getElementById('hj-saud').textContent = `${hora<12?'Bom dia':hora<18?'Boa tarde':'Boa noite'}${nome?', '+nome:''}`;
+  document.getElementById('hj-data').textContent = `${DIAS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  if(baCurrentRole==='vendas' && !baActingBarberId){ body.innerHTML = prEmpty('Escolha um barbeiro na Agenda para ver o dia dele.'); return; }
+  body.innerHTML = prLoading('Montando o seu dia…');
+  const [appts, sres] = await Promise.all([
+    baFetchAgendaAppointments(dia),
+    baActingBarberId ? sb.from('sales').select('value').eq('barber_id', baActingBarberId).eq('date', dia) : Promise.resolve({data:[]})
+  ]);
+  const fat = ((sres && sres.data)||[]).reduce((s,r)=>s+Number(r.value||0),0);
+  const ativos = appts.filter(a=>a.status!=='nao_compareceu' && a.status!=='cancelado').sort((a,b)=>a.time.localeCompare(b.time));
+  const feitos = ativos.filter(a=>a.status==='concluido').length;
+  const andamento = ativos.filter(a=>a.status==='confirmado' && a.iniciadoEm);
+  const fila = ativos.filter(a=>(a.status==='confirmado'||a.status==='pendente') && !a.iniciadoEm);
+  const agora = baPdvHM(d);
+  const prox = fila.find(a=>a.time>=agora) || fila[0] || null;
+  const atencao = [];
+  fila.filter(a=>a.status==='pendente').forEach(a=>atencao.push({t:`${primeEsc(a.name||'Cliente')} aguarda sua confirmação`, s:`${a.time} · ${(a.services||[]).join(' + ')}`, b:`<button class="ba-mini-btn primary" onclick="baAcceptAppt(${a.id})">Aceitar</button>`}));
+  fila.filter(a=>a.status==='confirmado' && a.time<agora && baMinutosEntre(a.time,agora)>=15).forEach(a=>atencao.push({t:`${primeEsc(a.name||'Cliente')} está atrasado`, s:`Marcado para ${a.time}`, b:(a.clientPhone?`<button class="ba-mini-btn ghost" onclick="baChamarCliente(${a.id})">Chamar</button>`:'')}));
+  andamento.filter(a=>Date.now()-a.iniciadoEm>60*60000).forEach(a=>atencao.push({t:`${primeEsc(a.name||'Cliente')} está em atendimento há ${baElapsedMin(a.iniciadoEm)} min`, s:'Já dá para fechar a venda?', b:`<button class="ba-mini-btn amber" onclick="baPdvAbrirDoAgendamento(${a.id})">Abrir carrinho</button>`}));
+  const svc = a=>(a.services||[]).join(' + ');
+  const proxHtml = prox ? `<div class="hj-prox"><div class="hr">${prox.time}</div><div class="nm">${primeEsc(prox.name||'Cliente')}${prox.paymentStatus==='pago'?' <span class="ts-chip ok">Pago online</span>':''}</div>
+      <div class="dt">${primeEsc(svc(prox))}${prox.notes?' · 📝 '+primeEsc(prox.notes):''}</div>
+      <div class="hj-acts"><button class="ba-mini-btn primary" onclick="baIniciarAtendimento(${prox.id})">Iniciar</button>${prox.clientPhone?`<button class="ba-mini-btn ghost" onclick="baChamarCliente(${prox.id})">Chamar cliente</button>`:''}<button class="ba-mini-btn ghost" onclick="baTab('agenda')">Ver agenda</button></div></div>`
+    : prEmpty(ativos.length ? 'Sem mais clientes por hoje.' : 'Nenhum agendamento hoje.');
+  const andHtml = andamento.map(a=>`<div class="hj-at"><div>${primeEsc(a.name||'Cliente')}<small>Em atendimento há ${baElapsedMin(a.iniciadoEm)} min · ${primeEsc(svc(a))}</small></div><button class="ba-mini-btn amber" onclick="baPdvAbrirDoAgendamento(${a.id})">Abrir carrinho</button></div>`).join('');
+  const atHtml = atencao.length ? atencao.map(x=>`<div class="hj-at"><div>${x.t}<small>${x.s}</small></div>${x.b}</div>`).join('') : '<div class="hj-ok">Tudo em dia por aqui ✓</div>';
+  body.innerHTML = `<div class="hj-stats">
+      <div class="hj-stat"><small>Faturado hoje</small><b>${baFormatMoney(fat)}</b><span>vendas fechadas</span></div>
+      <div class="hj-stat"><small>Atendimentos</small><b>${feitos}/${ativos.length}</b><span>concluídos</span></div>
+      <div class="hj-stat"><small>Em atendimento</small><b>${andamento.length}</b><span>agora</span></div>
+      <div class="hj-stat"><small>Na fila</small><b>${fila.length}</b><span>ainda por vir</span></div>
+    </div>
+    <div class="hj-grid">
+      <div>
+        <div class="hj-card"><div class="hj-lb">Próximo cliente</div>${proxHtml}</div>
+        ${andamento.length ? `<div class="hj-card" style="margin-top:1rem"><div class="hj-lb">Em atendimento</div>${andHtml}</div>` : ''}
+      </div>
+      <div class="hj-card"><div class="hj-lb">Precisa de atenção</div>${atHtml}</div>
+    </div>`;
+}
+function baMinutosEntre(a,b){ const m=t=>{const [h,mi]=t.split(':').map(Number);return h*60+mi}; return m(b)-m(a); }
+
 async function baBuildAgendaTimes(){
   await baAutoStartDueAppointments();
   baRenderBlocksList();
@@ -13652,7 +13729,7 @@ function baEnter(barber){
   try{ baMenuToggle(localStorage.getItem('primeMenuRec')==='1'); }catch(e){}
   baMenuGroups();
   document.getElementById('ba-tabbar').style.display='';
-  baTab('agenda');
+  baTab('hoje');
 }
 // ── menu lateral (computador): grupos só aparecem se tiver aba visível pro perfil; recolher guarda a escolha ──
 function baMenuGroups(){
