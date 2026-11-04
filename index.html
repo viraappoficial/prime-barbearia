@@ -4127,6 +4127,16 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .hj-at div{min-width:0;font-size:.85rem}
 #barberApp .hj-at small{display:block;color:var(--prata-dim);font-size:.74rem}
 #barberApp .hj-ok{color:var(--verde-neon);font-size:.85rem}
+/* ── Atendimento: puxar atendimento da agenda ── */
+#barberApp.desktop .ba-body.pdv>#pdv-agenda{width:100%;margin-left:0;margin-right:0}
+#barberApp .pdv-agl{display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.2rem}
+#barberApp .pdv-agi{flex:0 0 auto;min-width:170px;max-width:230px;text-align:left;border:1px solid var(--hair);border-radius:8px;background:var(--grafite);color:var(--prata);padding:.55rem .75rem;font-family:var(--font-body);cursor:pointer}
+#barberApp .pdv-agi:hover{border-color:var(--dourado)}
+#barberApp .pdv-agi.sel{border-color:var(--dourado);background:rgba(198,167,94,.12)}
+#barberApp .pdv-agi.and{border-color:rgba(217,164,65,.55)}
+#barberApp .pdv-agi b{display:block;font-weight:400;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#barberApp .pdv-agi span{display:block;font-size:.72rem;color:var(--prata-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#barberApp .pdv-agi i{font-style:normal;font-family:var(--font-display);color:var(--dourado-claro);font-size:1rem;margin-right:.35rem}
 /* ── Visual: Atendimento (fatia 3) — celular igual; no desktop catálogo à esquerda e comanda fixa à direita ── */
 #barberApp .pdv-sec{box-shadow:inset 0 1px 0 rgba(237,237,232,.06)}
 #barberApp .pdv-lb{align-items:center}
@@ -4135,7 +4145,7 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .pdv-it{border-left:3px solid var(--dourado-dim)}
 #barberApp .pdv-cmd{border-color:var(--dourado-dim)}
 #barberApp.desktop .ba-body.pdv{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:0 1rem;align-items:start}
-#barberApp.desktop .ba-body.pdv>#ba-vendas-picker-at,#barberApp.desktop .ba-body.pdv>#ba-at-caixa-banner{grid-column:1/-1}
+#barberApp.desktop .ba-body.pdv>#ba-vendas-picker-at,#barberApp.desktop .ba-body.pdv>#ba-at-caixa-banner,#barberApp.desktop .ba-body.pdv>#pdv-agenda{grid-column:1/-1}
 #barberApp.desktop .pdv-r{position:sticky;top:.5rem;max-height:calc(100vh - 1.5rem);overflow:auto}
 #barberApp.desktop .pdv-r .pdv-bar{position:static;margin-top:.6rem}
 #barberApp.desktop .pdv-r .pdv-th{display:none}
@@ -4653,6 +4663,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       <div class="ba-body pdv">
         <div id="ba-vendas-picker-at" style="display:none"></div>
         <div id="ba-at-caixa-banner" style="display:none"></div>
+        <section class="pdv-sec pdv-ag" id="pdv-agenda" style="display:none"></section>
         <div class="pdv-l">
 
         <section class="pdv-sec" id="pdv-sec-cli">
@@ -13221,6 +13232,7 @@ function baRenderAtendimento(){
   baPdvEl('pdv-busca').value = ''; baPdvEl('at-notes').value = '';
   baPdvEl('at-err').style.display = 'none'; baPdvEl('at-success').style.display = 'none';
   baPdvTab('s'); baPdvWhenCheck(); baPdvRenderClient(); baPdvRenderItems();
+  baPdvListaAgenda();
 }
 function baPdvFillBarbers(){
   const sel = baPdvEl('pdv-bar');
@@ -13237,6 +13249,7 @@ function baPdvSetBarber(id){
   baPdv.barberId = id || null;
   if(baCurrentRole==='vendas') baActingBarberId = baPdv.barberId;   // mesmo efeito do antigo "Atendendo em nome de"
   if(baPdv.client) baPdvLoadLast();
+  baPdvListaAgenda();
 }
 function baPdvSetWhen(){
   baPdv.date = baPdvEl('pdv-date').value; baPdv.start = baPdvEl('pdv-ini').value; baPdv.end = baPdvEl('pdv-fim').value;
@@ -13560,6 +13573,28 @@ function baPdvRenderItems(){
 
 // ── Abrir carrinho: leva o atendimento pra aba Atendimento, com cliente, barbeiro, serviços e produtos já preenchidos.
 // O que o cliente já pagou online aparece no Receber como abatimento (vira a linha pix_online no fechamento). ──
+// ── Puxar da agenda: atendimentos de hoje do barbeiro escolhido; tocar abre a venda já preenchida ──
+let baPdvAgTok = 0;
+async function baPdvListaAgenda(){
+  const box = document.getElementById('pdv-agenda'); if(!box) return;
+  const bid = baPdv && baPdv.barberId; const tok = ++baPdvAgTok;
+  if(!bid){ box.style.display = 'none'; return; }
+  const { data } = await sb.from('appointments').select('*').eq('barber_id', bid).eq('day', primeLocalDate()).in('status',['pendente','confirmado']);
+  if(tok!==baPdvAgTok) return;
+  const list = (data||[]).map(primeApptFromRow).sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+  if(!list.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  box.innerHTML = `<div class="pdv-lb">Da agenda de hoje <em>toque para levar o atendimento para a comanda</em></div><div class="pdv-agl">` + list.map(a=>{
+    const and = a.status==='confirmado' && a.iniciadoEm, sel = baPdv && baPdv.apptId===a.id;
+    return `<button type="button" class="pdv-agi${sel?' sel':''}${and?' and':''}" onclick="baPdvPuxarAgenda(${a.id})"><b><i>${primeEsc(a.time)}</i>${primeEsc(a.name||'Cliente')}</b><span>${primeEsc((a.services||[]).join(' + '))}</span><span>${and?'Em atendimento':a.status==='pendente'?'Pendente':'Confirmado'}${a.paymentStatus==='pago'?' · Pago online':''}</span></button>`;
+  }).join('') + '</div>';
+}
+async function baPdvPuxarAgenda(id){
+  if(baPdv && baPdv.apptId===id) return;
+  if(baPdv && baPdv.items.length && !confirm('Isso troca a comanda atual pelo atendimento da agenda. Continuar?')) return;
+  await baPdvAbrirDoAgendamento(id);
+}
+
 async function baPdvPrepagoDoAgendamento(apptId){
   try{
     let { data, error } = await sb.rpc('pagamento_online_do_agendamento', { p_appt: apptId });
@@ -13599,6 +13634,7 @@ async function baPdvAbrirDoAgendamento(apptId){
   baPdvEl('pdv-busca').value = ''; baPdvEl('at-notes').value = appt.notes || '';
   baPdvWhenCheck(); baPdvRenderClient(); baPdvRenderItems(); baPdvCatalog(); baPdvLoadLast();
   baPdvMostraPrepago();
+  baPdvListaAgenda();
 }
 function baPdvMostraPrepago(){
   let el = document.getElementById('pdv-prepago');
