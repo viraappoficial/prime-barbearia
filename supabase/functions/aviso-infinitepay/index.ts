@@ -8,13 +8,26 @@ import { consultarPagamentoInfinitePay } from "../_shared/provedores.ts";
 const ORIGENS = ["https://primebarbearia.app.br", "https://www.primebarbearia.app.br", "https://staff.primebarbearia.app.br"];
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
+// a cobrança pode ser de um agendamento (appointment_payments) ou de um plano (assinatura_cobrancas): o mesmo aviso serve aos dois
+const tipos = new Map<string, "agendamento" | "plano">();
 const repo: Repo = {
   async cobranca(id) {
     const { data, error } = await db.from("appointment_payments").select("id,status,appointment_id,amount").eq("id", id).maybeSingle();
     if (error) throw new Error(error.message);
-    return data ? { ...(data as any), amount: Number((data as any).amount) } : null;
+    if (data) { tipos.set(id, "agendamento"); return { ...(data as any), amount: Number((data as any).amount) }; }
+    const pl = await db.from("assinatura_cobrancas").select("id,status,assinatura_id,amount").eq("id", id).maybeSingle();
+    if (pl.error) throw new Error(pl.error.message);
+    if (!pl.data) return null;
+    tipos.set(id, "plano");
+    return { id: (pl.data as any).id, status: (pl.data as any).status, appointment_id: 0, amount: Number((pl.data as any).amount) };
   },
   async registrarAprovado(id, providerId, fee, net, pagoEm, como) {
+    if (tipos.get(id) === "plano") {
+      const { data, error } = await db.rpc("registrar_pagamento_plano", { p_id: id, p_provider_id: providerId, p_paid_at: pagoEm });
+      if (error) throw new Error(error.message);
+      if (como) await db.from("assinatura_cobrancas").update(como).eq("id", id);   // pix ou cartão e em quantas vezes
+      return String(data);
+    }
     const { data, error } = await db.rpc("registrar_pagamento_aprovado", { p_payment_id: id, p_provider_id: providerId, p_fee: fee, p_net: net, p_paid_at: pagoEm });
     if (error) throw new Error(error.message);
     if (como) await db.from("appointment_payments").update(como).eq("id", id);   // não derruba a baixa se falhar
@@ -29,8 +42,10 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("método não permitido", { status: 405, headers: cors });
   try {
     const cfg = { handle: Deno.env.get("INFINITEPAY_HANDLE") ?? "", token: Deno.env.get("INFINITEPAY_TOKEN") || undefined };
-    const r = await tratarAvisoInfinitePay(await req.text(), { repo, log: (m) => console.error(m), infinitepay: { consultar: (q) => consultarPagamentoInfinitePay(cfg, q) } });
-    return new Response(JSON.stringify(r.body), { status: r.status, headers: { ...cors, "Content-Type": "application/json" } });
+    const corpoTexto = await req.text();
+    const r = await tratarAvisoInfinitePay(corpoTexto, { repo, log: (m) => console.error(m), infinitepay: { consultar: (q) => consultarPagamentoInfinitePay(cfg, q) } });
+    const oid = (() => { try { return JSON.parse(corpoTexto)?.order_nsu; } catch { return undefined; } })();
+    return new Response(JSON.stringify({ ...r.body, tipo: tipos.get(oid) ?? undefined }), { status: r.status, headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("aviso-infinitepay:", e instanceof Error ? e.message : e);
     return new Response(JSON.stringify({ erro: "erro_interno" }), { status: 500, headers: cors });   // o InfinitePay reenvia

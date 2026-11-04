@@ -789,7 +789,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
   <div class="modal" style="max-width:520px">
     <button class="close" aria-label="Fechar" onclick="closePlansModal()">✕</button>
     <h3 id="plans-title">Planos Prime</h3>
-    <p style="color:var(--prata-dim);margin:.6rem 0 1.6rem" id="plans-sub">Escolha o plano que combina com sua rotina — o barbeiro confirma a assinatura pra você.</p>
+    <p style="color:var(--prata-dim);margin:.6rem 0 1.6rem" id="plans-sub">Escolha o plano que combina com sua rotina e pague pelo site.</p>
     <div id="plans-list" style="display:flex;flex-direction:column;gap:1rem"></div>
     <div id="plans-barber-list" style="display:none;flex-direction:column;gap:.7rem"></div>
     <p id="plans-back" style="display:none;text-align:center;margin-top:1.2rem"><a href="#" onclick="renderPlansList();return false" style="color:var(--dourado);font-size:.85rem">← Escolher outro plano</a></p>
@@ -1617,7 +1617,11 @@ async function primeMostrarObrigado(orderNsu, metodo){
   try{
     const r = await fetch('https://yojvzwkvtedxqlohpuug.supabase.co/functions/v1/aviso-infinitepay', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ order_nsu: orderNsu, transaction_nsu: transactionNsu, slug }) });
     const j = await r.json().catch(()=>({}));
-    if(j.resultado==='ok' || j.resultado==='ja_aprovado') await primeMostrarObrigado(orderNsu, metodo);
+    if(j.tipo==='plano' && (j.resultado==='ok' || j.resultado==='ja_aprovado')){
+      aviso('Pagamento confirmado! Seu plano já está ativo.');
+      if(primeIsLoggedIn()){ try{ caPlanoRealAt = 0; caOpen(); caShow('ca-screen-home'); caRenderPlanCard(); }catch(e){} }
+    }
+    else if(j.resultado==='ok' || j.resultado==='ja_aprovado') await primeMostrarObrigado(orderNsu, metodo);
     else if(j.resultado==='pendente') aviso('Recebemos o seu retorno. O pagamento ainda está sendo confirmado.');
     else aviso('Não conseguimos confirmar o pagamento agora. Se você pagou, a nossa equipe confere.');
   }catch(e){ aviso('Não conseguimos confirmar o pagamento agora. Se você pagou, a nossa equipe confere.'); }
@@ -2802,49 +2806,73 @@ function primeNextMonthFirst(){
 }
 function openPlansModal(){ renderPlansList(); document.getElementById('plansModal').classList.add('open'); }
 function closePlansModal(){ document.getElementById('plansModal').classList.remove('open'); }
-function renderPlansList(){
+// Planos de verdade (tabelas planos e plano_itens). Quem assina paga pelo InfinitePay e o plano ativa sozinho quando o pagamento é confirmado.
+let caPlanosDb = null;
+async function caCarregaPlanosDb(){
+  if(caPlanosDb) return caPlanosDb;
+  const [p, i] = await Promise.all([
+    sb.from('planos').select('id,nome,valor,validade_dias').eq('ativo', true).order('ordem'),
+    sb.from('plano_itens').select('plano_id,item,qtd')
+  ]);
+  if(p.error) throw p.error;
+  caPlanosDb = (p.data||[]).map(x=>({ ...x, valor:Number(x.valor), itens:(i.data||[]).filter(it=>it.plano_id===x.id) }));
+  return caPlanosDb;
+}
+function caPlanoItensTxt(itens){
+  const nome = {corte:['corte','cortes'], barba:['barba','barbas'], sobrancelha:['sobrancelha','sobrancelhas']};
+  return itens.map(it=>`${it.qtd} ${(nome[it.item]||[it.item,it.item])[it.qtd===1?0:1]}`).join(' · ');
+}
+async function renderPlansList(){
   document.getElementById('plans-title').textContent = 'Planos Prime';
-  document.getElementById('plans-sub').textContent = 'Escolha o plano que combina com sua rotina — o barbeiro confirma a assinatura pra você.';
+  document.getElementById('plans-sub').textContent = 'Escolha o plano que combina com sua rotina e pague pelo site.';
   document.getElementById('plans-list').style.display = 'flex';
   document.getElementById('plans-barber-list').style.display = 'none';
   document.getElementById('plans-back').style.display = 'none';
-  const acc = primeGetAccount() || {};
-  const current = acc.plan && acc.plan.name;
-  document.getElementById('plans-list').innerHTML = PLAN_TIERS.map((t,i)=>`
-    <div class="plan-tier${t.name===current?' current':''}">
-      ${t.name===current?'<span class="ptag">Seu plano</span>':''}
-      <h4>${t.name}</h4>
-      <div class="price">${t.price}</div>
-      <p>${t.desc}</p>
-      <button class="btn btn-primary" style="width:100%" onclick="caChoosePlanBarber(${i})" ${t.name===current?'disabled':''}>${t.name===current?'Plano atual':'Solicitar este plano'}</button>
-    </div>
-  `).join('');
+  const box = document.getElementById('plans-list');
+  box.innerHTML = '<p style="color:var(--prata-dim);font-size:.9rem">Carregando os planos…</p>';
+  let lista;
+  try{ lista = await caCarregaPlanosDb(); }catch(e){ console.error('planos', e); box.innerHTML = '<p style="color:var(--erro);font-size:.9rem">Não foi possível carregar os planos agora. Tente de novo.</p>'; return; }
+  await caCarregaPlanoReal();
+  const atual = caPlanoReal && caPlanoReal.plano;
+  const money = v=>'R$ '+v.toFixed(2).replace('.',',');
+  box.innerHTML = lista.length ? lista.map(t=>`
+    <div class="plan-tier${t.nome===atual?' current':''}">
+      ${t.nome===atual?'<span class="ptag">Seu plano</span>':''}
+      <h4>${primeEsc(t.nome)}</h4>
+      <div class="price">${money(t.valor)}/${t.validade_dias===30?'mês':t.validade_dias+' dias'}</div>
+      <p>${primeEsc(caPlanoItensTxt(t.itens))}</p>
+      <button class="btn btn-primary" style="width:100%" onclick="caChoosePlanBarber(${t.id})" ${atual?'disabled':''}>${t.nome===atual?'Plano atual':atual?'Você já tem um plano':'Assinar e pagar'}</button>
+    </div>`).join('') : '<p style="color:var(--prata-dim);font-size:.9rem">Nenhum plano disponível no momento.</p>';
 }
-function caChoosePlanBarber(tierIndex){
-  const tier = PLAN_TIERS[tierIndex];
+function caChoosePlanBarber(planoId){
+  const pl = (caPlanosDb||[]).find(x=>x.id===planoId);
   const roster = primeGetBarberRoster();
-  document.getElementById('plans-title').textContent = tier.name;
-  document.getElementById('plans-sub').textContent = 'Com qual barbeiro você quer esse plano? O pedido vai direto pra ele confirmar.';
+  if(!pl) return;
+  document.getElementById('plans-title').textContent = pl.nome;
+  document.getElementById('plans-sub').textContent = 'Com qual barbeiro você vai usar o plano? Os atendimentos do plano ficam com ele.';
   document.getElementById('plans-list').style.display = 'none';
   document.getElementById('plans-back').style.display = 'block';
   const list = document.getElementById('plans-barber-list');
   list.style.display = 'flex';
   list.innerHTML = roster.length ? roster.map(b=>`
-    <button class="btn btn-ghost" style="width:100%;text-align:left" onclick="caRequestPlan(${tierIndex},'${b.id}')">${b.name}</button>
-  `).join('') : '<p style="color:var(--prata-dim);font-size:.9rem">Nenhum barbeiro disponível no momento.</p>';
+    <button class="btn btn-ghost" style="width:100%;text-align:left" onclick="caPagarPlano(${planoId},'${b.id}',this)">${primeEsc(b.name)}</button>
+  `).join('') + '<p id="plans-err" style="color:var(--erro);font-size:.85rem;margin-top:.4rem;display:none"></p><p style="color:var(--prata-dim);font-size:.78rem">Você vai para a tela segura do InfinitePay para pagar (Pix ou cartão). O plano ativa assim que o pagamento é confirmado.</p>' : '<p style="color:var(--prata-dim);font-size:.9rem">Nenhum barbeiro disponível no momento.</p>';
 }
-async function caRequestPlan(tierIndex, barberId){
-  const tier = PLAN_TIERS[tierIndex];
-  const acc = primeGetAccount();
-  const barber = primeGetBarberRoster().find(b=>b.id===barberId);
-  if(!tier || !acc || !barber) return;
-  await primeAddNotif({
-    forRole:'barber', recipientBarberId: barberId, type:'plano-solicitado',
-    text: `${acc.name} quer assinar o ${tier.name} (${tier.price}).`,
-    payload: { clientEmail: acc.email, tierIndex }
-  });
-  closePlansModal();
-  alert(`Pedido enviado! ${barber.name} vai confirmar seu ${tier.name} em breve.`);
+const CA_PLANO_ERROS = { ja_tem_plano:'Você já tem um plano ativo.', telefone_obrigatorio:'Complete o seu telefone no Perfil para assinar.', plano_indisponivel:'Este plano não está mais disponível.', barbeiro_invalido:'Barbeiro indisponível. Escolha outro.', provedor_indisponivel:'O pagamento está indisponível agora. Tente de novo em instantes.', nao_logado:'Entre na sua conta para assinar.' };
+async function caPagarPlano(planoId, barberId, btn){
+  const err = document.getElementById('plans-err'); if(err) err.style.display = 'none';
+  const botoes = document.querySelectorAll('#plans-barber-list button'); botoes.forEach(b=>b.disabled = true);
+  const txt = btn ? btn.textContent : ''; if(btn) btn.textContent = 'Abrindo o pagamento…';
+  try{
+    const { data, error } = await sb.functions.invoke('criar-pagamento-plano', { body:{ plano_id:planoId, barber_id:barberId } });
+    let corpo = data;
+    if(error && error.context && typeof error.context.json==='function'){ try{ corpo = await error.context.json(); }catch(e){} }
+    if(corpo && corpo.ticket_url){ location.href = corpo.ticket_url; return; }
+    throw new Error((corpo && corpo.erro) || 'erro');
+  }catch(e){
+    botoes.forEach(b=>b.disabled = false); if(btn) btn.textContent = txt;
+    if(err){ err.textContent = CA_PLANO_ERROS[e.message] || 'Não foi possível abrir o pagamento agora. Tente de novo.'; err.style.display = 'block'; }
+  }
 }
 // plano de verdade (tabela assinaturas, pelo telefone do cadastro). Busca no máx. a cada 20s e repinta só se mudou.
 let caPlanoReal = null, caPlanoRealAt = 0, caPlanoRealBusy = false;
