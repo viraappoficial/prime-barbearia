@@ -1626,6 +1626,32 @@ function primeConfetePagamento(){
     box.appendChild(p);
   }
 }
+// Parabéns: plano ativado depois do pagamento (mesmo agradecimento animado do pagamento do horário)
+async function primeMostrarPlanoAtivo(){
+  let pl = null, valor = null;
+  try{ const { data } = await sb.rpc('meu_plano'); pl = data || null; }catch(e){}
+  try{ if(pl){ const lista = await caCarregaPlanosDb(); const t = lista.find(x=>x.nome===pl.plano); if(t) valor = t.valor; } }catch(e){}
+  const acc = primeIsLoggedIn() ? primeGetAccount() : null;
+  const primeiro = acc && acc.name ? String(acc.name).trim().split(/\s+/)[0] : '';
+  const card = document.getElementById('payThanks');
+  card.querySelector('.pt-eyebrow').textContent = 'Plano ativado';
+  document.getElementById('ptTitle').textContent = primeiro ? 'Parabéns, '+primeiro+'!' : 'Parabéns!';
+  document.getElementById('ptLead').textContent = pl ? `Seu ${pl.plano} já está ativo e pronto para usar.` : 'Recebemos o seu pagamento e o seu plano já está ativo.';
+  const row = (k,v,cls)=>`<div class="pt-row${cls?' '+cls:''}"><span>${k}</span><span>${v}</span></div>`;
+  const f = d=>{ const [y,m,dd]=String(d).split('-'); return `${dd}/${m}/${y}`; };
+  document.getElementById('ptRows').innerHTML = pl
+    ? row('Plano', primeEsc(pl.plano)) + row('Inclui', primeEsc((pl.itens||[]).map(i=>`${i.total} ${({corte:'corte',barba:'barba',sobrancelha:'sobrancelha'})[i.item]||i.item}${i.total===1?'':'s'}`).join(' · '))) + row('Válido até', f(pl.fim))
+      + (valor!=null ? row('Valor pago', 'R$ '+valor.toFixed(2).replace('.',','), 'pt-total') : '')
+    : '';
+  document.getElementById('ptRows').style.display = pl ? '' : 'none';
+  const ver = document.getElementById('ptVer'); ver.textContent = 'Ver meu plano';
+  const abrir = ()=>{ primeFecharObrigado(); if(primeIsLoggedIn()){ try{ caPlanoRealAt = 0; caOpen(); caShow('ca-screen-home'); caRenderPlanCard(); }catch(e){} } };
+  ver.onclick = abrir;
+  document.getElementById('ptFechar').onclick = primeFecharObrigado;
+  card.querySelector('.pt-note').textContent = 'Marque seus horários pelo cartão "Meu plano". Te esperamos na Prime!';
+  card.classList.add('open');
+  primeConfetePagamento();
+}
 async function primeMostrarObrigado(orderNsu, metodo){
   let r = null;
   try{ const { data } = await sb.rpc('pix_payment_resumo', { p_payment_id: orderNsu }); r = Array.isArray(data) ? data[0] : data; }catch(e){}
@@ -1660,8 +1686,9 @@ async function primeMostrarObrigado(orderNsu, metodo){
     const r = await fetch('https://yojvzwkvtedxqlohpuug.supabase.co/functions/v1/aviso-infinitepay', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ order_nsu: orderNsu, transaction_nsu: transactionNsu, slug }) });
     const j = await r.json().catch(()=>({}));
     if(j.tipo==='plano' && (j.resultado==='ok' || j.resultado==='ja_aprovado')){
-      aviso('Pagamento confirmado! Seu plano já está ativo.');
-      if(primeIsLoggedIn()){ try{ caPlanoRealAt = 0; caOpen(); caShow('ca-screen-home'); caRenderPlanCard(); }catch(e){} }
+      caPlanoRealAt = 0;
+      await primeMostrarPlanoAtivo();
+      if(primeIsLoggedIn()){ try{ caOpen(); caShow('ca-screen-home'); caRenderPlanCard(); }catch(e){} }
     }
     else if(j.resultado==='ok' || j.resultado==='ja_aprovado') await primeMostrarObrigado(orderNsu, metodo);
     else if(j.resultado==='pendente') aviso('Recebemos o seu retorno. O pagamento ainda está sendo confirmado.');
