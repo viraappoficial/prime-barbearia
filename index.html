@@ -1740,6 +1740,17 @@ render();
 #clientApp .brinde-opt.selected .opt-name{color:var(--dourado-claro)}
 #clientApp .brinde-confirm{margin-top:.7rem;width:100%;border:none;background:var(--dourado);color:#1a1506;font-family:var(--font-body);font-weight:600;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.65rem;border-radius:4px;cursor:pointer;opacity:.4;pointer-events:none;transition:all .2s}
 #clientApp .brinde-confirm.enabled{opacity:1;pointer-events:auto}
+/* ── Meu plano como cartão de membro (dados reais) ── */
+#clientApp .ca-plan-real::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(232,213,164,.09) 50%,transparent 65%);transform:translateX(-100%);animation:caPlanShine 6s 1s ease-in-out infinite;pointer-events:none}
+@keyframes caPlanShine{to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){#clientApp .ca-plan-real::after{animation:none}}
+#clientApp .ca-plan-real .pit{margin:.55rem 0}
+#clientApp .ca-plan-real .pit-h{display:flex;justify-content:space-between;font-size:.82rem;color:var(--prata);margin-bottom:.25rem}
+#clientApp .ca-plan-real .pit-h span{color:var(--prata-dim)}
+#clientApp .ca-plan-real .pit.zero .pit-h b{color:var(--alerta)}
+#clientApp .ca-plan-real .pit.zero .pbar span{background:var(--alerta)}
+#clientApp .ca-plan-real .pbar{margin-bottom:0}
+#clientApp .ca-plan-real .pbadge.pend{color:var(--alerta);border-color:rgba(217,164,65,.5)}
 #clientApp .ca-plan{background:var(--grafite-card);border:1px solid var(--dourado);padding:1.3rem 1.4rem;position:relative;overflow:hidden}
 #clientApp .ca-plan .ptop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
 #clientApp .ca-plan .pname{font-family:var(--font-display);font-size:1.15rem;letter-spacing:.04em}
@@ -1959,6 +1970,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
               <div class="pfoot"><span>Restam <b id="ca-plan-restam">3 cortes</b> este mês</span><span id="ca-plan-renova">Renova em 01/08</span></div>
               <button class="inv-btn" style="margin-top:1rem" onclick="openPlansModal()">Ver outros planos</button>
             </div>
+            <div class="ca-plan ca-plan-real" id="ca-plan-real" style="display:none"></div>
             <div class="ca-invite" id="ca-plan-invite" style="display:none">
               <div class="inv-glow"></div>
               <div class="inv-tag">Economize todo mês</div>
@@ -2834,12 +2846,46 @@ async function caRequestPlan(tierIndex, barberId){
   closePlansModal();
   alert(`Pedido enviado! ${barber.name} vai confirmar seu ${tier.name} em breve.`);
 }
+// plano de verdade (tabela assinaturas, pelo telefone do cadastro). Busca no máx. a cada 20s e repinta só se mudou.
+let caPlanoReal = null, caPlanoRealAt = 0, caPlanoRealBusy = false;
+const CA_PLANO_ITEM = {corte:'Cortes', barba:'Barbas', sobrancelha:'Sobrancelhas'};
+async function caCarregaPlanoReal(){
+  if(caPlanoRealBusy || Date.now()-caPlanoRealAt < 20000) return;
+  caPlanoRealBusy = true;
+  try{
+    const { data, error } = await sb.rpc('meu_plano');
+    if(error) throw error;
+    caPlanoRealAt = Date.now();
+    const novo = data || null;
+    if(JSON.stringify(novo) !== JSON.stringify(caPlanoReal)){ caPlanoReal = novo; caRenderPlanCard(); }
+  }catch(e){ console.error('meu_plano', e); }
+  finally{ caPlanoRealBusy = false; }
+}
+function caPlanoRealHtml(pl){
+  const f = d=>{ const [y,m,dd]=String(d).split('-'); return `${dd}/${m}`; };
+  const dias = Math.max(0, Math.round((Date.parse(pl.fim+'T12:00:00Z') - Date.now())/86400000));
+  const itens = (pl.itens||[]).map(i=>{
+    const usado = i.total - i.restante, zero = i.restante<=0;
+    return `<div class="pit${zero?' zero':''}"><div class="pit-h"><b style="font-weight:400">${CA_PLANO_ITEM[i.item]||i.item}</b><span>${zero?'acabou':`restam ${i.restante} de ${i.total}`}</span></div><div class="pbar"><span style="width:${i.total?Math.min(100,usado/i.total*100):0}%"></span></div></div>`;
+  }).join('');
+  return `<div class="ptop"><div><div class="pname">${primeEsc(pl.plano)}</div><div class="ptier">Cartão de membro</div></div><span class="pbadge${pl.pago?'':' pend'}">${pl.pago?'Pago ✓':'Pagamento pendente'}</span></div>${itens}
+    <div class="pfoot" style="margin-top:.9rem"><span>Válido até <b>${f(pl.fim)}</b></span><span>${dias} dia${dias===1?'':'s'}</span></div>
+    <button class="inv-btn" style="margin-top:1rem" onclick="caGoBook()">Marcar horário</button>`;
+}
 function caRenderPlanCard(){
+  caCarregaPlanoReal();
   const acc = primeGetAccount();
   const active = document.getElementById('ca-plan-active');
   const invite = document.getElementById('ca-plan-invite');
   const label = document.getElementById('ca-plan-label');
   if(!active || !invite) return;
+  const real = document.getElementById('ca-plan-real');
+  if(real && caPlanoReal){
+    active.style.display='none'; invite.style.display='none'; label.textContent='Meu plano';
+    real.style.display='block'; real.innerHTML = caPlanoRealHtml(caPlanoReal);
+    return;
+  }
+  if(real) real.style.display='none';
   if(acc && acc.plan){
     active.style.display='block'; invite.style.display='none'; label.textContent='Seu plano';
     const total = acc.plan.total, used = acc.plan.used||0;
