@@ -50,10 +50,36 @@ Mockups em `docs/mockups/`. O que se disse: "a proposta ficou incrível; não va
   e casos especiais (caixa fechado, plano não pago, a prazo, atendimento já finalizado).
 - **Cliente (site):** topo da página inicial com o emblema, agendamento com resumo fixo e cartão do plano com o saldo.
 - **Equipe:** tela "Hoje" e agenda como linha do tempo; abertura do app e telas vazias com o emblema.
-- **Analista** (aba da Gestão): só ideia, não será construído agora.
+- **Analista** (aba da Gestão): ideia descartada em favor do Léo da equipe (chat), descrito mais abaixo.
 
 Ordem sugerida quando retomar: (1) Abrir carrinho com a venda pronta e o abatimento do pago online (pequeno e evita cobrança duplicada),
 (2) aba "Em atendimento", (3) visual novo do Atendimento e a finalização, (4) planos no site (saldo, escolha do plano, pagamento do plano), (5) o resto.
+
+## Ideia alinhada para depois: Léo, o assistente da equipe
+
+Mockup: `mockups/leo-assistente-da-equipe.html`. **Só desenho e plano; nada construído.**
+
+- **O que é:** um chat no canto inferior da tela do app (botão flutuante no celular, painel no canto no computador) em que a equipe pergunta em português
+  ("como está o financeiro de hoje?", "quantos atendimentos faltam?", "quem passou do dia de voltar?", "comissão do Miguel") e o Léo responde com os números do sistema.
+  Toda conta vem com "Como calculei", e a resposta traz botões que abrem a tela certa (Caixa, Agenda, CRM, Conciliação).
+- **Só lê.** Não altera venda, agenda nem pagamento. Para agir, mostra um botão e quem decide é a pessoa. Se não tiver o dado, diz que não sabe.
+- **Como seria feito:** a mesma ideia do Léo de hoje (agente com ferramentas, API da Anthropic, mesma chave), mas **outro conjunto de ferramentas, só de leitura**,
+  numa função do Supabase chamada pelo app com o login da pessoa. As consultas usam o acesso de quem está logada (RLS), então barbeiro vê só o que é dele.
+  Sem SQL livre: só consultas prontas. As **contas são feitas pelo sistema**; a IA só escreve a resposta.
+  Manter **separado por dentro** do Léo do cliente (outras ferramentas e regras), mesmo com o mesmo nome e rosto.
+- **Ferramentas previstas:** faturamento (dia, semana, mês, por forma de pagamento), taxas estimadas, comissões, atendimentos do dia e próximo cliente,
+  clientes que passaram do dia (CRM), planos e saldo, pagamentos online sem venda lançada (Conciliação), e dúvidas de uso do sistema.
+- **Custo (estimativa a partir do que o Léo gasta hoje, medido em `ai_usage`):** no Haiku 5.5, cerca de US$ 0,001 por chamada; uma pergunta faz 2 a 4 chamadas,
+  por volta de US$ 0,003. Com 20 perguntas por dia (uns 600 por mês) dá uns **US$ 2 por mês** no Haiku (e uns US$ 35 no Sonnet, por isso Haiku por padrão).
+  Medir na primeira semana de uso real e ajustar os limites.
+- **Controle de custo combinado:** (1) **cache de prompt** (a parte fixa das instruções e das ferramentas é cobrada bem mais barato quando se repete);
+  (2) Haiku por padrão, modelo maior só em pergunta difícil; (3) cache de respostas iguais na mesma hora (ex.: "financeiro de hoje");
+  (4) resultados enxutos (só totais, nunca listas enormes); (5) limite por pessoa por dia (ex.: 30 perguntas) e teto mensal que desliga o chat;
+  (6) botões de sugestão respondendo direto do banco, **sem chamar a IA**; (7) consumo do Léo da equipe separado na aba IA.
+- **Quem vê o quê:** admin vê tudo; barbeiro só agenda, clientes e vendas dele; recepção agenda e clientes, sem comissão.
+- **Pré-requisitos:** quanto melhor lançado o financeiro, melhor a resposta. Vale mais depois do "Abrir carrinho" com abatimento do pago online.
+  Uma primeira versão pequena (financeiro e atendimentos do dia) não depende do redesenho do Atendimento.
+- **Primeira versão sugerida:** botão flutuante + chat, com 5 a 6 perguntas prontas (sem IA) e a pergunta livre só para admin, com limite diário e painel de consumo.
 
 ## Em aberto
 
