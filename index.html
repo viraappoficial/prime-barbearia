@@ -433,7 +433,8 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 .wbarber-card{position:relative;display:flex;align-items:center;gap:1rem;border:1px solid rgba(237,237,232,.2);padding:.9rem 1.1rem;cursor:pointer;transition:all .2s}
 .wbarber-card:hover{border-color:var(--verde-neon)}
 .wbarber-card.active{border-color:var(--verde-prime);background:rgba(53,197,88,.08)}
-.wbarber-ph{flex:none;width:44px;height:44px;border-radius:50%;background:linear-gradient(160deg,#243027,#141715);display:flex;align-items:center;justify-content:center}
+.wbarber-ph{flex:none;width:56px;height:56px;border-radius:50%;overflow:hidden;border:1px solid var(--dourado-dim);background:linear-gradient(160deg,#243027,#141715);display:flex;align-items:center;justify-content:center}
+.wbarber-ph img{width:100%;height:100%;object-fit:cover}
 .wbarber-ph svg{width:55%;color:var(--dourado)}
 .wbarber-info h4{font-size:1rem;letter-spacing:.03em;margin-bottom:.15rem}
 .wbarber-info p{color:var(--prata-dim);font-size:.85rem}
@@ -1436,7 +1437,7 @@ async function renderBarberStep(){
       const isFav = b.name===favorite;
       return `<div class="wbarber-card${state.barberId===b.id?' active':''}" data-name="${nomeAttr(b.name)}" data-id="${b.id}">
         ${isFav?'<span class="wbarber-star" title="Seu barbeiro favorito">★</span>':''}
-        <div class="wbarber-ph"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg></div>
+        <div class="wbarber-ph">${b.photoUrl ? `<img src="${b.photoUrl}" alt="" loading="lazy">` : '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg>'}</div>
         <div class="wbarber-info"><h4>${b.name}</h4><p>${p.esp} · ${p.exp} de experiência</p></div>
       </div>`;
     }).join('')}
