@@ -430,6 +430,35 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 .wsvc-empty{color:var(--prata-dim);font-size:.85rem;padding:.4rem 0}
 .chip.taken::after{content:"";position:absolute;top:14%;bottom:14%;left:50%;width:2px;background:var(--erro);transform:translateX(-50%) rotate(14deg)}
 .wbarber-list{display:flex;flex-direction:column;gap:.7rem}
+/* ── Planos: cartões de membro ── */
+.pc-modal{background:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(198,167,94,.10),transparent 70%),var(--grafite-card)}
+.pc-modal h3{font-family:var(--font-display);letter-spacing:.14em;text-transform:uppercase;text-align:center}
+.pc-modal #plans-sub{text-align:center;max-width:46ch;margin:.6rem auto 1.8rem !important}
+.pc-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1.1rem;align-items:stretch}
+.pc{--c:#C6A75E;position:relative;display:flex;flex-direction:column;gap:.85rem;padding:1.5rem 1.3rem 1.3rem;text-align:left;overflow:hidden;
+  background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,0) 45%),var(--grafite);
+  border:1px solid color-mix(in srgb,var(--c) 42%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 14px 34px rgba(0,0,0,.38);transition:transform .25s,border-color .25s}
+.pc:hover{transform:translateY(-3px);border-color:var(--c)}
+.pc::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,var(--c),transparent)}
+.pc::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.07) 50%,transparent 62%);transform:translateX(-120%);animation:pcShine 7s 1.2s ease-in-out infinite;pointer-events:none}
+@keyframes pcShine{55%,100%{transform:translateX(120%)}}
+@media (prefers-reduced-motion:reduce){.pc::after{animation:none}.pc:hover{transform:none}}
+.pc.bronze{--c:#C08A5B}.pc.prata{--c:#CBD2D8}.pc.ouro{--c:#E0BC63}
+.pc .tier{font-size:.6rem;letter-spacing:.32em;text-transform:uppercase;color:var(--c)}
+.pc h4{font-family:var(--font-display);font-weight:500;font-size:1.3rem;letter-spacing:.06em;margin:-.3rem 0 0;color:var(--prata)}
+.pc .pr{font-family:var(--font-display);font-size:2.2rem;line-height:1;color:var(--prata)}
+.pc .pr small{font-family:var(--font-body);font-size:.8rem;color:var(--prata-dim);margin-left:.2rem}
+.pc ul{list-style:none;margin:.2rem 0;padding:.9rem 0 0;border-top:1px solid color-mix(in srgb,var(--c) 28%,transparent);display:flex;flex-direction:column;gap:.5rem;flex:1}
+.pc li{display:flex;gap:.6rem;align-items:baseline;font-size:.92rem;color:var(--prata)}
+.pc li::before{content:"✓";color:var(--c);font-size:.85rem;flex:none}
+.pc .eco{font-size:.74rem;color:var(--verde-neon)}
+.pc .eco s{color:var(--prata-dim)}
+.pc .pc-go{width:100%;min-height:48px;font-family:var(--font-body);font-size:.74rem;font-weight:500;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border:1px solid var(--c);color:var(--c);background:transparent;transition:background .2s,color .2s}
+.pc .pc-go:hover:not(:disabled){background:var(--c);color:#14170f}
+.pc .pc-go:disabled{opacity:.55;cursor:not-allowed}
+.pc.atual{border-color:var(--verde-neon)}
+.pc .pc-tag{position:absolute;top:.8rem;right:.8rem;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--verde-neon);border:1px solid rgba(53,197,88,.45);padding:.2rem .5rem}
+.pc-grid.compact .pc{padding:1.2rem 1.1rem 1.1rem}
 .w-plano{border:1px solid var(--dourado-dim);background:rgba(198,167,94,.07);padding:.7rem .9rem;margin-bottom:1rem;font-size:.85rem;color:var(--prata-dim)}
 .w-plano b{display:block;font-family:var(--font-display);font-weight:500;letter-spacing:.04em;font-size:.95rem;color:var(--prata);margin-bottom:.15rem}
 .w-plano em{font-style:normal;color:var(--verde-neon)}
@@ -813,11 +842,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
 
 <!-- PLANOS -->
 <div class="modal-backdrop" id="plansModal" role="dialog" aria-modal="true" style="z-index:1200">
-  <div class="modal" style="max-width:520px">
+  <div class="modal pc-modal" style="max-width:920px">
     <button class="close" aria-label="Fechar" onclick="closePlansModal()">✕</button>
     <h3 id="plans-title">Planos Prime</h3>
     <p style="color:var(--prata-dim);margin:.6rem 0 1.6rem" id="plans-sub">Escolha o plano que combina com sua rotina e pague pelo site.</p>
-    <div id="plans-list" style="display:flex;flex-direction:column;gap:1rem"></div>
+    <div id="plans-list" class="pc-grid" style="display:grid"></div>
     <div id="plans-barber-list" style="display:none;flex-direction:column;gap:.7rem"></div>
     <p id="plans-back" style="display:none;text-align:center;margin-top:1.2rem"><a href="#" onclick="renderPlansList();return false" style="color:var(--dourado);font-size:.85rem">← Escolher outro plano</a></p>
   </div>
@@ -1269,23 +1298,14 @@ document.getElementById('wServiceCats').addEventListener('click', e=>{
 
 // Aba "Planos" no passo do serviço: escolher um plano leva direto para escolher o barbeiro e pagar (o plano tem fluxo próprio)
 async function wRenderPlanosNoAgendamento(box){
-  if(!primeIsLoggedIn()){
-    box.innerHTML = '<div style="text-align:center;padding:.6rem 0"><p class="wsvc-empty" style="margin-bottom:.9rem">Entre na sua conta para ver e assinar os planos.</p><button type="button" class="btn btn-primary" onclick="closeModal();authPromptGo(\'login\')">Entrar ou criar conta</button></div>';
-    return;
-  }
   box.innerHTML = '<p class="wsvc-empty">Carregando os planos…</p>';
   let lista;
-  try{ lista = await caCarregaPlanosDb(); await caCarregaPlanoReal(); }catch(e){ console.error('planos', e); box.innerHTML = '<p class="wsvc-empty">Não foi possível carregar os planos agora.</p>'; return; }
+  try{ lista = await caCarregaPlanosDb(); if(primeIsLoggedIn()) await caCarregaPlanoReal(); }catch(e){ console.error('planos', e); box.innerHTML = '<p class="wsvc-empty">Não foi possível carregar os planos agora.</p>'; return; }
   if(wServiceCat!=='planos') return;   // trocou de aba enquanto carregava
-  const atual = caPlanoReal && caPlanoReal.plano;
-  const money = v=>'R$ '+v.toFixed(2).replace('.',',');
-  box.innerHTML = lista.length ? lista.map(t=>`
-    <button type="button" class="wplano${t.nome===atual?' atual':''}" ${atual?'disabled':''} onclick="wEscolherPlano(${t.id})">
-      <b>${primeEsc(t.nome)}</b><span>${primeEsc(caPlanoItensTxt(t.itens))}</span>
-      <em>${t.nome===atual?'Seu plano atual':atual?'Você já tem um plano':money(t.valor)+'/'+(t.validade_dias===30?'mês':t.validade_dias+' dias')}</em>
-    </button>`).join('') : '<p class="wsvc-empty">Nenhum plano disponível no momento.</p>';
+  const atual = primeIsLoggedIn() && caPlanoReal ? caPlanoReal.plano : null;
+  box.innerHTML = lista.length ? `<div class="pc-grid compact" style="display:grid;grid-template-columns:1fr;width:100%">${lista.map(t=>caPlanoCard(t, atual, 'wEscolherPlano')).join('')}</div>` : '<p class="wsvc-empty">Nenhum plano disponível no momento.</p>';
 }
-function wEscolherPlano(id){ closeModal(); openPlansModal(); caChoosePlanBarber(id); }
+function wEscolherPlano(id){ if(!primeIsLoggedIn()){ caPlanoLogin(); return; } closeModal(); openPlansModal(); caChoosePlanBarber(id); }
 // Cobertura do plano do cliente (mesma regra do balcão): um corte vale 1 corte, uma barba vale 1 barba; combo cobre as partes que têm saldo
 function wPlanoCobertura(nomes){
   const pl = (typeof caPlanoReal!=='undefined') ? caPlanoReal : null;
@@ -2940,29 +2960,45 @@ function caPlanoItensTxt(itens){
   const nome = {corte:['corte','cortes'], barba:['barba','barbas'], sobrancelha:['sobrancelha','sobrancelhas']};
   return itens.map(it=>`${it.qtd} ${(nome[it.item]||[it.item,it.item])[it.qtd===1?0:1]}`).join(' · ');
 }
+function caPlanoLista(t){
+  const nome = {corte:['corte','cortes'], barba:['barba','barbas'], sobrancelha:['sobrancelha','sobrancelhas']};
+  return t.itens.map(it=>`<li>${it.qtd} ${(nome[it.item]||[it.item,it.item])[it.qtd===1?0:1]} por ${t.validade_dias===30?'mês':t.validade_dias+' dias'}</li>`).join('');
+}
+// cartão do plano (usado no modal de planos e na aba Planos do agendamento); onGo = função chamada com o id do plano
+function caPlanoCard(t, atual, onGo){
+  const money = v=>'R$ '+v.toFixed(2).replace('.',',');
+  const tier = /bronze/i.test(t.nome) ? 'bronze' : /prata/i.test(t.nome) ? 'prata' : /ouro/i.test(t.nome) ? 'ouro' : '';
+  const avulso = t.itens.reduce((s,it)=>s+it.qtd*(SVC_PRICES[PLANO_REF[it.item]]||0),0), eco = avulso - t.valor;
+  const logado = primeIsLoggedIn(), meu = atual && t.nome===atual;
+  const rotulo = meu ? 'Plano atual' : atual ? 'Você já tem um plano' : logado ? 'Assinar' : 'Entrar para assinar';
+  return `<div class="pc ${tier}${meu?' atual':''}">
+    ${meu?'<span class="pc-tag">Seu plano</span>':''}
+    <span class="tier">Assinatura ${t.validade_dias===30?'mensal':t.validade_dias+' dias'}</span>
+    <h4>${primeEsc(t.nome)}</h4>
+    <div class="pr">${money(t.valor)}<small>/${t.validade_dias===30?'mês':t.validade_dias+' dias'}</small></div>
+    ${eco>0.5 ? `<div class="eco">Avulso <s>${money(avulso)}</s> · economize ${money(eco)}</div>` : ''}
+    <ul>${caPlanoLista(t)}</ul>
+    <button type="button" class="pc-go" ${(meu||atual)?'disabled':''} onclick="${onGo}(${t.id})">${rotulo}</button>
+  </div>`;
+}
 async function renderPlansList(){
   document.getElementById('plans-title').textContent = 'Planos Prime';
-  document.getElementById('plans-sub').textContent = 'Escolha o plano que combina com sua rotina e pague pelo site.';
-  document.getElementById('plans-list').style.display = 'flex';
+  document.getElementById('plans-sub').textContent = 'Cortes e barbas com preço fixo todo mês, com o barbeiro de sua confiança.';
+  document.getElementById('plans-list').style.display = 'grid';
   document.getElementById('plans-barber-list').style.display = 'none';
   document.getElementById('plans-back').style.display = 'none';
   const box = document.getElementById('plans-list');
-  box.innerHTML = '<p style="color:var(--prata-dim);font-size:.9rem">Carregando os planos…</p>';
+  box.innerHTML = '<p style="color:var(--prata-dim);font-size:.9rem;grid-column:1/-1;text-align:center">Carregando os planos…</p>';
   let lista;
-  try{ lista = await caCarregaPlanosDb(); }catch(e){ console.error('planos', e); box.innerHTML = '<p style="color:var(--erro);font-size:.9rem">Não foi possível carregar os planos agora. Tente de novo.</p>'; return; }
-  await caCarregaPlanoReal();
-  const atual = caPlanoReal && caPlanoReal.plano;
-  const money = v=>'R$ '+v.toFixed(2).replace('.',',');
-  box.innerHTML = lista.length ? lista.map(t=>`
-    <div class="plan-tier${t.nome===atual?' current':''}">
-      ${t.nome===atual?'<span class="ptag">Seu plano</span>':''}
-      <h4>${primeEsc(t.nome)}</h4>
-      <div class="price">${money(t.valor)}/${t.validade_dias===30?'mês':t.validade_dias+' dias'}</div>
-      <p>${primeEsc(caPlanoItensTxt(t.itens))}</p>
-      <button class="btn btn-primary" style="width:100%" onclick="caChoosePlanBarber(${t.id})" ${atual?'disabled':''}>${t.nome===atual?'Plano atual':atual?'Você já tem um plano':'Assinar e pagar'}</button>
-    </div>`).join('') : '<p style="color:var(--prata-dim);font-size:.9rem">Nenhum plano disponível no momento.</p>';
+  try{ lista = await caCarregaPlanosDb(); }catch(e){ console.error('planos', e); box.innerHTML = '<p style="color:var(--erro);font-size:.9rem;grid-column:1/-1;text-align:center">Não foi possível carregar os planos agora. Tente de novo.</p>'; return; }
+  if(primeIsLoggedIn()) await caCarregaPlanoReal();
+  const atual = primeIsLoggedIn() && caPlanoReal ? caPlanoReal.plano : null;
+  box.innerHTML = lista.length ? lista.map(t=>caPlanoCard(t, atual, 'caChoosePlanBarber')).join('') : '<p style="color:var(--prata-dim);font-size:.9rem;grid-column:1/-1;text-align:center">Nenhum plano disponível no momento.</p>';
 }
+// quem não tem conta vê os planos, mas para assinar precisa entrar
+function caPlanoLogin(){ closePlansModal(); try{ closeModal(); }catch(e){} authPromptGo('login'); }
 function caChoosePlanBarber(planoId){
+  if(!primeIsLoggedIn()){ caPlanoLogin(); return; }
   const pl = (caPlanosDb||[]).find(x=>x.id===planoId);
   const roster = primeGetBarberRoster();
   if(!pl) return;
