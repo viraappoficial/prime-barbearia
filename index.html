@@ -13479,10 +13479,12 @@ function baPdvSetBarber(id){
   if(baCurrentRole==='vendas') baActingBarberId = baPdv.barberId;   // mesmo efeito do antigo "Atendendo em nome de"
   if(baPdv.client) baPdvLoadLast();
   baPdvListaAgenda();
+  baPdvRenderClient(); baPdvRenderItems();   // a cobertura do plano depende do barbeiro
 }
 function baPdvSetWhen(){
   baPdv.date = baPdvEl('pdv-date').value; baPdv.start = baPdvEl('pdv-ini').value; baPdv.end = baPdvEl('pdv-fim').value;
   baPdvWhenCheck();
+  if(baPdv.plano){ baPdvRenderClient(); baPdvRenderItems(); }   // a liberação do plano vale para o dia
 }
 function baPdvWhenCheck(){
   const d = baPdvMins(baPdv.end) - baPdvMins(baPdv.start), el = baPdvEl('pdv-dur');
@@ -13520,6 +13522,11 @@ function baPdvSaldoTxt(saldo){
   const nm = {corte:['corte','cortes'], barba:['barba','barbas'], sobrancelha:['sobrancelha','sobrancelhas']};
   return Object.keys(nm).filter(k=>k in saldo).map(k=>`${saldo[k]} ${nm[k][saldo[k]===1?0:1]}`).join(' · ') || 'sem itens';
 }
+// o plano só cobre o atendimento do barbeiro do plano; outro barbeiro só com admin ou com autorização aprovada (Nathan, pelo Léo)
+function baPdvPlanoLiberado(){
+  const p = baPdv; if(!p || !p.plano || !p.plano.barber_id) return true;
+  return p.plano.barber_id===p.barberId || baCurrentRole==='admin' || (p.plano.autorizados||[]).some(a=>a.barber_id===p.barberId && a.day===p.date);
+}
 function baPdvPlanoHtml(){
   const p = baPdv, novo = p.items.find(x=>x.kind==='a');
   if(novo){
@@ -13529,15 +13536,17 @@ function baPdvPlanoHtml(){
   }
   if(p.plano){
     const f = String(p.plano.fim||'').split('-');
-    return `<div class="pdv-plano"><b>${primeEsc(p.plano.plano)}</b> ativo até ${f.length===3?f[2]+'/'+f[1]:''}. Saldo: ${baPdvSaldoTxt(p.plano.saldo||{})}.</div>`;
+    const quem = (primeGetBarberRoster().find(b=>b.id===p.barberId)||{}).name || 'este barbeiro';
+    const aviso = baPdvPlanoLiberado() ? '' : `<div class="pdv-plano" style="border-color:var(--erro)">Este plano é do <b>${primeEsc(p.plano.barber_nome||'outro barbeiro')}</b>. Com ${primeEsc(quem)} ele não cobre o serviço: só um admin ou a liberação do ${primeEsc(p.plano.barber_nome||'barbeiro do plano')} (pelo Léo) libera. Enquanto isso o serviço é cobrado avulso.</div>`;
+    return `<div class="pdv-plano"><b>${primeEsc(p.plano.plano)}</b> ativo até ${f.length===3?f[2]+'/'+f[1]:''}. Saldo: ${baPdvSaldoTxt(p.plano.saldo||{})}.${p.plano.barber_nome?` Barbeiro do plano: <b>${primeEsc(p.plano.barber_nome)}</b>.`:''}</div>${aviso}`;
   }
   return '';
 }
 function baPdvCobertura(){
   const p = baPdv, saldo = {}, novo = p.items.find(x=>x.kind==='a');
   if(novo){ const pl = (baPlanosCache||[]).find(x=>x.id===novo.planoId); ((pl&&pl.plano_itens)||[]).forEach(i=>{ saldo[i.item] = i.qtd; }); }
-  else if(p.plano) Object.assign(saldo, p.plano.saldo || {});
-  const comPlano = !!(novo || p.plano);
+  else if(p.plano && baPdvPlanoLiberado()) Object.assign(saldo, p.plano.saldo || {});
+  const comPlano = !!(novo || (p.plano && baPdvPlanoLiberado()));
   const linhas = p.items.map(it=>{
     if(it.kind!=='s') return null;
     const svc = primeServicesCache.find(x=>x.name===it.name), comps = (svc && svc.conta_no_plano) || [];
