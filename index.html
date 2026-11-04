@@ -2109,6 +2109,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <button class="close" aria-label="Fechar" onclick="baClosePagamentoModal()">✕</button>
     <h3>Receber <b id="ba-pgto-total" style="color:var(--dourado-claro);font-weight:500"></b></h3>
     <p id="ba-pgto-sub" style="color:var(--prata-dim);font-size:.85rem;margin:.3rem 0 .6rem"></p>
+    <div id="ba-pgto-prepago" style="display:none;border:1px solid rgba(53,197,88,.45);border-radius:8px;padding:.6rem .8rem;margin-bottom:.6rem;font-size:.85rem;color:var(--prata)"></div>
     <div id="ba-pgto-linhas"></div>
     <p id="ba-pgto-err" style="color:var(--erro);font-size:.82rem;margin:.6rem 0;display:none"></p>
     <button class="btn btn-primary" id="ba-pgto-confirm" style="width:100%;margin-top:.4rem" onclick="baPgtoConfirmar()">Confirmar</button>
@@ -11403,7 +11404,7 @@ async function baFetchCartItems(apptId){
 
 async function baIniciarAtendimento(apptId){
   await primeUpdateAppointment(apptId, {iniciadoEm: Date.now()});
-  baOpenCarrinho(apptId);
+  baPdvAbrirDoAgendamento(apptId);
 }
 // desfaz um "Iniciar" clicado sem querer — volta o horário pra confirmado (não iniciado) e limpa
 // qualquer produto já jogado no carrinho, já que um atendimento desfeito começa do zero se reiniciado.
@@ -11611,8 +11612,16 @@ function baPgtoDefaultVencimento(){
 }
 function baOpenPagamentoModal(notaId, total, onConfirm, opts){
   const o = opts || {};
-  baPgtoState = { notaId, total, onConfirm, clientName: o.clientName || 'Cliente', linhas: [], draft: null };
-  document.getElementById('ba-pgto-total').textContent = baFormatMoney(total);
+  // pago online (Pix antecipado): já está no caixa da Prime; abate do que falta receber e vira uma linha pix_online no fechamento
+  const pre = o.prepago && o.prepago.valor>0 ? { ...o.prepago, valor: Math.min(o.prepago.valor, total) } : null;
+  const aReceber = pre ? Math.round((total - pre.valor)*100)/100 : total;
+  baPgtoState = { notaId, total: aReceber, totalBruto: total, prepago: pre, onConfirm, clientName: o.clientName || 'Cliente', linhas: [], draft: null };
+  const preEl = document.getElementById('ba-pgto-prepago');
+  if(pre){
+    preEl.style.display = 'block';
+    preEl.innerHTML = `Total da venda <b>${baFormatMoney(total)}</b> · já pago online <b style="color:var(--verde-neon)">− ${baFormatMoney(pre.valor)}</b>${aReceber<=0.005 ? '<br>Nada a receber: só confirmar.' : ''}`;
+  } else { preEl.style.display = 'none'; preEl.innerHTML = ''; }
+  document.getElementById('ba-pgto-total').textContent = baFormatMoney(aReceber);
   document.getElementById('ba-pgto-sub').textContent = baPgtoState.clientName;
   document.getElementById('ba-pgto-err').style.display = 'none';
   baPgtoNewDraft('dinheiro');
@@ -11743,7 +11752,8 @@ async function baInsertSalePayments(notaId, barberId, linhas){
     nota_id: notaId, barber_id: barberId, method: l.method, value: l.value,
     parcelas: l.method==='credito' ? (l.parcelas||1) : null,
     nsu: l.nsu || null,
-    bandeira: l.bandeira || null
+    bandeira: l.bandeira || null,
+    ...(l.method==='pix_online' ? { taxa_valor: l.taxa_valor ?? null, gateway_payment_id: l.gateway_payment_id || null } : {})
   }));
   const { error } = await sb.from('sale_payments').insert(rows);
   if(error){ console.error('baInsertSalePayments', error); return { ok:false, error }; }
@@ -11782,6 +11792,8 @@ async function baPgtoConfirmar(){
   try{
     const { notaId, onConfirm, clientName } = baPgtoState;
     const linhas = baPgtoLinhasParaSalvar();
+    const preSt = baPgtoState.prepago;
+    if(preSt) linhas.push({ method:'pix_online', value: preSt.valor, taxa_valor: preSt.taxa ?? null, gateway_payment_id: preSt.gatewayId || null });
     // pagamentos PRIMEIRO: é o que o banco pode recusar (ex.: caixa fechado). Se recusar, nada mais foi feito
     // (estoque, vendas e agendamento intactos) e o modal segue aberto pra confirmar de novo depois de abrir o caixa.
     const pag = await baInsertSalePayments(notaId, baActingBarberId, linhas);
@@ -12247,7 +12259,7 @@ async function baBuildAgendaTimes(){
         : `${svcName}${dur} · <span class="ts-chip ${st==='pendente'||st==='nao_compareceu'?'warn':(st==='confirmado'?'ok':'')}">${statusLabel[st]||st}</span>`;
       const bm='width:auto;max-width:none;margin:0';
       const statusBtn = st==='pendente' ? `<button class="ba-mini-btn primary" onclick="baAcceptAppt(${a.id})">Aceitar</button>`
-        : emAndamento ? `<button class="ba-mini-btn amber" onclick="baOpenCarrinho(${a.id})">Abrir carrinho</button>`
+        : emAndamento ? `<button class="ba-mini-btn amber" onclick="baPdvAbrirDoAgendamento(${a.id})">Abrir carrinho</button>`
         : st==='confirmado' ? `<button class="ba-mini-btn primary" onclick="baIniciarAtendimento(${a.id})">Iniciar</button>`
         : '';
       const canManage = (st==='pendente' || st==='confirmado') && !emAndamento;
@@ -13426,6 +13438,58 @@ function baPdvRenderItems(){
 }
 
 // ── finalizar: monta as linhas de venda e abre o modal de pagamento (dividido / troco) ──
+
+// ── Abrir carrinho: leva o atendimento pra aba Atendimento, com cliente, barbeiro, serviços e produtos já preenchidos.
+// O que o cliente já pagou online aparece no Receber como abatimento (vira a linha pix_online no fechamento). ──
+async function baPdvPrepagoDoAgendamento(apptId){
+  try{
+    let { data, error } = await sb.rpc('pagamento_online_do_agendamento', { p_appt: apptId });
+    if(error){   // migration ainda não aplicada: admin/vendas conseguem ler direto
+      ({ data, error } = await sb.from('appointment_payments').select('id,amount,fee,provider_payment_id').eq('appointment_id', apptId).eq('status','aprovado'));
+    }
+    if(error) return { erro:true };
+    const rows = data || [];
+    if(!rows.length) return null;
+    const valor = rows.reduce((s,r)=>s+Number(r.amount||0),0);
+    const taxa = rows.every(r=>r.fee!=null) ? rows.reduce((s,r)=>s+Number(r.fee||0),0) : null;
+    return { valor, taxa, gatewayId: rows.length===1 ? rows[0].provider_payment_id : null };
+  }catch(e){ console.error('prepago', e); return { erro:true }; }
+}
+async function baPdvAbrirDoAgendamento(apptId){
+  const appt = await primeFetchAppointmentById(apptId);
+  if(!appt) return;
+  const [cart, pre] = await Promise.all([baFetchCartItems(apptId), baPdvPrepagoDoAgendamento(apptId)]);
+  baTab('atendimento');
+  const d = new Date(), svcs = appt.services || (appt.service ? [appt.service] : []);
+  const tabela = svcs.reduce((s,n)=>s+(SVC_PRICES[n]||0),0);
+  const disc = (typeof appt.discountPrice==='number' && tabela>0) ? Math.max(0, Math.round((tabela-appt.discountPrice)/tabela*10000)/100) : 0;
+  baPdv = baPdvNew();
+  baPdv.apptId = apptId; baPdv.barberId = appt.barberId || baPdv.barberId;
+  baPdv.date = appt.day || baPdv.date; baPdv.end = baPdvHM(d);
+  baPdv.start = appt.iniciadoEm ? baPdvHM(new Date(appt.iniciadoEm)) : (appt.time || baPdv.start);
+  if(baPdv.date!==primeLocalDate(d)) baPdv.end = '23:59';           // atendimento de outro dia: fim no fim do dia
+  if(baPdv.start>=baPdv.end) baPdv.start = baPdv.end>'00:30' ? baPdvHM(new Date(d.getTime()-30*60000)) : '00:00';   // abriu antes do horário marcado
+  baPdv.client = { id: appt.clientId || null, crmId:null, name: appt.name || 'Cliente', phone: appt.clientPhone || null, email: appt.clientEmail || null, instagram:null };
+  svcs.forEach((n,i)=> baPdv.items.push({kind:'s', name:n, price:SVC_PRICES[n]||0, qty:1, disc, cod:'S'+baPdvPad(i+1)}));
+  const prods = baGetProducts();
+  (cart||[]).forEach(ci=>{ const pr = prods.find(x=>x.id===ci.product_id); if(pr) baPdv.items.push({kind:'p', productId:pr.id, name:pr.name, price:pr.price, qty:ci.qty, disc:0, cod:pr.code||('P'+String(pr.id).padStart(3,'0'))}); });
+  baPdv.prepago = pre && !pre.erro ? pre : null;
+  baPdv.prepagoErro = !!(pre && pre.erro) || (!pre && appt.paymentStatus==='pago');   // pago online mas sem achar o valor: não cobra cheio sem avisar
+  baPdvFillBarbers();
+  baPdvEl('pdv-date').value = baPdv.date; baPdvEl('pdv-ini').value = baPdv.start; baPdvEl('pdv-fim').value = baPdv.end;
+  baPdvEl('pdv-busca').value = ''; baPdvEl('at-notes').value = appt.notes || '';
+  baPdvWhenCheck(); baPdvRenderClient(); baPdvRenderItems(); baPdvCatalog(); baPdvLoadLast();
+  baPdvMostraPrepago();
+}
+function baPdvMostraPrepago(){
+  let el = document.getElementById('pdv-prepago');
+  if(!el){ el = document.createElement('div'); el.id = 'pdv-prepago'; const f = document.querySelector('#ba-screen-atendimento .pdv-foot'); if(f) f.parentNode.insertBefore(el, f); else return; }
+  const p = baPdv;
+  if(p && p.apptId && p.prepago){ el.className = 'pdv-plano novo'; el.innerHTML = `Já pago online: <b>${baFormatMoney(p.prepago.valor)}</b>. No Receber isso já vem abatido.`; el.style.display = 'block'; }
+  else if(p && p.apptId && p.prepagoErro){ el.className = 'pdv-plano'; el.style.borderColor = 'var(--erro)'; el.innerHTML = 'Este agendamento consta como <b>pago online</b>, mas não consegui ver o valor. Confira antes de cobrar.'; el.style.display = 'block'; }
+  else el.style.display = 'none';
+}
+
 async function baAtRegistrar(){
   const errEl = baPdvEl('at-err'), p = baPdv;
   const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; baPdvEl('at-success').style.display = 'none'; const be = baPdvEl('pdv-bar-err'); be.textContent = msg; be.style.display = 'block'; };   // o aviso fica abaixo da comanda: leva a tela até ele
@@ -13466,7 +13530,8 @@ async function baAtRegistrar(){
 
     // serviço pra cliente com conta vira também um agendamento já concluído (histórico/fidelidade/Zap do cliente)
     let retroApptId = null;
-    if(svcs.length && c.id){
+    if(p.apptId) retroApptId = p.apptId;   // veio da agenda (Abrir carrinho): o agendamento já existe, só conclui no fim
+    else if(svcs.length && c.id){
       const d = new Date(p.date+'T12:00:00');
       const dayLabel = `${DIAS[d.getDay()]} ${baPdvPad(d.getDate())}/${baPdvPad(d.getMonth()+1)}`;
       const appt = await primeCreateAppointment({
@@ -13505,6 +13570,8 @@ async function baAtRegistrar(){
       await baInsertSales(rows);
       await baFetchProducts();
       if(linkedClientId) await primeCheckBrindeNotify(p.barberId, linkedClientId, c.name);
+      const apptFechado = p.apptId || null;
+      if(apptFechado){ await sb.from('cart_items').delete().eq('appointment_id', apptFechado); }
       baPdv = baPdvNew(); baPdv.barberId = p.barberId;
       baPdvFillBarbers();
       baPdvEl('pdv-date').value = baPdv.date; baPdvEl('pdv-ini').value = baPdv.start; baPdvEl('pdv-fim').value = baPdv.end;
@@ -13512,9 +13579,15 @@ async function baAtRegistrar(){
       baPdvWhenCheck(); baPdvRenderClient(); baPdvRenderItems(); baPdvCatalog();
       const ok = baPdvEl('at-success'); ok.style.display = 'block';
       setTimeout(()=>{ ok.style.display = 'none'; }, 3000);
+      baPdvMostraPrepago();
+      if(apptFechado){ await primeUpdateAppointment(apptFechado, {status:'concluido'}); baTab('agenda'); openFeedback(apptFechado, 'barbeiro'); }
     };
-    if(totalAt <= 0){ await finalizar(); }   // tudo coberto pelo plano: nada a receber, não abre o pagamento
-    else { opened = true; baOpenPagamentoModal(notaId, totalAt, finalizar, {clientName:c.name}); }
+    const prepago = p.apptId && p.prepago ? p.prepago : null;
+    if(totalAt <= 0){
+      if(prepago) return fail('O cliente pagou online, mas a venda ficou sem valor a cobrar. Resolva o valor pago online (estorno) antes de finalizar.');
+      await finalizar();   // tudo coberto pelo plano: nada a receber, não abre o pagamento
+    }
+    else { opened = true; baOpenPagamentoModal(notaId, totalAt, finalizar, {clientName:c.name, prepago: prepago ? {valor:prepago.valor, taxa:prepago.taxa, gatewayId:prepago.gatewayId} : null}); }
   } catch(e) {
     // qualquer falha antes do pagamento aparecia como "não acontece nada": agora mostra o motivo
     console.error('baAtRegistrar', e);
