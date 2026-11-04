@@ -67,11 +67,10 @@ const controle: Controle = {
 const chave = Deno.env.get("ANTHROPIC_API_KEY");
 const ia = chave ? {
   async responder({ system, tools, mensagens }: { system: string; tools: any[]; mensagens: any[] }) {
-    // cache de prompt: a parte fixa (instruções + ferramentas) é marcada para ser reaproveitada e cobrada bem mais barato nas chamadas seguintes
-    const ferramentas = tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: { type: "ephemeral" } } : t));
+    // sem cache de prompt de propósito: o texto fixo é pequeno, então o cache quase não economiza e cobra a escrita mais cara
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST", headers: { "content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODELO, max_tokens: 600, system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }], tools: ferramentas, messages: mensagens }),
+      body: JSON.stringify({ model: MODELO, max_tokens: 600, system, tools, messages: mensagens }),
     });
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(`Anthropic HTTP ${r.status}: ${JSON.stringify(j?.error ?? j).slice(0, 200)}`);
