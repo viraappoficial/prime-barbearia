@@ -317,6 +317,18 @@ nav.solid{background:rgba(11,20,13,.95);border-bottom:1px solid var(--dourado-di
 .pcat-search:focus{border-color:var(--dourado)}
 .pcat-empty{text-align:center;color:var(--prata-dim);font-size:.85rem;margin-top:2rem}
 
+/* ── Topo da página inicial: horários de hoje e barbeiros ── */
+.hero-hoje{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.5rem;margin-top:1.6rem;font-size:.82rem;color:var(--prata-dim)}
+.hero-hoje button{font-family:var(--font-body);font-size:.82rem;color:var(--prata);background:rgba(20,23,21,.6);border:1px solid var(--dourado-dim);padding:.35rem .8rem;border-radius:99px;cursor:pointer;transition:border-color .2s,color .2s}
+.hero-hoje button:hover{border-color:var(--verde-neon);color:var(--verde-neon)}
+.hero-eq{margin-top:1.6rem;text-align:center}
+.hero-eq .lb{font-size:.62rem;letter-spacing:.26em;text-transform:uppercase;color:var(--dourado);margin-bottom:.8rem}
+.hero-eq .row{display:flex;justify-content:center;flex-wrap:wrap;gap:1.2rem}
+.hero-eq .bb{display:flex;align-items:center;gap:.6rem;text-align:left;cursor:pointer;background:none;border:0;color:inherit;font-family:var(--font-body);padding:0}
+.hero-eq .av{width:44px;height:44px;border-radius:50%;overflow:hidden;flex:none;background:linear-gradient(160deg,#243027,#141715);border:1px solid var(--dourado-dim);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);color:var(--dourado)}
+.hero-eq .av img{width:100%;height:100%;object-fit:cover}
+.hero-eq .bb b{display:block;font-weight:400;font-size:.9rem;color:var(--prata)}
+.hero-eq .bb span{display:block;font-size:.72rem;color:var(--prata-dim);max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* ── EQUIPE ── */
 .team .sec-head{text-align:center}
 .team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem}
@@ -543,6 +555,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
     <a class="btn btn-primary" href="#" data-open-booking>Agendar horário</a>
     <a class="btn btn-ghost" href="https://wa.me/5544991781304" target="_blank" rel="noopener">Falar no WhatsApp</a>
   </div>
+  <div class="hero-hoje" id="hero-hoje" style="display:none"></div>
+  <div class="hero-eq" id="hero-eq" style="display:none"></div>
   <div class="local">📍 <b>Av. Pedro Taques, 2824</b> — Maringá · PR</div>
 </header>
 
@@ -5780,6 +5794,7 @@ async function baLoadRoster(){
     bio:b.bio, experience:b.experience, specialties:b.specialties, funFact:b.fun_fact,
     instagramHandle:b.instagram_handle, photoUrl:b.photo_url }));
   renderTeamSection();
+  renderHeroHoje();
 }
 function baGetRoster(){ return baRosterCache; }
 function baIsLoggedIn(){ return !!baCurrentBarber; }
@@ -14575,6 +14590,36 @@ async function renderBarberPublicReviews(name){
 }
 function closeBarberProfile(){ document.getElementById('barberProfileModal').classList.remove('open'); }
 
+
+// topo da página inicial: próximos horários livres de hoje (mesma conta do agendamento) e a equipe com foto
+async function renderHeroHoje(){
+  const eq = document.getElementById('hero-eq'), hoje = document.getElementById('hero-hoje');
+  if(!eq || !hoje) return;
+  const barbers = baGetRoster().filter(b=>b.isBarber!==false);
+  eq.style.display = barbers.length ? '' : 'none';
+  eq.innerHTML = barbers.length ? `<div class="lb">Nossos barbeiros</div><div class="row">` + barbers.map(b=>{
+    const p = baBarberProfileData(b);
+    return `<button type="button" class="bb" onclick="openBarberProfile('${b.name.replace(/'/g,"\\'")}')"><span class="av">${p.photoUrl ? `<img src="${p.photoUrl}" alt="">` : primeEsc(b.name.charAt(0).toUpperCase())}</span><span style="min-width:0"><b>${primeEsc(b.name)}</b><span>${primeEsc(p.esp||'')}</span></span></button>`;
+  }).join('') + `</div>` : '';
+  try{
+    const now = new Date(), dia = primeLocalDate(now), wd = now.getDay(), h = HORARIOS[wd];
+    if(!h || !barbers.length){ hoje.style.display='none'; return; }
+    const [oH,oM]=h[0].split(':').map(Number), [cH,cM]=h[1].split(':').map(Number);
+    const [appts, blocks] = await Promise.all([primeFetchDayAppointments(dia), primeFetchDayBlocks(dia)]);
+    const ocupados = {}; appts.forEach(a=>{ if(a.barberId){ (ocupados[a.time] = ocupados[a.time] || new Set()).add(a.barberId); } });
+    const livres = [];
+    for(let t=oH*60+oM; t+SLOT_MIN<=cH*60+cM && livres.length<3; t+=SLOT_MIN){
+      if(t <= now.getHours()*60+now.getMinutes()+30) continue;
+      const hm = String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
+      const prog = barbersScheduledAt(wd, hm), occ = ocupados[hm] || new Set(), blk = primeBlockedBarberIdsAt(blocks, t, t+SLOT_MIN);
+      if(prog.some(b=>!occ.has(b.id) && !blk.has(b.id))) livres.push(hm);
+    }
+    if(!livres.length){ hoje.style.display='none'; return; }
+    hoje.style.display = 'flex';
+    hoje.innerHTML = `<span>Hoje ainda tem</span>` + livres.map(x=>`<button type="button" data-open-booking>${x}</button>`).join('');
+    hoje.querySelectorAll('[data-open-booking]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); openModal(); }));
+  }catch(e){ console.error('renderHeroHoje', e); hoje.style.display='none'; }
+}
 function renderTeamSection(){
   const grid = document.getElementById('team-grid');
   if(!grid) return;
