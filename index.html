@@ -1433,6 +1433,7 @@ async function renderBarberStep(){
   await primeEnsureBarberRoster();
   const acc = typeof primeGetAccount==='function' ? primeGetAccount() : null;
   const favorite = acc && acc.favoriteBarber;
+  if(acc && !state.barberIntroAnswered) state.barberIntroAnswered = 'detailed';   // quem tem conta já vê os barbeiros com foto, sem a pergunta
   const available = typeof primeGetBarberRoster==='function' ? primeGetBarberRoster() : [];
   const nomeAttr = n => n.replace(/"/g,'&quot;');
 
