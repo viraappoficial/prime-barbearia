@@ -3991,7 +3991,7 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .pdv-bar .ba-btn{width:auto;max-width:none;margin:0;padding:.8rem 1.6rem}
 #barberApp.desktop .pdv-bar{bottom:1rem;margin-bottom:0}
 #barberApp.desktop .pdv-qd{grid-template-columns:1.4fr 1fr 1fr 1fr}
-#barberApp.desktop .pdv-cat{grid-template-columns:repeat(4,minmax(0,1fr))}
+#barberApp.desktop .pdv-cat{grid-template-columns:repeat(3,minmax(0,1fr))}
 #barberApp.desktop .pdv-th,#barberApp.desktop .pdv-it{grid-template-columns:70px minmax(0,1fr) 110px 130px 90px 120px 40px;gap:0 .6rem}
 #barberApp.desktop .pdv-th{display:grid;padding:.6rem .9rem;border:1px solid var(--hair);border-bottom:0;border-radius:8px 8px 0 0;background:var(--verde-noite);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--prata-dim)}
 #barberApp.desktop .pdv-th .r{text-align:right}#barberApp.desktop .pdv-th .c{text-align:center}
@@ -4064,6 +4064,22 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-tslot.andamento{border-left-color:var(--alerta)}
 #barberApp .ba-tslot.andamento .ts-time::after{background:var(--alerta);border-color:var(--alerta);animation:giftPulse 1.6s ease-in-out infinite}
 #barberApp .ba-tslot.andamento .ts-card{border-color:rgba(217,164,65,.5);background:rgba(217,164,65,.08)}
+/* ── Visual: Atendimento (fatia 3) — celular igual; no desktop catálogo à esquerda e comanda fixa à direita ── */
+#barberApp .pdv-sec{box-shadow:inset 0 1px 0 rgba(237,237,232,.06)}
+#barberApp .pdv-lb{align-items:center}
+#barberApp .pdv-cat button{transition:border-color .15s,transform .1s}
+#barberApp .pdv-cat button:active{transform:scale(.98)}
+#barberApp .pdv-it{border-left:3px solid var(--dourado-dim)}
+#barberApp .pdv-cmd{border-color:var(--dourado-dim)}
+#barberApp.desktop .ba-body.pdv{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:0 1rem;align-items:start}
+#barberApp.desktop .ba-body.pdv>#ba-vendas-picker-at,#barberApp.desktop .ba-body.pdv>#ba-at-caixa-banner{grid-column:1/-1}
+#barberApp.desktop .pdv-r{position:sticky;top:.5rem;max-height:calc(100vh - 1.5rem);overflow:auto}
+#barberApp.desktop .pdv-r .pdv-bar{position:static;margin-top:.6rem}
+#barberApp.desktop .pdv-r .pdv-th{display:none}
+#barberApp.desktop .pdv-r #pdv-itens{border:0;border-radius:0;min-height:0}
+#barberApp.desktop .pdv-r .pdv-it{grid-template-columns:minmax(0,1fr) auto;gap:.35rem .6rem;border:1px solid var(--hair);border-left:3px solid var(--dourado-dim);border-radius:8px;margin-bottom:.5rem;background:var(--grafite);padding:.7rem}
+#barberApp.desktop .pdv-r .pdv-it .cod{display:none}
+#barberApp.desktop .pdv-qd{grid-template-columns:1fr 1fr}
 /* ── Visual: agenda (fatia 2) ── */
 #barberApp .ba-tslot .ts-card{flex-wrap:wrap;border-radius:10px;box-shadow:inset 0 1px 0 rgba(237,237,232,.06)}
 #barberApp .ba-tslot .ts-empty{border:1px dashed var(--dourado-dim);border-radius:10px;margin:0 0 .4rem .8rem;padding:.55rem .8rem;font-style:normal;color:var(--prata-dim)}
@@ -4567,6 +4583,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
       <div class="ba-body pdv">
         <div id="ba-vendas-picker-at" style="display:none"></div>
         <div id="ba-at-caixa-banner" style="display:none"></div>
+        <div class="pdv-l">
 
         <section class="pdv-sec" id="pdv-sec-cli">
           <div class="pdv-lb">1 · Cliente <em>busque por nome ou telefone</em></div>
@@ -4595,6 +4612,8 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="pdv-cat" id="pdv-cat"></div>
         </section>
 
+        </div>
+        <div class="pdv-r">
         <section class="pdv-sec pdv-cmd">
           <div class="pdv-lb">4 · Comanda <span><em id="pdv-nit">0 itens</em> <button type="button" class="pdv-lk" onclick="baPdvClear()">Limpar tudo</button></span></div>
           <div class="pdv-th"><span>Cód.</span><span>Item</span><span class="r">Preço</span><span class="c">Qtde</span><span class="r">Desc. %</span><span class="r">Total</span><span></span></div>
@@ -4616,6 +4635,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div class="pdv-bar-err" id="pdv-bar-err" role="alert" style="display:none"></div>
           <div class="pdv-bar-t"><small id="pdv-bar-n">0 itens</small><b id="pdv-bar-v">R$ 0,00</b></div>
           <button class="ba-btn" id="ba-at-registrar-btn" type="button" onclick="baAtRegistrar()">Finalizar</button>
+        </div>
         </div>
       </div>
     </div>
@@ -13392,7 +13412,7 @@ function baPdvRenderItems(){
         <span class="dl">Desc. %</span><input class="ds" inputmode="decimal" value="${it.disc?String(it.disc).replace('.',','):''}" placeholder="0" onchange="baPdvSetDisc(${i},this.value)">
         <button type="button" class="x" onclick="baPdvQty(${i},-99)" aria-label="Remover">✕</button></div>
       <span class="tl">${baFormatMoney(cob.linhas[i] ? cob.linhas[i].cobrar : baPdvItemTotal(it))}</span></div>`).join('')
-    : '<div class="pdv-vazio">Nenhum item ainda. Toque num serviço ou produto acima.</div>';
+    : '<div class="pdv-vazio">Nenhum item ainda. Toque num serviço ou produto para incluir.</div>';
   p.flash = -1;
   const bruto = p.items.reduce((s,x)=>s+x.price*x.qty,0), liqItens = p.items.reduce((s,x)=>s+baPdvItemTotal(x),0);
   const liq = baPdvR2(p.items.reduce((s,x,i)=>s+(cob.linhas[i] ? cob.linhas[i].cobrar : baPdvItemTotal(x)),0)), coberto = baPdvR2(liqItens-liq);
