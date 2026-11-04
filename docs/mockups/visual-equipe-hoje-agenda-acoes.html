@@ -1,0 +1,621 @@
+<title>Visual do Prime</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* Mockup das melhorias visuais: tela Hoje, agenda do dia, cartão do plano e abertura do app.
+   Visual escuro único, tokens do app da Prime. Texto em linguagem simples. Números de exemplo. */
+:root{
+  --verde-neon:#35C558; --verde-prime:#1E6B33; --verde-noite:#0B140D; --grafite:#141715; --grafite-card:#1A1E1B;
+  --prata:#EDEDE8; --prata-dim:#9BA39C; --dourado:#C6A75E; --dourado-claro:#E8D5A4;
+  --dourado-dim:rgba(198,167,94,.35); --hair:rgba(237,237,232,.12); --alerta:#D9A441; --erro:#E58A6B; --violeta:#9B7EDE;
+  --font-display:'Cinzel','Times New Roman',serif; --font-body:'Jost','Helvetica Neue',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#050906;color:var(--prata);font-family:var(--font-body);font-weight:300;line-height:1.5;
+  padding-block:26px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:34px}
+h1{margin:0;font:500 26px/1.2 var(--font-display);letter-spacing:.05em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--prata-dim);max-width:68ch}
+.sec{display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:26px;align-items:start}
+@media(max-width:760px){.sec{grid-template-columns:1fr}}
+.txt{display:flex;flex-direction:column;gap:10px;min-width:0}
+.step{font:500 11px var(--font-body);letter-spacing:.2em;text-transform:uppercase;color:var(--dourado)}
+.txt h2{margin:0;font:500 20px/1.25 var(--font-display);letter-spacing:.04em;text-wrap:balance}
+.txt p{margin:0;font-size:14.5px;color:var(--prata-dim)}
+.txt ul{margin:0;padding-left:18px;font-size:14px;color:var(--prata-dim);display:flex;flex-direction:column;gap:4px}
+.txt b{color:var(--prata);font-weight:500}
+.demo{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;min-width:0}
+.phone{width:min(100%,330px);background:var(--verde-noite);border:1px solid var(--hair);border-radius:22px;padding:16px 14px;display:flex;flex-direction:column;gap:11px;box-shadow:0 18px 50px rgba(0,0,0,.45);position:relative;overflow:hidden}
+.phone.wide{width:min(100%,520px)}
+.lbl{font:500 10.5px var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:var(--prata-dim)}
+.hi{font:500 17px var(--font-display);letter-spacing:.05em}
+.hi small{display:block;font:300 12.5px var(--font-body);letter-spacing:0;color:var(--prata-dim);margin-top:2px}
+.card{background:var(--grafite-card);border:1px solid var(--hair);border-radius:10px;padding:11px 12px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.k b{display:block;font:500 21px var(--font-display);line-height:1.15}
+.k span{font-size:12px;color:var(--prata-dim)}
+.up{color:var(--verde-neon)} .down{color:var(--erro)}
+.spark{width:100%;height:30px;margin-top:4px;display:block}
+.next{border-color:var(--dourado-dim);background:linear-gradient(160deg,rgba(198,167,94,.13),var(--grafite-card) 65%)}
+.next .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.next .t b{font:500 20px var(--font-display);color:var(--dourado-claro)}
+.next p{margin:3px 0 0;font-size:13.5px;color:var(--prata-dim)}
+.tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:2px 8px;border:1px solid var(--verde-neon);color:var(--verde-neon);white-space:nowrap;display:inline-block}
+.tag.plan{border-color:var(--dourado);color:var(--dourado-claro)} .tag.warn{border-color:var(--alerta);color:var(--alerta)}
+.att{display:flex;gap:9px;align-items:flex-start;font-size:13.5px}
+.att+.att{margin-top:9px;padding-top:9px;border-top:1px solid var(--hair)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--alerta);margin-top:7px;flex:none} .dot.r{background:var(--erro)}
+.att span{color:var(--prata-dim);display:block;font-size:12.5px}
+.tab{display:flex;justify-content:space-around;border-top:1px solid var(--hair);padding-top:9px;margin-top:2px;font-size:11px;color:var(--prata-dim)}
+.tab b{color:var(--dourado);font-weight:400}
+
+/* agenda */
+.ag{display:grid;grid-template-columns:38px 1fr 1fr;gap:0 6px;font-size:12px}
+.ag .h{color:var(--prata-dim);text-align:right;padding-right:4px;height:48px;border-top:1px solid var(--hair);padding-top:2px}
+.ag .c{height:48px;border-top:1px solid var(--hair);position:relative}
+.ag .hd{font:500 10.5px var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--dourado);text-align:center;padding-bottom:6px}
+.b{position:absolute;left:2px;right:2px;border-radius:6px;padding:4px 7px;font-size:11.5px;line-height:1.3;overflow:hidden;border-left:3px solid var(--dourado);background:rgba(198,167,94,.14)}
+.b.n{border-left-color:var(--verde-neon);background:rgba(53,197,88,.12)}
+.b.m{border-left-color:var(--violeta);background:rgba(155,126,222,.14)}
+.b b{font-weight:500;display:block}
+.b i{font-style:normal;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--verde-neon);margin-left:4px}
+.b i.pl{color:var(--dourado-claro)}
+.b.lock{background:repeating-linear-gradient(135deg,rgba(237,237,232,.06) 0 6px,transparent 6px 12px);border-left-color:var(--prata-dim);color:var(--prata-dim)}
+.free{position:absolute;left:2px;right:2px;top:4px;bottom:4px;border:1px dashed var(--hair);border-radius:6px;color:var(--prata-dim);font-size:11px;display:flex;align-items:center;justify-content:center}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--prata-dim)}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+
+/* cartão do plano */
+.pc{position:relative;border-radius:16px;padding:18px 16px 16px;overflow:hidden;border:1px solid var(--dourado-dim);background:linear-gradient(150deg,#2a2615 0%,#161a14 45%,#0f150f 100%);box-shadow:0 14px 34px rgba(0,0,0,.5),inset 0 1px 0 rgba(232,213,164,.18)}
+.pc::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(232,213,164,.16) 50%,transparent 65%);transform:translateX(-120%);animation:pcShine 5.5s ease-in-out 1s infinite;pointer-events:none}
+@keyframes pcShine{0%{transform:translateX(-120%)}45%,100%{transform:translateX(120%)}}
+.pc .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pc .nm{font:500 20px var(--font-display);letter-spacing:.1em;color:var(--dourado-claro)}
+.pc .who{font-size:12.5px;color:var(--prata-dim);margin-top:2px}
+.pc .emb{width:44px;height:44px;color:var(--dourado);filter:drop-shadow(0 0 8px rgba(198,167,94,.4));flex:none}
+.bars{display:flex;flex-direction:column;gap:11px;margin:16px 0 12px}
+.bar .r{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.bar .r span{color:var(--prata-dim)}
+.bar .tr{height:7px;border-radius:99px;background:rgba(237,237,232,.1);overflow:hidden}
+.bar .tr i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--dourado),var(--dourado-claro));width:var(--w)}
+.bar.zero .tr i{background:var(--alerta)}
+.pc .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--prata-dim)}
+.btn{display:block;width:100%;font:500 12.5px var(--font-body);letter-spacing:.1em;text-transform:uppercase;border-radius:6px;padding:13px;text-align:center;background:var(--verde-prime);color:var(--prata);box-shadow:0 0 22px rgba(53,197,88,.22)}
+
+/* abertura e vazio */
+.emb{display:block;color:var(--dourado)}
+.splash{align-items:center;justify-content:center;min-height:330px;text-align:center;gap:14px}
+.splash::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 40% at 50% 40%,rgba(198,167,94,.18),transparent 70%)}
+.splash .emb{width:86px;height:86px;position:relative}
+.splash .emb path{fill:transparent;stroke:var(--dourado);stroke-width:14;stroke-dasharray:9000;stroke-dashoffset:9000;animation:sd 2.4s ease-in-out .1s infinite alternate,sf 2.4s ease infinite alternate}
+@keyframes sd{to{stroke-dashoffset:0}} @keyframes sf{0%,70%{fill:transparent}100%{fill:var(--dourado)}}
+.splash .w{font:500 21px var(--font-display);letter-spacing:.3em;margin-right:-.3em;position:relative}
+.load{position:relative;width:120px;height:3px;border-radius:99px;background:rgba(237,237,232,.1);overflow:hidden}
+.load::after{content:"";position:absolute;inset:0;width:40%;border-radius:99px;background:linear-gradient(90deg,transparent,var(--dourado),transparent);animation:ld 1.4s ease-in-out infinite}
+@keyframes ld{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+.empty{align-items:center;text-align:center;padding:26px 16px;gap:10px;min-height:250px;justify-content:center}
+.empty .emb{width:54px;height:54px;opacity:.35}
+.empty b{font:500 15px var(--font-display);letter-spacing:.05em}
+.empty p{margin:0;font-size:13px;color:var(--prata-dim);max-width:24ch}
+.pulse{animation:pu 2.2s ease-in-out infinite}
+@keyframes pu{0%,100%{opacity:.35;filter:drop-shadow(0 0 0 transparent)}50%{opacity:.8;filter:drop-shadow(0 0 12px rgba(198,167,94,.5))}}
+@media (prefers-reduced-motion:reduce){.pc::after,.splash .emb path,.load::after,.pulse{animation:none!important}.splash .emb path{fill:var(--dourado);stroke-width:0;stroke-dashoffset:0}}
+
+/* computador: janela de navegador */
+.win{width:100%;background:var(--verde-noite);border:1px solid var(--hair);border-radius:12px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45);min-width:0}
+.chrome{display:flex;align-items:center;gap:7px;padding:9px 12px;background:var(--grafite);border-bottom:1px solid var(--hair)}
+.chrome i{width:9px;height:9px;border-radius:50%;background:rgba(237,237,232,.18)}
+.chrome span{margin-left:8px;flex:1;max-width:340px;background:var(--verde-noite);border-radius:99px;padding:3px 12px;font-size:11.5px;color:var(--prata-dim)}
+.nav{display:flex;gap:4px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.nav .lg{font:500 15px var(--font-display);letter-spacing:.3em;margin-right:16px;display:flex;gap:9px;align-items:center}
+.nav .lg .emb{width:22px;height:22px}
+.nav a{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--prata-dim);padding:6px 11px;border-radius:6px}
+.nav a.on{color:var(--verde-noite);background:var(--dourado)}
+.pg{padding:16px;display:grid;gap:12px;min-width:0}
+.pg.h{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pg.h .span2{grid-column:span 2}
+.pg.h .span4{grid-column:1/-1}
+@media(max-width:900px){.pg.h{grid-template-columns:1fr 1fr}.pg.h .span2,.pg.h .span4{grid-column:1/-1}}
+.hr{display:grid;grid-template-columns:42px 1fr;gap:8px;font-size:13px;padding:7px 0;border-top:1px solid var(--hair)}
+.hr:first-of-type{border-top:0}
+.hr em{font-style:normal;color:var(--prata-dim)}
+.hr b{font-weight:400}.hr small{display:block;color:var(--prata-dim);font-size:12px}
+.wk{display:flex;align-items:flex-end;gap:8px;height:110px;margin-top:8px}
+.wk div{flex:1;border-radius:5px 5px 0 0;background:linear-gradient(180deg,var(--dourado-claro),var(--dourado));opacity:.55;position:relative;height:var(--h)}
+.wk div.hoje{opacity:1}
+.wk div::after{content:attr(data-d);position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10.5px;color:var(--prata-dim)}
+.agd{display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr)) 250px;gap:0 8px;padding:16px;align-items:start;min-width:0}
+@media(max-width:900px){.agd{grid-template-columns:44px repeat(3,minmax(0,1fr))}.agd .side{grid-column:1/-1;margin-top:12px}}
+.agd .col3{display:contents}
+.side{background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:10px;padding:12px;grid-row:1/span 12;font-size:13.5px}
+.side h4{margin:0 0 2px;font:500 16px var(--font-display);letter-spacing:.04em}
+.side p{margin:2px 0 8px;font-size:12.5px;color:var(--prata-dim)}
+.mini .bar{margin-bottom:8px}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.cmp .card h3{margin:0 0 6px;font:500 12px var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:var(--dourado)}
+.cmp .card p,.cmp .card li{margin:0;font-size:13.5px;color:var(--prata-dim)}
+.cmp .card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.cmp .card b{color:var(--prata);font-weight:500}
+.cli{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,330px);gap:18px;padding:18px;align-items:start}
+@media(max-width:760px){.cli{grid-template-columns:1fr}}
+
+.demo:has(> .win){overflow-x:auto;display:block}
+.win{min-width:780px}
+.agd2{display:flex;gap:14px;padding:16px;align-items:flex-start}
+.ag2{flex:1;min-width:0;display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));gap:0 8px;font-size:12px}
+.ag2 .hd{font:500 10.5px var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--dourado);text-align:center;padding-bottom:6px}
+.ag2 .h{color:var(--prata-dim);text-align:right;padding-right:4px;height:48px;border-top:1px solid var(--hair);padding-top:2px}
+.ag2 .c{height:48px;border-top:1px solid var(--hair);position:relative}
+.agd2 .side{width:250px;flex:none;grid-row:auto}
+.hint{display:none;font-size:12px;color:var(--prata-dim);margin:0 0 6px}
+@media(max-width:820px){.hint{display:block}}
+
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.acts .btn{margin:0;padding:11px 8px;font-size:11.5px;letter-spacing:.08em}
+.acts .full{grid-column:1/-1}
+.btn.ghost{background:transparent;border:1px solid var(--dourado-dim);box-shadow:none;color:var(--prata)}
+.btn.danger{background:transparent;border:1px solid rgba(229,138,107,.55);color:var(--erro);box-shadow:none}
+.btn.gold{background:var(--dourado);color:var(--verde-noite);box-shadow:0 0 22px rgba(198,167,94,.25)}
+.cart .it{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:7px 0;border-top:1px solid var(--hair)}
+.cart .it:first-of-type{border-top:0}
+.cart .it span{color:var(--prata-dim)}
+.cart .paid{color:var(--verde-neon)}
+.cart .tt{display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;padding-top:9px;border-top:1px solid var(--dourado-dim);font-size:13px;color:var(--prata-dim)}
+.cart .tt b{font:500 22px var(--font-display);color:var(--dourado)}
+.who2{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.who2 h4{margin:0;font:500 17px var(--font-display);letter-spacing:.04em}
+.who2 p{margin:2px 0 0;font-size:12.5px;color:var(--prata-dim)}
+
+.tabs2{display:flex;gap:6px;margin-bottom:2px}
+.tabs2 span{flex:1;text-align:center;font-size:12px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--hair);border-radius:6px;padding:9px 4px;color:var(--prata-dim)}
+.tabs2 span.on{background:var(--dourado);border-color:var(--dourado);color:var(--verde-noite)}
+.open{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--grafite-card);border:1px solid var(--hair);border-radius:10px;padding:11px 12px}
+.open.first{border-color:var(--dourado-dim)}
+.open b{font-weight:400;font-size:14.5px;display:block}
+.open small{color:var(--prata-dim);font-size:12.5px}
+.open .btn{width:auto;padding:9px 13px;margin:0;flex:none;font-size:11.5px}
+.pay{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.pay span{text-align:center;font-size:12px;border:1px solid var(--hair);border-radius:8px;padding:9px 2px;color:var(--prata-dim);background:var(--grafite-card)}
+.pay span.on{border-color:var(--verde-neon);color:var(--verde-neon);background:rgba(53,197,88,.08)}
+.crumb{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--prata-dim);letter-spacing:.08em;text-transform:uppercase;flex-wrap:wrap}
+.crumb b{color:var(--dourado);font-weight:400}
+.lbl2{font:500 10.5px var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:var(--prata-dim)}
+.win2{display:grid;grid-template-columns:196px minmax(0,1fr);background:var(--verde-noite);border:1px solid var(--hair);border-radius:12px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45);min-width:1280px}
+.win2 .chrome{grid-column:1/-1}
+.sbar{background:#0a100b;border-right:1px solid var(--hair);padding:10px 10px 12px;display:flex;flex-direction:column;gap:1px;font-size:13px;min-height:640px}
+.sbar .g{font:500 9.5px var(--font-body);letter-spacing:.2em;color:var(--prata-dim);margin:14px 8px 4px;text-transform:uppercase}
+.sbar .g:first-child{margin-top:6px}
+.sbar a{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:6px;color:var(--prata-dim)}
+.sbar a i{width:15px;height:15px;border:1.5px solid currentColor;border-radius:4px;opacity:.7;flex:none}
+.sbar a.on{background:rgba(198,167,94,.13);color:var(--prata);box-shadow:inset 3px 0 0 var(--dourado)}
+.sbar .me{margin-top:auto;border-top:1px solid var(--hair);padding:12px 8px 0;display:flex;gap:9px;align-items:center;font-size:13px}
+.sbar .me .av{width:32px;height:32px;border-radius:50%;border:1px solid var(--dourado);display:flex;align-items:center;justify-content:center;font:500 13px var(--font-display);color:var(--dourado-claro);flex:none}
+.sbar .me small{display:block;color:var(--prata-dim);font-size:11.5px}
+.demo:has(> .win2){overflow-x:auto;display:block;max-width:100%}
+.sec:has(.win2){grid-template-columns:1fr}
+.sec:has(.win2) .demo{display:block}
+.sec .win2{min-width:1080px}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Visual do Prime</h1>
+    <p class="sub">Cinco melhorias de visual que mudam a sensação do app: a tela "Hoje", a agenda e as ações do atendimento para a equipe, o cartão do plano para o cliente e a abertura do app. Mesmos tons, fontes e emblema de hoje. Nomes e números de exemplo.</p>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">1 · Equipe · Tela "Hoje"</div>
+      <h2>O que importa agora, assim que abre</h2>
+      <p>Em vez de começar por menus, o app abre com o dia: quem é o próximo, quanto já entrou e o que precisa de atenção.</p>
+      <ul><li><b>Faturamento e atendimentos</b> do dia, com a linha da semana.</li><li><b>Próximo cliente</b> já com o plano e o saldo dele.</li><li><b>Precisa de atenção:</b> pagamento sem venda lançada, clientes que passaram do dia (leva ao CRM) e horário vazio.</li></ul>
+    </div>
+    <div class="demo">
+      <div class="phone">
+        <div class="hi">Bom dia, Nathan<small>Terça, 03/11</small></div>
+        <div class="kpis">
+          <div class="card k"><b>R$ 620</b><span>faturado hoje</span><span class="up"> ▲ 18% sobre ontem</span>
+            <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="#C6A75E" stroke-width="2" points="0,24 17,20 34,22 51,14 68,16 85,8 100,5"/></svg></div>
+          <div class="card k"><b>14<small style="font-size:13px;color:var(--prata-dim)"> de 22</small></b><span>atendimentos</span><span class="up"> 8 já feitos</span>
+            <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="#35C558" stroke-width="2" points="0,20 17,24 34,16 51,18 68,10 85,12 100,6"/></svg></div>
+        </div>
+        <div class="card next">
+          <div class="lbl">Próximo cliente</div>
+          <div class="t"><b>18:00 · Rafael</b><span class="tag plan">Plano Prata</span></div>
+          <p>Corte Social com o Nathan · sobram 3 cortes</p>
+        </div>
+        <div class="card">
+          <div class="lbl" style="margin-bottom:8px">Precisa de atenção</div>
+          <div class="att"><span class="dot r"></span><div>2 pagamentos online sem venda lançada<span>Abrir na Conciliação</span></div></div>
+          <div class="att"><span class="dot"></span><div>38 clientes passaram do dia de voltar<span>Abrir no CRM</span></div></div>
+          <div class="att"><span class="dot"></span><div>Horário vazio hoje das 14h às 16h<span>Dá para chamar clientes do CRM</span></div></div>
+        </div>
+        <div class="tab"><b>Hoje</b><span>Agenda</span><span>Zap</span><span>Caixa</span><span>Mais</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">2 · Equipe · Agenda do dia</div>
+      <h2>A agenda como uma linha do tempo</h2>
+      <p>Os horários do dia numa grade, uma coluna por barbeiro, para ver de relance o que está cheio, vazio ou bloqueado.</p>
+      <ul><li><b>Uma cor por barbeiro.</b></li><li><b>Selos nos horários:</b> "Pago ✓" e "Plano".</li><li><b>Bloqueios listrados</b>, impossíveis de confundir com horário livre.</li><li><b>Horário vazio</b> com borda tracejada: um toque para encaixar.</li></ul>
+    </div>
+    <div class="demo">
+      <div class="phone wide">
+        <div class="hi">Agenda · Terça, 03/11</div>
+        <div class="legend"><span style="--c:var(--verde-neon)">Nathan</span><span style="--c:var(--violeta)">Miguel</span><span style="--c:var(--prata-dim)">Bloqueado</span></div>
+        <div class="ag">
+          <div></div><div class="hd">Nathan</div><div class="hd">Miguel</div>
+          <div class="h">14h</div>
+          <div class="c"><div class="b n"><b>Bruno · Corte e Barba<i>Pago ✓</i></b></div></div>
+          <div class="c"><div class="b lock">Almoço do Miguel</div></div>
+          <div class="h">15h</div>
+          <div class="c"><div class="free">+ encaixar</div></div>
+          <div class="c"><div class="b m"><b>Diego · Barba<i class="pl">Plano</i></b></div></div>
+          <div class="h">16h</div>
+          <div class="c"><div class="b n"><b>Lucas · Corte Social</b></div></div>
+          <div class="c"><div class="free">+ encaixar</div></div>
+          <div class="h">17h</div>
+          <div class="c"><div class="b lock">Bloqueado</div></div>
+          <div class="c"><div class="b m"><b>Caio · Corte Degradê<i>Pago ✓</i></b></div></div>
+          <div class="h">18h</div>
+          <div class="c"><div class="b n"><b>Rafael · Corte Social<i class="pl">Plano</i></b></div></div>
+          <div class="c"><div class="free">+ encaixar</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">3 · Cliente · Cartão do plano</div>
+      <h2>O plano como um cartão de membro</h2>
+      <p>Quem tem plano vê um cartão dourado com o que sobra de cada item. Passa a sensação de clube, e o cliente entende o saldo sem explicação.</p>
+      <ul><li><b>Barras</b> de corte, barba e sobrancelha, com o que sobra.</li><li><b>Brilho suave</b> que passa pelo cartão de tempos em tempos.</li><li><b>Aviso claro</b> quando um item acaba (a barra fica âmbar).</li><li><b>Botão "Marcar horário"</b> logo abaixo, já usando o plano.</li></ul>
+    </div>
+    <div class="demo">
+      <div class="phone">
+        <div class="lbl">Meu plano</div>
+        <div class="pc">
+          <div class="top"><div><div class="nm">PLANO PRATA</div><div class="who">Rafael Souza · com o Nathan</div></div><svg class="emb " viewBox="70 17 152 152" aria-hidden="true">
+            <g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+              <path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188
+-712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309
+-77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76
+92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205
+-113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15
+101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80
+-27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28
+-166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43
+-7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5
+-49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95
+154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82
+0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0
+-11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13
+1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117
+-125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4
+0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51
+-33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58
+-39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4
+-27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34
+28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7
+-398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97
+75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10
+-40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124
+l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16
+-119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9
+26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106
+-67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28
+c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
+23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4
+14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234
+1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22
+-37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33
+28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30
+-35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45
+-19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11
+-17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18
+23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/>
+            </g>
+          </svg></div>
+          <div class="bars">
+            <div class="bar" style="--w:75%"><div class="r">Cortes<span>3 de 4</span></div><div class="tr"><i></i></div></div>
+            <div class="bar" style="--w:100%"><div class="r">Barbas<span>2 de 2</span></div><div class="tr"><i></i></div></div>
+            <div class="bar zero" style="--w:0%"><div class="r">Sobrancelhas<span style="color:var(--alerta)">acabou</span></div><div class="tr"><i></i></div></div>
+          </div>
+          <div class="foot"><span>Válido até <b style="color:var(--prata);font-weight:400">28/11</b> · 25 dias</span><span class="tag">Pago ✓</span></div>
+        </div>
+        <div class="btn">Marcar horário</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">4 · App · Abertura, carregando e telas vazias</div>
+      <h2>O emblema em todo lugar</h2>
+      <p>O mesmo traço dourado do login passa a aparecer quando o app abre, e o "Carregando…" e as telas vazias ganham a cara da Prime.</p>
+      <ul><li><b>Abertura:</b> o emblema se desenha em ouro enquanto o app carrega.</li><li><b>Carregando:</b> uma barra fina dourada, no lugar do texto parado.</li><li><b>Tela vazia:</b> o emblema discreto e uma frase curta que diz o que fazer.</li></ul>
+    </div>
+    <div class="demo">
+      <div class="phone splash"><svg class="emb " viewBox="70 17 152 152" aria-hidden="true">
+            <g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+              <path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188
+-712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309
+-77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76
+92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205
+-113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15
+101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80
+-27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28
+-166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43
+-7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5
+-49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95
+154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82
+0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0
+-11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13
+1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117
+-125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4
+0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51
+-33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58
+-39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4
+-27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34
+28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7
+-398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97
+75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10
+-40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124
+l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16
+-119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9
+26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106
+-67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28
+c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
+23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4
+14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234
+1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22
+-37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33
+28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30
+-35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45
+-19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11
+-17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18
+23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/>
+            </g>
+          </svg><div class="w">PRIME</div><div class="load"></div></div>
+      <div class="phone empty"><svg class="emb pulse" viewBox="70 17 152 152" aria-hidden="true">
+            <g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+              <path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188
+-712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309
+-77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76
+92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205
+-113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15
+101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80
+-27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28
+-166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43
+-7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5
+-49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95
+154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82
+0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0
+-11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13
+1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117
+-125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4
+0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51
+-33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58
+-39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4
+-27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34
+28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7
+-398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97
+75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10
+-40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124
+l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16
+-119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9
+26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106
+-67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28
+c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
+23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4
+14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234
+1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22
+-37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33
+28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30
+-35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45
+-19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11
+-17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18
+23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/>
+            </g>
+          </svg><b>Nenhum cliente neste filtro</b><p>Troque o filtro acima ou busque pelo nome.</p></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">5 · Equipe · Ações do atendimento</div>
+      <h2>Os quatro botões e o caminho até o checkout</h2>
+      <p>Ao tocar num horário da agenda, a ficha mostra o que dá para fazer com ele, na ordem em que mais se usa.</p>
+      <ul>
+        <li><b>Abrir carrinho:</b> leva ao <b>Atendimento</b>, na aba <b>"Em atendimento"</b>, que lista os carrinhos abertos agora. Tocando em um, abre o <b>checkout</b> com o cliente e os serviços já preenchidos. Se o cliente já pagou online, o valor pago entra como abatimento e o barbeiro só cobra o que ainda falta.</li>
+        <li><b>Chamar cliente:</b> manda uma mensagem pelo WhatsApp da Prime, com texto pronto e editável. Fica anotado no CRM.</li>
+        <li><b>Remarcar:</b> troca dia e hora. Se já estava pago, o pagamento acompanha o novo horário.</li>
+        <li><b>Cancelar atendimento:</b> pede confirmação, libera o horário e avisa o cliente. Se estava pago, mostra "devolver ao cliente".</li>
+      </ul>
+    </div>
+    <div class="demo">
+      <div class="phone">
+        <div class="who2"><div><div class="lbl">Atendimento · 18:00</div><h4>Rafael Souza</h4><p>Corte Social e Barba Express · Nathan</p></div><span class="tag">Pago online ✓</span></div>
+        <div class="card"><div class="lbl" style="margin-bottom:6px">Plano Prata · 3 cortes e 2 barbas</div><div style="font-size:13.5px;color:var(--prata-dim)">Este atendimento usa o plano. Plano ainda <b style="color:var(--alerta);font-weight:400">não pago</b>.</div></div>
+        <div class="acts">
+          <div class="btn gold full">Abrir carrinho</div>
+          <div class="btn ghost">Chamar cliente</div>
+          <div class="btn ghost">Remarcar</div>
+          <div class="btn danger full">Cancelar atendimento</div>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="crumb"><span>Agenda</span>›<b>Atendimento</b></div>
+        <div class="tabs2"><span>Novo atendimento</span><span class="on">Em atendimento (2)</span></div>
+        <p style="margin:0;font-size:12.5px;color:var(--prata-dim)">Carrinhos abertos agora. Toque para continuar e receber.</p>
+        <div class="open first"><div><b>Rafael Souza</b><small>Corte Social · Barba Express · Nathan</small><span class="tag" style="display:inline-block;margin-top:6px">Pago online ✓</span></div><div><div style="text-align:right;font-size:12px;color:var(--alerta);margin-bottom:6px">12 min</div><div class="btn gold">Abrir</div></div></div>
+        <div class="open"><div><b>Bruno Alves</b><small>Corte e Barba · Miguel</small></div><div><div style="text-align:right;font-size:12px;color:var(--alerta);margin-bottom:6px">3 min</div><div class="btn ghost">Abrir</div></div></div>
+      </div>
+      <div class="phone">
+        <div class="crumb"><span>Atendimento</span>›<span>Em atendimento</span>›<b>Checkout</b></div>
+        <div class="who2"><div><h4>Rafael Souza</h4><p>Atendido por Nathan · 12 min</p></div></div>
+        <div class="card cart">
+          <div class="it">Corte Social<span>R$ 30,00</span></div>
+          <div class="it">Barba Express<span>R$ 25,00</span></div>
+          <div class="it">Pomada modeladora<span>R$ 35,00</span></div>
+          <div class="it paid">Já pago online (Pix)<span class="paid">− R$ 55,00</span></div>
+          <div class="tt"><span>Falta cobrar</span><b>R$ 35,00</b></div>
+        </div>
+        <div class="lbl2" style="margin:2px 0 0">Forma de pagamento do que falta</div>
+        <div class="pay"><span>Dinheiro</span><span class="on">Pix</span><span>Débito</span><span>Crédito</span></div>
+        <div class="acts"><div class="btn gold full">Receber R$ 35,00</div><div class="btn ghost full">Adicionar produto ou serviço</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h1 style="font-size:22px">E no computador? E no celular?</h1>
+    <p class="sub">Os mesmos desenhos se adaptam à tela. No <b style="color:var(--prata);font-weight:500">celular</b> é uma coluna só, como nos quadros acima. No <b style="color:var(--prata);font-weight:500">computador</b> a tela é larga e aproveita o espaço: mais informação ao mesmo tempo e a ficha ao lado.</p>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">6 · Computador · Tela "Hoje"</div>
+      <h2>Tudo do dia numa tela só</h2>
+      <p>No celular as caixas ficam empilhadas. No computador elas se espalham em colunas, sem precisar rolar.</p>
+      <ul><li><b>Números do dia</b> em uma faixa no topo.</li><li><b>Agenda de hoje</b> à esquerda, em lista por hora.</li><li><b>Próximo cliente e atenção</b> no meio.</li><li><b>Semana</b> em barras, à direita.</li></ul>
+    </div>
+    <div class="demo" style="display:block">
+      <p class="hint">Arraste para o lado para ver a tela do computador →</p><div class="win2">
+        <div class="chrome"><i></i><i></i><i></i><span>staff.primebarbearia.app.br</span></div>
+        <div class="sbar"><div class="g">Atendimento</div><a class="on"><i></i>Hoje</a><a class=""><i></i>Agenda</a><a class=""><i></i>Atendimento</a><a class=""><i></i>Zap</a><div class="g">Clientes</div><a class=""><i></i>Cadastros</a><a class=""><i></i>Clientes</a><div class="g">Financeiro</div><a class=""><i></i>Caixa</a><a class=""><i></i>Minhas vendas</a><a class=""><i></i>Dashboard</a><div class="g">Administração</div><a class=""><i></i>Gestão</a><div class="g">Conta</div><a class=""><i></i>Perfil</a><div class="me"><div class="av">G</div><div>Gabriel<small>Admin</small></div></div></div>
+        <div class="pg h">
+          <div class="card k"><b>R$ 620</b><span>faturado hoje</span><span class="up"> ▲ 18%</span></div>
+          <div class="card k"><b>14 <small style="font-size:13px;color:var(--prata-dim)">de 22</small></b><span>atendimentos</span></div>
+          <div class="card k"><b>R$ 43</b><span>gasto médio</span><span class="down"> ▼ R$ 2</span></div>
+          <div class="card k"><b>R$ 21</b><span>taxas de cartão hoje</span></div>
+          <div class="card span2"><div class="lbl" style="margin-bottom:6px">Agenda de hoje</div>
+            <div class="hr"><em>14h</em><div><b>Bruno · Corte e Barba</b><small>Nathan <span class="tag" style="margin-left:4px">Pago ✓</span></small></div></div>
+            <div class="hr"><em>15h</em><div><b>Diego · Barba</b><small>Miguel <span class="tag plan" style="margin-left:4px">Plano</span></small></div></div>
+            <div class="hr"><em>16h</em><div><b>Lucas · Corte Social</b><small>Nathan</small></div></div>
+            <div class="hr"><em>18h</em><div><b>Rafael · Corte Social</b><small>Nathan <span class="tag plan" style="margin-left:4px">Plano</span></small></div></div>
+          </div>
+          <div class="span2" style="display:flex;flex-direction:column;gap:12px">
+            <div class="card next"><div class="lbl">Próximo cliente</div><div class="t"><b>18:00 · Rafael</b><span class="tag plan">Plano Prata</span></div><p>Corte Social · sobram 3 cortes</p></div>
+            <div class="card"><div class="lbl" style="margin-bottom:8px">Precisa de atenção</div>
+              <div class="att"><span class="dot r"></span><div>2 pagamentos online sem venda lançada</div></div>
+              <div class="att"><span class="dot"></span><div>38 clientes passaram do dia de voltar</div></div>
+            </div>
+          </div>
+          <div class="card span4"><div class="lbl">Faturamento da semana</div>
+            <div class="wk" style="margin-bottom:22px"><div style="--h:55%" data-d="Seg"></div><div style="--h:30%" data-d="Ter"></div><div style="--h:62%" data-d="Qua"></div><div style="--h:70%" data-d="Qui"></div><div style="--h:85%" data-d="Sex"></div><div style="--h:100%" data-d="Sáb"></div><div class="hoje" style="--h:48%" data-d="Hoje"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">7 · Computador · Agenda do dia</div>
+      <h2>A agenda com a ficha ao lado</h2>
+      <p>No celular, tocar num horário abre uma tela nova. No computador, a ficha do cliente aparece ao lado, sem sair da agenda.</p>
+      <ul><li><b>Uma coluna por barbeiro</b>, lado a lado.</li><li><b>Ficha à direita:</b> plano e saldo, histórico e os botões de fechar o atendimento.</li></ul>
+    </div>
+    <div class="demo" style="display:block">
+      <p class="hint">Arraste para o lado para ver a tela do computador →</p><div class="win2">
+        <div class="chrome"><i></i><i></i><i></i><span>staff.primebarbearia.app.br</span></div>
+        <div class="sbar"><div class="g">Atendimento</div><a class=""><i></i>Hoje</a><a class="on"><i></i>Agenda</a><a class=""><i></i>Atendimento</a><a class=""><i></i>Zap</a><div class="g">Clientes</div><a class=""><i></i>Cadastros</a><a class=""><i></i>Clientes</a><div class="g">Financeiro</div><a class=""><i></i>Caixa</a><a class=""><i></i>Minhas vendas</a><a class=""><i></i>Dashboard</a><div class="g">Administração</div><a class=""><i></i>Gestão</a><div class="g">Conta</div><a class=""><i></i>Perfil</a><div class="me"><div class="av">G</div><div>Gabriel<small>Admin</small></div></div></div>
+        <div class="agd2"><div class="ag2"><div></div><div class="hd">Nathan</div><div class="hd">Miguel</div><div class="hd">Izaque</div><div class="h">14h</div><div class="c"><div class="b n"><b>Bruno · Corte e Barba<i>Pago ✓</i></b></div></div><div class="c"><div class="b lock">Almoço</div></div><div class="c"><div class="b"><b>Caio · Corte<i>Pago ✓</i></b></div></div><div class="h">15h</div><div class="c"><div class="free">+ encaixar</div></div><div class="c"><div class="b m"><b>Diego · Barba<i class="pl">Plano</i></b></div></div><div class="c"><div class="free">+ encaixar</div></div><div class="h">16h</div><div class="c"><div class="b n"><b>Lucas · Corte Social</b></div></div><div class="c"><div class="free">+ encaixar</div></div><div class="c"><div class="b lock">Bloqueado</div></div><div class="h">17h</div><div class="c"><div class="b lock">Bloqueado</div></div><div class="c"><div class="b m"><b>Caio · Degradê<i>Pago ✓</i></b></div></div><div class="c"><div class="free">+ encaixar</div></div><div class="h">18h</div><div class="c"><div class="b n" style="outline:1px solid var(--dourado)"><b>Rafael · Corte Social<i class="pl">Plano</i></b></div></div><div class="c"><div class="free">+ encaixar</div></div><div class="c"><div class="free">+ encaixar</div></div></div>
+          <div class="side">
+            <div class="lbl">Cliente selecionado</div><h4>Rafael Souza</h4><p>18:00 · Corte Social · Nathan</p>
+            <div class="mini">
+              <div class="bar" style="--w:75%"><div class="r">Cortes<span>3 de 4</span></div><div class="tr"><i></i></div></div>
+              <div class="bar" style="--w:100%"><div class="r">Barbas<span>2 de 2</span></div><div class="tr"><i></i></div></div>
+            </div>
+            <span class="tag plan">Plano Prata</span> <span class="tag warn">Plano não pago</span>
+            <p style="margin-top:10px">Última visita há 16 dias</p>
+            <div class="acts"><div class="btn gold full">Abrir carrinho</div><div class="btn ghost">Chamar cliente</div><div class="btn ghost">Remarcar</div><div class="btn danger full">Cancelar atendimento</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="txt">
+      <div class="step">8 · Computador · Cartão do plano</div>
+      <h2>O cartão ao lado do que importa</h2>
+      <p>No site, em tela larga o cartão do plano fica na lateral e o agendamento ao lado. No celular o cartão vem primeiro, e o agendamento embaixo.</p>
+    </div>
+    <div class="demo" style="display:block">
+      <p class="hint">Arraste para o lado para ver a tela do computador →</p><div class="win">
+        <div class="chrome"><i></i><i></i><i></i><span>primebarbearia.app.br · Minha conta</span></div>
+        <div class="cli">
+          <div class="card"><div class="lbl" style="margin-bottom:8px">Meus agendamentos</div>
+            <div class="hr"><em>Qui</em><div><b>05/11 · 18:00 · Corte Social</b><small>com o Nathan <span class="tag plan" style="margin-left:4px">Pelo plano</span></small></div></div>
+            <div class="hr"><em>14/10</em><div><b>Corte Social</b><small>com o Nathan · feito</small></div></div>
+            <div class="btn" style="margin-top:10px">Novo agendamento</div>
+          </div>
+          <div class="pc">
+            <div class="top"><div><div class="nm">PLANO PRATA</div><div class="who">Rafael Souza · com o Nathan</div></div><svg class="emb" style="width:44px;height:44px;color:var(--dourado);flex:none" viewBox="70 17 152 152" aria-hidden="true">
+            <g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+              <path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188
+-712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309
+-77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76
+92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205
+-113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15
+101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80
+-27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28
+-166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43
+-7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5
+-49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95
+154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82
+0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0
+-11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13
+1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117
+-125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4
+0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51
+-33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58
+-39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4
+-27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34
+28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7
+-398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97
+75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10
+-40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124
+l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16
+-119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9
+26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106
+-67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28
+c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
+23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4
+14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234
+1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22
+-37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33
+28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30
+-35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45
+-19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11
+-17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18
+23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/>
+            </g>
+          </svg></div>
+            <div class="bars">
+              <div class="bar" style="--w:75%"><div class="r">Cortes<span>3 de 4</span></div><div class="tr"><i></i></div></div>
+              <div class="bar" style="--w:100%"><div class="r">Barbas<span>2 de 2</span></div><div class="tr"><i></i></div></div>
+              <div class="bar zero" style="--w:0%"><div class="r">Sobrancelhas<span style="color:var(--alerta)">acabou</span></div><div class="tr"><i></i></div></div>
+            </div>
+            <div class="foot"><span>Válido até <b style="color:var(--prata);font-weight:400">28/11</b></span><span class="tag">Pago ✓</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmp">
+    <div class="card"><h3>No celular</h3><ul><li><b>Uma coluna</b>, rolando para baixo.</li><li><b>Menu embaixo</b> da tela (Hoje, Agenda, Zap, Caixa, Mais).</li><li>A ficha do cliente abre <b>numa tela nova</b>.</li><li>Botões grandes, fáceis de tocar.</li></ul></div>
+    <div class="card"><h3>No computador</h3><ul><li><b>Várias colunas</b> ao mesmo tempo.</li><li><b>Menu lateral</b> à esquerda, como já é hoje no app.</li><li>A ficha do cliente abre <b>ao lado</b>, sem trocar de tela.</li><li>Gráficos e listas maiores.</li></ul></div>
+    <div class="card"><h3>Em comum</h3><ul><li>Mesmas <b>cores, fontes e emblema</b>.</li><li>Mesmos dados e o mesmo banco.</li><li>Animações param com "reduzir movimento".</li></ul></div>
+  </div>
+</div>

@@ -1,0 +1,149 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Analista da Prime</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* Aba "Analista" da Gestão: resumo da semana, o que o analista notou e uma caixa de perguntas.
+   Visual escuro único, tokens do app da Prime. Texto em linguagem simples. */
+:root{
+  --verde-neon:#35C558; --verde-prime:#1E6B33; --verde-noite:#0B140D; --grafite-card:#1A1E1B;
+  --prata:#EDEDE8; --prata-dim:#9BA39C; --dourado:#C6A75E; --dourado-claro:#E8D5A4;
+  --dourado-dim:rgba(198,167,94,.35); --hair:rgba(237,237,232,.12); --alerta:#D9A441; --erro:#E58A6B; --violeta:#9B7EDE;
+  --font-display:'Cinzel','Times New Roman',serif; --font-body:'Jost','Helvetica Neue',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#050906;color:var(--prata);font-family:var(--font-body);font-weight:300;line-height:1.5;
+  padding-block:26px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{margin:0;font:500 26px/1.2 var(--font-display);letter-spacing:.05em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--prata-dim);max-width:66ch}
+.app{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--verde-noite);border:1px solid var(--hair);border-radius:14px;padding:16px;min-width:0}
+.step{font:500 11px var(--font-body);letter-spacing:.2em;text-transform:uppercase;color:var(--dourado);margin-bottom:10px}
+.head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px}
+.head h3{margin:0;font:500 18px var(--font-display);letter-spacing:.04em}
+.head small{color:var(--prata-dim);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.k{background:var(--grafite-card);border:1px solid var(--hair);border-radius:8px;padding:10px 12px}
+.k b{display:block;font:500 22px var(--font-display);line-height:1.15}
+.k span{display:block;font-size:12.5px;color:var(--prata-dim)}
+.up{color:var(--verde-neon)} .down{color:var(--erro)}
+.resumo{margin:12px 0 0;font-size:15px}
+.resumo b{font-weight:500;color:var(--dourado-claro)}
+.note{margin:10px 0 0;font-size:13px;color:var(--prata-dim)}
+.ins{background:var(--grafite-card);border:1px solid var(--hair);border-radius:8px;padding:12px;margin-top:10px}
+.ins:first-of-type{margin-top:0}
+.ins .t{display:flex;gap:8px;align-items:center;font-size:15px;font-weight:400}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--alerta)}
+.dot.bom{background:var(--verde-neon)} .dot.ruim{background:var(--erro)}
+.ins p{margin:4px 0 0;font-size:14px;color:var(--prata-dim)}
+.ins .btn{margin-top:8px}
+.btn{display:inline-block;font:500 12px var(--font-body);letter-spacing:.09em;text-transform:uppercase;border-radius:6px;padding:9px 13px;border:1px solid var(--dourado-dim);color:var(--prata)}
+.btn.primary{background:var(--verde-prime);border-color:transparent;box-shadow:0 0 20px rgba(53,197,88,.2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{font-size:13px;border:1px solid var(--hair);border-radius:99px;padding:6px 12px;color:var(--prata-dim)}
+.chip.on{border-color:var(--verde-neon);color:var(--verde-neon)}
+.ask{display:flex;gap:8px;margin-bottom:12px}
+.ask div{flex:1;background:var(--grafite-card);border:1px solid var(--hair);border-radius:6px;padding:11px 12px;font-size:14px;color:var(--prata-dim)}
+.bub{border-radius:12px;padding:11px 13px;font-size:14.5px;margin-bottom:10px}
+.bub.eu{background:#17432a;border-top-right-radius:2px;margin-left:18%}
+.bub.ia{background:var(--grafite-card);border:1px solid var(--hair);border-top-left-radius:2px}
+.bub .quem{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dourado);margin-bottom:3px}
+table{width:100%;border-collapse:collapse;margin:8px 0 4px;font-size:14px}
+td{padding:6px 0;border-bottom:1px solid var(--hair)}
+td:last-child{text-align:right;color:var(--prata)}
+tr:last-child td{border-bottom:0}
+td:first-child{color:var(--prata-dim)}
+.como{margin-top:8px;font-size:12.5px;color:var(--prata-dim);border-left:2px solid var(--dourado-dim);padding-left:10px}
+.zap{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--grafite-card);border:1px solid var(--hair);border-radius:8px;padding:12px}
+.zap span{font-size:14px;color:var(--prata-dim)}
+.sw{width:42px;height:24px;border-radius:99px;background:var(--verde-prime);position:relative;flex:none}
+.sw::after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--prata)}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Analista da Prime</h1>
+    <p class="sub">Uma aba só para o admin. Mostra como foi a semana em poucas linhas, avisa o que saiu do normal e responde perguntas em português. As contas são feitas pelo sistema; a IA só explica. Números de exemplo.</p>
+  </div>
+
+  <div class="app">
+    <div class="col">
+      <div class="panel">
+        <div class="step">1 · Como foi a semana</div>
+        <div class="head"><h3>Semana de 27/10 a 02/11</h3><small>atualizado hoje às 08:00</small></div>
+        <div class="kpis">
+          <div class="k"><b>R$ 4.820</b><span>faturamento</span><span class="up">▲ 12% sobre a semana passada</span></div>
+          <div class="k"><b>112</b><span>atendimentos</span><span class="up">▲ 9</span></div>
+          <div class="k"><b>R$ 43</b><span>gasto médio por cliente</span><span class="down">▼ R$ 2</span></div>
+          <div class="k"><b>R$ 168</b><span>taxas de cartão pagas</span><span>3,5% do faturamento</span></div>
+        </div>
+        <p class="resumo">A semana foi boa: <b>sábado foi o melhor dia</b> (R$ 1.240) e <b>terça foi o mais fraco</b> (R$ 410). O Miguel atendeu mais clientes, mas o Nathan teve o maior gasto médio.</p>
+        <p class="note">Tudo calculado direto das vendas lançadas no sistema.</p>
+      </div>
+
+      <div class="panel">
+        <div class="step">2 · O que o analista notou</div>
+        <div class="ins">
+          <div class="t"><span class="dot ruim"></span>38 clientes passaram do dia de voltar</div>
+          <p>Entre eles, 3 têm plano e ainda sobra saldo. Chamar essas pessoas costuma trazer retorno rápido.</p>
+          <span class="btn">Abrir no CRM</span>
+        </div>
+        <div class="ins">
+          <div class="t"><span class="dot"></span>Terça à tarde fica vazia há 4 semanas seguidas</div>
+          <p>Das 14h às 17h, só 2 horários foram usados em média. Dá para testar uma promoção só nesse horário.</p>
+        </div>
+        <div class="ins">
+          <div class="t"><span class="dot"></span>2 pagamentos online sem venda lançada</div>
+          <p>O cliente pagou pelo site, mas o atendimento não foi fechado no balcão. Vale conferir para não perder o registro.</p>
+          <span class="btn">Abrir na Conciliação</span>
+        </div>
+        <div class="ins">
+          <div class="t"><span class="dot bom"></span>9 clientes do plano Prata ativos</div>
+          <p>Nenhum plano vence nos próximos 7 dias.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <div class="step">3 · Pergunte ao analista</div>
+        <div class="chips">
+          <span class="chip on">Faturamento</span><span class="chip">Barbeiros</span><span class="chip">Serviços</span><span class="chip">Clientes</span><span class="chip">Taxas</span><span class="chip">Planos</span>
+        </div>
+        <div class="ask"><div>Escreva uma pergunta…</div><span class="btn primary">Perguntar</span></div>
+
+        <div class="bub eu">Quanto o Miguel e o Nathan faturaram em outubro?</div>
+        <div class="bub ia">
+          <span class="quem">Analista</span>
+          Em outubro o Nathan faturou mais, mas o Miguel atendeu mais pessoas:
+          <table>
+            <tr><td>Nathan</td><td>R$ 9.640 · 190 atendimentos</td></tr>
+            <tr><td>Miguel</td><td>R$ 7.920 · 214 atendimentos</td></tr>
+            <tr><td>Total da barbearia</td><td>R$ 17.560</td></tr>
+          </table>
+          <div class="como">Como calculei: soma das vendas de 01/10 a 31/10, por barbeiro. Planos entram uma vez, no mês do pagamento.</div>
+        </div>
+        <div class="bub eu">Quantos clientes novos voltaram?</div>
+        <div class="bub ia">
+          <span class="quem">Analista</span>
+          Dos 43 clientes que vieram pela primeira vez nos últimos 30 dias, <b>11 já voltaram</b> (26%). Os outros 32 estão nesta lista do CRM.
+          <div class="como">Como calculei: clientes com a 1ª visita nos últimos 30 dias e pelo menos 2 visitas.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="step">4 · Receber no WhatsApp</div>
+        <div class="zap"><span>Mandar o resumo da semana toda segunda, às 8h, para o seu WhatsApp</span><div class="sw"></div></div>
+        <p class="note">Só chega para o número do admin. O resumo vem curto e com o link para abrir esta aba.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body></html>

@@ -1,0 +1,185 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Planos no agendamento</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* Mockup do fluxo de plano: 4 telas de celular na mesma linha (quebra no celular) com a regra de cada uma embaixo.
+   Visual escuro único, os mesmos tokens do app da Prime. */
+:root{
+  --verde-neon:#35C558; --verde-prime:#1E6B33; --verde-noite:#0B140D; --grafite:#141715; --grafite-card:#1A1E1B;
+  --prata:#EDEDE8; --prata-dim:#9BA39C; --dourado:#C6A75E; --dourado-claro:#E8D5A4;
+  --dourado-dim:rgba(198,167,94,.35); --hair:rgba(237,237,232,.12); --alerta:#D9A441;
+  --font-display:'Cinzel','Times New Roman',serif; --font-body:'Jost','Helvetica Neue',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#050906;color:var(--prata);font-family:var(--font-body);font-weight:300;line-height:1.5;
+  padding-block:28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+h1{margin:0;font:500 26px/1.2 var(--font-display);letter-spacing:.05em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--prata-dim);max-width:70ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:22px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.step{font:500 11px var(--font-body);letter-spacing:.2em;text-transform:uppercase;color:var(--dourado)}
+.cap{margin:0;font-size:14px;color:var(--prata-dim)}
+.cap b{color:var(--prata);font-weight:500}
+.phone{background:var(--verde-noite);border:1px solid var(--hair);border-radius:20px;padding:18px 14px;display:flex;flex-direction:column;gap:12px;min-height:500px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.phone h4{margin:0;font:500 15px var(--font-display);letter-spacing:.06em}
+.lbl{font:500 10.5px var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:var(--prata-dim)}
+.card{background:var(--grafite-card);border:1px solid var(--hair);border-radius:8px;padding:12px}
+.plan{border-color:var(--dourado-dim);background:linear-gradient(160deg,rgba(198,167,94,.12),rgba(26,30,27,1) 60%)}
+.plan .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}
+.plan .t b{font:500 14px var(--font-display);color:var(--dourado-claro);letter-spacing:.05em}
+.plan .t small{color:var(--prata-dim);font-size:12px}
+.meters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.m{text-align:center;background:var(--verde-noite);border:1px solid var(--hair);border-radius:6px;padding:8px 4px}
+.m .n{font:500 22px var(--font-display);color:var(--verde-neon);line-height:1}
+.m .n i{font-style:normal;font-size:12px;color:var(--prata-dim)}
+.m .k{display:block;margin-top:4px;font-size:11px;color:var(--prata-dim)}
+.m.zero .n{color:var(--alerta)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
+.row+.row{margin-top:9px}
+.tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:2px 8px;border:1px solid var(--verde-neon);color:var(--verde-neon);white-space:nowrap}
+.tag.warn{border-color:var(--alerta);color:var(--alerta)}
+.price{color:var(--dourado);font-family:var(--font-display);font-size:15px}
+.strike{color:var(--prata-dim);text-decoration:line-through;margin-right:6px;font-size:13px}
+.btn{display:block;width:100%;font:500 12px var(--font-body);letter-spacing:.1em;text-transform:uppercase;border-radius:6px;padding:13px;border:1px solid transparent;text-align:center}
+.btn.primary{background:var(--verde-prime);color:var(--prata);box-shadow:0 0 22px rgba(53,197,88,.22)}
+.btn.ghost{background:transparent;color:var(--prata);border-color:var(--dourado-dim)}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--hair);border-radius:8px;padding:12px;background:var(--grafite-card)}
+.opt.on{border-color:var(--verde-neon);box-shadow:0 0 0 1px rgba(53,197,88,.3) inset}
+.dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--prata-dim);flex:none;margin-top:3px}
+.opt.on .dot{border-color:var(--verde-neon);background:radial-gradient(circle,var(--verde-neon) 0 4px,transparent 5px)}
+.opt b{font-weight:500;display:block}
+.opt small{color:var(--prata-dim);display:block;font-size:12.5px;line-height:1.4}
+.note{font-size:12.5px;color:var(--prata-dim);margin:0}
+.warnbox{border:1px solid rgba(217,164,65,.5);background:rgba(217,164,65,.08);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--prata)}
+/* WhatsApp */
+.wa{background:#0b1410;gap:8px}
+.bub{max-width:88%;padding:9px 12px;border-radius:10px;font-size:13.5px;line-height:1.45}
+.bub.in{background:#1d2a22;align-self:flex-start;border-top-left-radius:2px}
+.bub.out{background:#17432a;align-self:flex-end;border-top-right-radius:2px}
+.bub .who{display:block;font-size:10.5px;color:var(--dourado);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
+.bub .lk{color:var(--verde-neon);word-break:break-all}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.rules .card h3{margin:0 0 6px;font:500 12px var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:var(--dourado)}
+.rules .card p,.rules .card li{margin:0;font-size:13.5px;color:var(--prata-dim)}
+.rules .card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.rules .card b{color:var(--prata);font-weight:500}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Plano no agendamento</h1>
+    <p class="sub">Como o cliente com plano marca usando o saldo, como quem assina na hora paga, e o que o Léo diz em cada caso. Números de exemplo.</p>
+  </div>
+
+  <div class="grid">
+    <!-- 1 -->
+    <div class="col">
+      <div class="step">1 · Cliente com plano marca</div>
+      <div class="phone">
+        <h4>Agendar horário</h4>
+        <div class="card plan">
+          <div class="t"><b>Plano Prata</b><small>vence 28/11 · 23 dias</small></div>
+          <div class="meters">
+            <div class="m"><span class="n">3<i>/4</i></span><span class="k">cortes</span></div>
+            <div class="m"><span class="n">2<i>/2</i></span><span class="k">barbas</span></div>
+            <div class="m zero"><span class="n">0<i>/2</i></span><span class="k">sobrancelhas</span></div>
+          </div>
+        </div>
+        <span class="lbl">Escolha o serviço</span>
+        <div class="card">
+          <div class="row"><span>Corte Social</span><span class="tag">Do plano · 3 restam</span></div>
+          <div class="row"><span>Barba Express</span><span class="tag">Do plano · 2 restam</span></div>
+          <div class="row"><span>Sobrancelha</span><span><span class="tag warn">Acabou</span> <span class="price">R$ 15</span></span></div>
+        </div>
+        <p class="note">Serviço do plano sai com valor zero. O que acabou é cobrado normal, avulso.</p>
+        <div class="btn primary" style="margin-top:auto">Continuar</div>
+      </div>
+      <p class="cap"><b>O saldo fica sempre no topo</b> (cortes, barbas e sobrancelhas que restam e quantos dias faltam). O serviço coberto aparece marcado. Ao confirmar, o saldo baixa na hora e volta se o cliente cancelar.</p>
+    </div>
+
+    <!-- 2 -->
+    <div class="col">
+      <div class="step">2 · Cliente novo escolhe o plano</div>
+      <div class="phone">
+        <h4>Resumo</h4>
+        <div class="card">
+          <div class="row"><span>Corte Social</span><span><span class="strike">R$ 45</span><span class="tag">Plano Prata</span></span></div>
+          <div class="row"><span>Qui 05/11 · 18:00 · Nathan</span></div>
+        </div>
+        <div class="card plan">
+          <div class="t"><b>Plano Prata</b><span class="price">R$ 189,90</span></div>
+          <p class="note" style="margin-top:6px">4 cortes · 2 barbas · 2 sobrancelhas · 30 dias. Este corte já conta: ficam 3 cortes.</p>
+        </div>
+        <span class="lbl">Como pagar o plano</span>
+        <div class="opt on"><span class="dot"></span><div><b>Pagar agora <span class="tag" style="margin-left:4px">Pix na hora</span></b><small>Pix, cartão ou Apple Pay. Plano ativo na hora.</small></div></div>
+        <div class="opt"><span class="dot"></span><div><b>Pagar no fim do 1º atendimento</b><small>Na barbearia, depois do corte. O plano fica reservado até lá.</small></div></div>
+        <div class="btn primary" style="margin-top:auto">Ir para o pagamento · R$ 189,90</div>
+      </div>
+      <p class="cap"><b>Plano e primeiro corte entram juntos.</b> O primeiro agendamento já usa o plano. Escolhendo pagar agora, cai no mesmo checkout da InfinitePay que já funciona (o selo "Pago ✓" aparece depois).</p>
+    </div>
+
+    <!-- 3 -->
+    <div class="col">
+      <div class="step">3 · Plano ainda não pago</div>
+      <div class="phone">
+        <h4>Meus agendamentos</h4>
+        <div class="card plan">
+          <div class="t"><b>Plano Prata</b><span class="tag warn">Aguardando pagamento</span></div>
+          <div class="meters">
+            <div class="m"><span class="n">3<i>/4</i></span><span class="k">cortes</span></div>
+            <div class="m"><span class="n">2<i>/2</i></span><span class="k">barbas</span></div>
+            <div class="m"><span class="n">2<i>/2</i></span><span class="k">sobrancelhas</span></div>
+          </div>
+        </div>
+        <div class="warnbox">Pague R$ 189,90 até o fim do seu primeiro atendimento (qui 05/11) para manter o plano.</div>
+        <div class="card"><div class="row"><span>Corte Social · Qui 05/11 · 18:00</span><span class="tag">Plano</span></div></div>
+        <div class="btn primary">Pagar plano agora</div>
+        <div class="btn ghost">Pagar no atendimento</div>
+        <p class="note" style="margin-top:auto">Na agenda do barbeiro este cliente aparece com "Plano a cobrar R$ 189,90".</p>
+      </div>
+      <p class="cap"><b>Prazo claro:</b> até o fim do 1º atendimento. No balcão o fechamento mostra "cobrar plano" e só conclui com o valor recebido. Se o cliente não aparecer, o plano é cancelado e o saldo some.</p>
+    </div>
+
+    <!-- 4 -->
+    <div class="col">
+      <div class="step">4 · O que o Léo diz</div>
+      <div class="phone wa">
+        <div class="bub out">Quero marcar quinta pelo meu plano</div>
+        <div class="bub in"><span class="who">Léo</span>Oi, Rafael! Seu Plano Prata tem <b>3 cortes, 2 barbas</b> e 0 sobrancelhas, válido até 28/11. O que vai usar na quinta: corte, barba ou os dois?</div>
+        <div class="bub out">Só o corte</div>
+        <div class="bub in"><span class="who">Léo</span>Quinta tenho 18:00 com o Nathan. O corte sai pelo plano. Marco?</div>
+        <div class="bub out">Pode</div>
+        <div class="bub in"><span class="who">Léo</span>Marcado ✓ Qui 05/11 às 18:00 com o Nathan, pelo plano. Agora restam <b>2 cortes</b>. Mais alguma coisa?</div>
+        <div class="bub out" style="margin-top:8px">Quero assinar o plano Prata</div>
+        <div class="bub in"><span class="who">Léo</span>Plano Prata é R$ 189,90 (4 cortes, 2 barbas, 2 sobrancelhas, 30 dias). Pode pagar agora, pelo Pix, ou no fim do primeiro atendimento. Qual prefere?</div>
+        <div class="bub in"><span class="who">Léo</span>Pagamento do plano: <span class="lk">link da InfinitePay</span><br>Plano ainda <b>não pago</b>; assim que cair eu aviso aqui.</div>
+      </div>
+      <p class="cap"><b>O Léo consulta o plano antes de responder</b>, mostra o saldo e <b>pergunta o que o cliente quer usar</b> (corte, barba ou sobrancelha, um ou mais) quando ele não disse. Só então marca pelo plano e informa se está pago. Quem não tem plano nunca ouve falar de saldo.</p>
+    </div>
+  </div>
+
+  <div class="rules">
+    <div class="card"><h3>Regra proposta</h3><ul>
+      <li><b>Assinar</b> = escolher o plano no agendamento. O primeiro serviço já sai pelo plano.</li>
+      <li><b>Pagar</b> = Pix/cartão no checkout, ou no balcão ao final do primeiro atendimento.</li>
+      <li><b>Sem pagar</b> até o fim do 1º atendimento: plano cancelado e serviço cobrado avulso.</li>
+    </ul></div>
+    <div class="card"><h3>Onde o saldo aparece</h3><ul>
+      <li>Topo do agendamento e em Meus agendamentos.</li>
+      <li>Agenda e balcão do barbeiro (já existe o banner de saldo).</li>
+      <li>Respostas do Léo, em tempo real.</li>
+    </ul></div>
+    <div class="card"><h3>Perguntas em aberto</h3><ul>
+      <li>Plano vencido: avisar o cliente (Léo e site) uns dias antes?</li>
+      <li>Saldo que sobra no fim dos 30 dias: perde ou acumula?</li>
+      <li>Cobrança do mês seguinte: renovação manual por link, sempre que vence?</li>
+    </ul></div>
+  </div>
+</div>
+
+</body></html>

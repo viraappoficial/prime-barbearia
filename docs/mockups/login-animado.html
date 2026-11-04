@@ -1,0 +1,266 @@
+<title>Login animado</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* Três propostas de animação para o logo da tela de login da Prime Staff, com o emblema real do app.
+   Visual escuro único, tokens do app da Prime. Todas respeitam "reduzir movimento". */
+:root{
+  --verde-neon:#35C558; --verde-prime:#1E6B33; --verde-noite:#0B140D; --grafite-card:#1A1E1B;
+  --prata:#EDEDE8; --prata-dim:#9BA39C; --dourado:#C6A75E; --dourado-claro:#E8D5A4;
+  --dourado-dim:rgba(198,167,94,.35); --hair:rgba(237,237,232,.12);
+  --font-display:'Cinzel','Times New Roman',serif; --font-body:'Jost','Helvetica Neue',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#050906;color:var(--prata);font-family:var(--font-body);font-weight:300;line-height:1.5;
+  padding-block:26px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{margin:0;font:500 26px/1.2 var(--font-display);letter-spacing:.05em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--prata-dim);max-width:66ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.step{font:500 11px var(--font-body);letter-spacing:.2em;text-transform:uppercase;color:var(--dourado)}
+.cap{margin:0;font-size:14px;color:var(--prata-dim)}
+.cap b{color:var(--prata);font-weight:500}
+.again{align-self:flex-start;font:500 12px var(--font-body);letter-spacing:.09em;text-transform:uppercase;color:var(--prata);background:transparent;border:1px solid var(--dourado-dim);padding:9px 14px;border-radius:6px;cursor:pointer}
+.again:hover,.again:focus-visible{border-color:var(--dourado);outline:none}
+
+/* tela de login (igual ao app) */
+.phone{position:relative;overflow:hidden;background:var(--verde-noite);border:1px solid var(--hair);border-radius:20px;min-height:520px;padding:34px 24px 28px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.phone::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 40% at 50% 26%,rgba(198,167,94,.16),transparent 70%);pointer-events:none}
+.inner{position:relative;width:100%;max-width:300px;display:flex;flex-direction:column;align-items:center}
+.emblem{position:relative;width:84px;height:84px;margin:6px auto 14px;color:var(--dourado);filter:drop-shadow(0 0 14px rgba(198,167,94,.4))}
+.prime-emblem{width:100%;height:100%;display:block;position:relative;z-index:2}
+.logo{font-family:var(--font-display);font-size:24px;letter-spacing:.3em;font-weight:500;color:var(--prata);margin-right:-.3em;position:relative}
+.tag{font-family:var(--font-display);letter-spacing:.45em;font-size:10.5px;color:var(--dourado);margin:6px -.45em 26px 0;text-transform:uppercase}
+.f{width:100%;text-align:left;margin-bottom:12px}
+.f label{display:block;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dourado);margin-bottom:5px}
+.f div{background:var(--grafite-card);border:1px solid rgba(237,237,232,.15);padding:12px 14px;font-size:14px;color:rgba(237,237,232,.3)}
+.btn{width:100%;margin-top:6px;background:var(--dourado);color:var(--verde-noite);font:500 12px var(--font-body);letter-spacing:.18em;text-transform:uppercase;padding:14px;box-shadow:0 0 24px rgba(198,167,94,.25)}
+
+/* A · brilho: o emblema respira e uma luz passa pelo nome */
+.a .emblem{animation:aIn .9s cubic-bezier(.34,1.56,.64,1) both, aBreath 3.6s ease-in-out 1s infinite}
+@keyframes aIn{0%{opacity:0;transform:scale(.5) rotate(-10deg)}100%{opacity:1;transform:none}}
+@keyframes aBreath{0%,100%{filter:drop-shadow(0 0 12px rgba(198,167,94,.35))}50%{filter:drop-shadow(0 0 26px rgba(232,213,164,.7))}}
+.a .logo{background:linear-gradient(100deg,var(--prata) 0 40%,var(--dourado-claro) 50%,var(--prata) 60% 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:aShine 4.2s ease-in-out 1.2s infinite}
+@keyframes aShine{0%{background-position:120% 0}55%,100%{background-position:-80% 0}}
+
+/* B · traço: o emblema é desenhado em ouro e depois se preenche */
+.b .prime-emblem path{fill:transparent;stroke:var(--dourado);stroke-width:14;stroke-dasharray:9000;stroke-dashoffset:9000;animation:bDraw 2.4s ease-in-out .1s forwards,bFill .9s ease 2.1s forwards}
+.b .emblem{animation:bGlow 1.2s ease 2.2s both}
+@keyframes bDraw{to{stroke-dashoffset:0}}
+@keyframes bFill{to{fill:var(--dourado);stroke-width:0}}
+@keyframes bGlow{0%{filter:drop-shadow(0 0 0 rgba(198,167,94,0))}60%{filter:drop-shadow(0 0 28px rgba(232,213,164,.8))}100%{filter:drop-shadow(0 0 14px rgba(198,167,94,.4))}}
+.b .logo,.b .tag{opacity:0;animation:rise .7s ease 2.5s forwards}
+.b .tag{animation-delay:2.7s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* C · anel e poeira dourada ao redor do emblema */
+.c .emblem{animation:aIn .9s cubic-bezier(.34,1.56,.64,1) both}
+.ring{position:absolute;inset:-14px;border-radius:50%;border:1px solid var(--dourado-dim);animation:spin 14s linear infinite}
+.ring::before{content:"";position:absolute;top:-3px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--dourado-claro);box-shadow:0 0 10px 2px rgba(232,213,164,.8)}
+.ring.r2{inset:-26px;border-color:rgba(198,167,94,.18);animation-duration:22s;animation-direction:reverse}
+.ring.r2::before{width:4px;height:4px;margin-left:-2px;top:-2px;opacity:.7}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dust{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.dust i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:var(--dourado-claro);opacity:0;animation:float 7s linear infinite}
+@keyframes float{0%{opacity:0;transform:translateY(0) scale(.6)}15%{opacity:.8}100%{opacity:0;transform:translateY(-420px) scale(1)}}
+
+@media (prefers-reduced-motion:reduce){
+  .a .emblem,.a .logo,.c .emblem,.ring,.dust i,.b .logo,.b .tag,.b .emblem{animation:none!important}
+  .a .logo{color:var(--prata);-webkit-text-fill-color:currentColor;background:none}
+  .b .prime-emblem path{animation:none!important;fill:var(--dourado);stroke-width:0;stroke-dashoffset:0}
+  .b .logo,.b .tag{opacity:1}
+  .dust{display:none}
+}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Logo animado no login</h1>
+    <p class="sub">Três jeitos de dar vida ao emblema da tela de login do Prime Staff, usando o emblema e as cores reais do app. Cada um toca sozinho e tem o botão "Ver de novo". Escolha o que combina mais.</p>
+  </div>
+  <div class="grid">
+    <div class="col">
+      <div class="step">A · Brilho</div>
+      <div class="phone a" id="pa">
+        <div class="inner">
+          <div class="emblem"><svg class="prime-emblem " viewBox="70 17 152 152" aria-hidden="true">
+            <g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+              <path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188
+-712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309
+-77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76
+92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205
+-113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15
+101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80
+-27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28
+-166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43
+-7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5
+-49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95
+154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82
+0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0
+-11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13
+1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117
+-125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4
+0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51
+-33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58
+-39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4
+-27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34
+28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7
+-398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97
+75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10
+-40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124
+l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16
+-119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9
+26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106
+-67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28
+c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
+23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4
+14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234
+1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22
+-37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33
+28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30
+-35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45
+-19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11
+-17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18
+23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/>
+            </g>
+          </svg></div>
+          <div class="logo">PRIME</div><div class="tag">Área do barbeiro</div>
+          <div class="f"><label>E-mail</label><div>seu@email.com</div></div>
+          <div class="f"><label>Senha</label><div>••••••••</div></div>
+          <div class="btn">Entrar</div>
+        </div>
+      </div>
+      <button class="again" data-t="pa" type="button">Ver de novo</button>
+      <p class="cap"><b>Discreto e elegante.</b> O emblema entra girando e depois "respira" com um brilho dourado. Uma luz passa pelo nome PRIME de tempos em tempos.</p>
+    </div>
+    <div class="col">
+      <div class="step">B · Traço</div>
+      <div class="phone b" id="pb">
+        <div class="inner">
+          <div class="emblem"><svg class="prime-emblem " viewBox="70 17 152 152" aria-hidden="true">
+            <g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+              <path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188
+-712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309
+-77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76
+92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205
+-113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15
+101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80
+-27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28
+-166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43
+-7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5
+-49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95
+154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82
+0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0
+-11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13
+1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117
+-125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4
+0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51
+-33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58
+-39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4
+-27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34
+28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7
+-398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97
+75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10
+-40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124
+l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16
+-119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9
+26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106
+-67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28
+c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
+23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4
+14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234
+1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22
+-37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33
+28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30
+-35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45
+-19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11
+-17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18
+23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/>
+            </g>
+          </svg></div>
+          <div class="logo">PRIME</div><div class="tag">Área do barbeiro</div>
+          <div class="f"><label>E-mail</label><div>seu@email.com</div></div>
+          <div class="f"><label>Senha</label><div>••••••••</div></div>
+          <div class="btn">Entrar</div>
+        </div>
+      </div>
+      <button class="again" data-t="pb" type="button">Ver de novo</button>
+      <p class="cap"><b>O mais "wow" na abertura.</b> O emblema é desenhado em ouro, como um traço de caneta, depois se preenche e acende. Só toca uma vez; o nome e o texto surgem em seguida.</p>
+    </div>
+    <div class="col">
+      <div class="step">C · Anel e poeira dourada</div>
+      <div class="phone c" id="pc">
+        <div class="dust"></div>
+        <div class="inner">
+          <div class="emblem"><span class="ring"></span><span class="ring r2"></span><svg class="prime-emblem " viewBox="70 17 152 152" aria-hidden="true">
+            <g transform="translate(0.000000,175.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+              <path d="M1295 1510 c-134 -35 -223 -86 -323 -183 -194 -189 -267 -465 -188
+-712 37 -115 90 -201 181 -292 68 -67 99 -89 176 -126 116 -55 203 -77 309
+-77 327 0 607 224 685 547 27 113 17 283 -22 389 -32 84 -80 168 -141 242 -76
+92 -232 186 -364 217 -87 20 -227 18 -313 -5z m125 -165 c0 -157 -26 -205
+-113 -205 -45 0 -69 11 -121 57 -46 42 -93 63 -141 63 -19 0 -35 4 -35 9 0 15
+101 91 161 121 71 37 144 57 237 69 9 1 12 -28 12 -114z m209 88 c30 -8 80
+-27 110 -43 60 -30 161 -106 161 -121 0 -5 -17 -9 -37 -9 -50 -1 -107 -28
+-166 -78 -41 -36 -55 -42 -94 -42 -38 0 -50 5 -79 34 l-34 34 0 127 0 127 43
+-7 c23 -3 67 -13 96 -22z m-512 -279 c56 -35 96 -103 97 -169 1 -24 -2 -46 -5
+-49 -3 -4 -32 7 -64 23 -69 35 -178 56 -248 48 l-49 -6 7 27 c14 57 69 146 95
+154 48 14 118 2 167 -28z m842 25 c25 -9 38 -25 66 -84 19 -39 35 -77 35 -82
+0 -7 -26 -9 -68 -5 -78 5 -173 -16 -240 -53 -25 -14 -48 -25 -53 -25 -14 0
+-11 87 4 123 45 105 157 161 256 126z m-398 -109 c23 -6 48 -9 56 -6 10 4 13
+1 9 -12 -14 -50 -16 -83 -7 -121 9 -41 9 -42 -28 -65 -41 -26 -89 -77 -117
+-125 -10 -17 -21 -31 -24 -31 -3 0 -14 16 -25 36 -18 33 -118 134 -134 134 -4
+0 -7 42 -6 94 0 52 3 92 7 90 15 -10 98 20 129 46 l34 28 32 -29 c18 -15 51
+-33 74 -39z m-562 -139 c23 -6 21 -8 -20 -20 -24 -7 -70 -31 -101 -52 l-58
+-39 0 42 c0 24 4 48 8 55 12 19 122 28 171 14z m1043 3 c35 -6 37 -8 43 -56 4
+-27 5 -52 2 -55 -3 -3 -23 9 -45 27 -22 17 -65 42 -97 55 -49 19 -54 24 -34
+28 38 7 91 7 131 1z m-807 -107 c55 -28 135 -104 100 -94 -140 39 -291 -7
+-398 -123 l-57 -62 -15 36 c-9 20 -21 59 -27 86 -11 49 -11 51 18 81 32 34 97
+75 152 96 57 21 166 12 227 -20z m680 12 c35 -13 76 -40 111 -72 l54 -52 -10
+-40 c-6 -22 -18 -59 -27 -83 l-16 -42 -56 59 c-115 120 -244 160 -401 124
+l-25 -6 30 32 c87 93 221 125 340 80z m-548 -197 c37 -20 42 -26 47 -69 16
+-119 -63 -260 -177 -319 -28 -15 -33 -15 -66 1 -100 47 -241 181 -241 228 0 9
+26 44 58 77 79 84 147 112 257 107 57 -2 92 -10 122 -25z m443 -1 c67 -35 106
+-67 141 -117 l31 -45 -28 -41 c-40 -57 -126 -131 -195 -168 l-59 -31 -52 28
+c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
+23 254 -9z m-244 -404 c34 -24 36 -27 18 -34 -24 -10 -260 -11 -270 -1 -4 4
+14 26 40 49 25 22 58 61 72 85 l26 44 38 -58 c22 -32 56 -70 76 -85z M1234
+1335 c-9 -35 3 -73 31 -101 32 -32 52 -30 60 5 7 35 -14 82 -47 105 -30 22
+-37 20 -44 -9z M1614 1326 c-25 -25 -34 -43 -34 -67 0 -56 12 -64 48 -34 33
+28 51 74 44 112 -6 31 -18 29 -58 -11z M998 1133 c-25 -6 -23 -17 12 -56 30
+-35 66 -49 101 -40 26 7 24 18 -13 57 -33 34 -67 47 -100 39z M1845 1131 c-45
+-19 -80 -86 -48 -93 45 -10 123 36 123 73 0 26 -35 36 -75 20z M1435 996 c-11
+-17 -34 -37 -50 -45 -27 -13 -28 -15 -9 -22 24 -8 74 -65 74 -82 0 -7 8 4 18
+23 9 19 31 42 49 51 l32 16 -33 15 c-18 9 -39 29 -47 45 l-14 30 -20 -31z"/>
+            </g>
+          </svg></div>
+          <div class="logo">PRIME</div><div class="tag">Área do barbeiro</div>
+          <div class="f"><label>E-mail</label><div>seu@email.com</div></div>
+          <div class="f"><label>Senha</label><div>••••••••</div></div>
+          <div class="btn">Entrar</div>
+        </div>
+      </div>
+      <button class="again" data-t="pc" type="button">Ver de novo</button>
+      <p class="cap"><b>Mais "premium", com movimento contínuo.</b> Dois anéis finos giram em volta do emblema com um ponto de luz, e partículas douradas sobem devagar pela tela.</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  // recria o elemento para reiniciar as animações CSS
+  document.querySelectorAll('.again').forEach(function(b){
+    b.addEventListener('click',function(){
+      var el=document.getElementById(b.dataset.t); var c=el.cloneNode(true);
+      el.parentNode.replaceChild(c,el);
+    });
+  });
+  // poeira dourada: posições e tempos aleatórios
+  document.querySelectorAll('.dust').forEach(function(d){
+    d.innerHTML='';
+    for(var i=0;i<16;i++){var p=document.createElement('i');p.style.left=(5+Math.random()*90)+'%';p.style.animationDelay=(Math.random()*7)+'s';p.style.animationDuration=(5+Math.random()*5)+'s';d.appendChild(p);}
+  });
+})();
+</script>

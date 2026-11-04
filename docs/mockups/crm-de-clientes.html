@@ -1,0 +1,189 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>CRM de clientes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* Aba CRM da gestão: números do topo, lista de clientes com o tempo entre visitas e a ficha com plano, histórico e botão de WhatsApp.
+   Visual escuro único, os tokens do app da Prime. Texto em linguagem simples. */
+:root{
+  --verde-neon:#35C558; --verde-prime:#1E6B33; --verde-noite:#0B140D; --grafite-card:#1A1E1B;
+  --prata:#EDEDE8; --prata-dim:#9BA39C; --dourado:#C6A75E; --dourado-claro:#E8D5A4;
+  --dourado-dim:rgba(198,167,94,.35); --hair:rgba(237,237,232,.12); --alerta:#D9A441; --erro:#E58A6B; --violeta:#9B7EDE;
+  --font-display:'Cinzel','Times New Roman',serif; --font-body:'Jost','Helvetica Neue',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#050906;color:var(--prata);font-family:var(--font-body);font-weight:300;line-height:1.5;
+  padding-block:26px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font:500 26px/1.2 var(--font-display);letter-spacing:.05em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--prata-dim);max-width:70ch}
+.app{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+.panel{background:var(--verde-noite);border:1px solid var(--hair);border-radius:14px;padding:16px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.k{background:var(--grafite-card);border:1px solid var(--hair);border-radius:8px;padding:9px 10px}
+.k b{display:block;font:500 22px var(--font-display);line-height:1.1}
+.k span{font-size:12px;color:var(--prata-dim)}
+.k.risk b{color:var(--alerta)} .k.lost b{color:var(--erro)} .k.plan b{color:var(--dourado-claro)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{font-size:13px;border:1px solid var(--hair);border-radius:99px;padding:5px 12px;color:var(--prata-dim)}
+.chip.on{border-color:var(--verde-neon);color:var(--verde-neon)}
+.search{width:100%;background:var(--grafite-card);border:1px solid var(--hair);border-radius:6px;padding:9px 11px;color:var(--prata-dim);font:inherit;font-size:13px;margin-bottom:10px}
+.list{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.2fr) auto;gap:10px;align-items:center;background:var(--grafite-card);border:1px solid var(--hair);border-radius:8px;padding:10px 12px}
+@media(max-width:560px){.row{grid-template-columns:1fr auto}.row .when{grid-column:1/-1;order:3}}
+.row.sel{border-color:var(--dourado-dim);background:linear-gradient(160deg,rgba(198,167,94,.10),var(--grafite-card) 60%)}
+.nm{font-size:15px;font-weight:400}
+.nm small{display:block;color:var(--prata-dim);font-size:12.5px}
+.when{font-size:13px;color:var(--prata-dim)}
+.when b{color:var(--prata);font-weight:400}
+.tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:2px 8px;border:1px solid var(--verde-neon);color:var(--verde-neon);white-space:nowrap;display:inline-block}
+.tag.risk{border-color:var(--alerta);color:var(--alerta)} .tag.lost{border-color:var(--erro);color:var(--erro)} .tag.plan{border-color:var(--dourado);color:var(--dourado-claro)} .tag.new{border-color:var(--violeta);color:var(--violeta)}
+.stack{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.fh{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.fh h3{margin:0;font:500 19px var(--font-display);letter-spacing:.04em}
+.fh small{color:var(--prata-dim);font-size:13px}
+.box{background:var(--grafite-card);border:1px solid var(--hair);border-radius:8px;padding:11px 12px;margin-top:10px}
+.box h4{margin:0 0 8px;font:500 11px var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--dourado)}
+.meters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.m{text-align:center;background:var(--verde-noite);border:1px solid var(--hair);border-radius:6px;padding:7px 4px}
+.m .n{font:500 20px var(--font-display);color:var(--verde-neon);line-height:1}
+.m .n i{font-style:normal;font-size:11px;color:var(--prata-dim)}
+.m .kk{display:block;margin-top:3px;font-size:12px;color:var(--prata-dim)}
+.hist{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.hist div{display:flex;justify-content:space-between;gap:10px}
+.hist span:last-child{color:var(--prata-dim);white-space:nowrap}
+.tpl{display:flex;flex-direction:column;gap:6px}
+.tpl .opt{font-size:13px;border:1px solid var(--hair);border-radius:6px;padding:8px 10px;color:var(--prata-dim)}
+.tpl .opt.on{border-color:var(--verde-neon);color:var(--prata);background:rgba(53,197,88,.06)}
+.msg{margin-top:8px;font-size:14px;background:#17432a;border-radius:10px;border-top-right-radius:2px;padding:10px 12px}
+.btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{font:500 13px var(--font-body);letter-spacing:.09em;text-transform:uppercase;border-radius:6px;padding:12px 14px;border:1px solid transparent;flex:1;text-align:center;min-width:130px}
+.btn.primary{background:var(--verde-prime);color:var(--prata);box-shadow:0 0 22px rgba(53,197,88,.2)}
+.btn.ghost{border-color:var(--dourado-dim);color:var(--prata)}
+.note{font-size:13px;color:var(--prata-dim);margin:8px 0 0}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.rules .box{margin:0}
+.rules ul{margin:0;padding-left:18px;font-size:14px;color:var(--prata-dim);display:flex;flex-direction:column;gap:4px}
+.rules b{color:var(--prata);font-weight:500}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>CRM de clientes</h1>
+    <p class="sub">Uma aba para ver todos os clientes num lugar só: quem tem plano, quem está demorando a voltar e quem é novo. O sistema descobre de quanto em quanto tempo cada cliente costuma vir e avisa quando ele passa do dia. Nomes e números de exemplo.</p>
+  </div>
+
+  <div class="app">
+    <div class="panel">
+      <div class="kpis">
+        <div class="k"><b>214</b><span>clientes</span></div>
+        <div class="k plan"><b>9</b><span>com plano</span></div>
+        <div class="k risk"><b>38</b><span>passaram do dia de voltar</span></div>
+        <div class="k lost"><b>61</b><span>há muito tempo sem vir</span></div>
+        <div class="k"><b>12</b><span>clientes novos este mês</span></div>
+      </div>
+      <div class="chips">
+        <span class="chip">Todos</span><span class="chip on">Passaram do dia</span><span class="chip">Muito tempo sem vir</span><span class="chip">Vão voltar esta semana</span><span class="chip">Com plano</span><span class="chip">Plano acabando</span><span class="chip">Clientes novos</span><span class="chip">Vieram uma vez só</span>
+      </div>
+      <div class="search">Buscar por nome ou telefone</div>
+      <div class="list">
+        <div class="row sel">
+          <div class="nm">Rafael Kalenpa<small>Nathan · 5 visitas · gastou R$ 340</small></div>
+          <div class="when">Costuma vir a cada <b>15 dias</b><br>Está há 16 dias sem vir · <b>passou 1 dia</b></div>
+          <div class="stack"><span class="tag risk">Passou do dia</span><span class="tag plan">Plano Prata</span></div>
+        </div>
+        <div class="row">
+          <div class="nm">Bruno Alves<small>Miguel · 8 visitas · gastou R$ 520</small></div>
+          <div class="when">Costuma vir a cada <b>14 dias</b><br>Está há 21 dias sem vir · <b>passou 7 dias</b></div>
+          <div class="stack"><span class="tag risk">Passou do dia</span></div>
+        </div>
+        <div class="row">
+          <div class="nm">Diego Martins<small>Nathan · 3 visitas · gastou R$ 135</small></div>
+          <div class="when">Costuma vir a cada <b>20 dias</b><br>Está há 52 dias sem vir · <b>passou 32 dias</b></div>
+          <div class="stack"><span class="tag lost">Muito tempo sem vir</span></div>
+        </div>
+        <div class="row">
+          <div class="nm">Lucas Pereira<small>Miguel · 1 visita · gastou R$ 45</small></div>
+          <div class="when">Veio uma vez só, ainda não dá para saber o ritmo<br>Veio há <b>18 dias</b></div>
+          <div class="stack"><span class="tag new">Cliente novo</span><span class="tag risk">Não voltou</span></div>
+        </div>
+        <div class="row">
+          <div class="nm">Murilo Antônio<small>Nathan · o plano acaba em 3 dias</small></div>
+          <div class="when">Costuma vir a cada <b>12 dias</b><br>Está há 9 dias sem vir · <b>deve voltar em 3 dias</b></div>
+          <div class="stack"><span class="tag plan">Plano Prata · até 03/11</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="fh">
+        <div><h3>Rafael Kalenpa</h3><small>(44) 99972-6509 · cliente desde 12/08</small></div>
+        <span class="tag risk">Passou 1 dia</span>
+      </div>
+      <div class="box">
+        <h4>De quanto em quanto tempo ele vem</h4>
+        <div class="hist">
+          <div><span>Costuma vir a cada</span><span style="color:var(--prata)">15 dias</span></div>
+          <div><span>Dias entre as últimas visitas</span><span style="color:var(--prata)">14 · 19 · 12 · 15</span></div>
+          <div><span>Devia ter voltado em</span><span style="color:var(--prata)">29/10</span></div>
+          <div><span>Hoje (30/10)</span><span style="color:var(--alerta)">passou 1 dia</span></div>
+        </div>
+      </div>
+      <div class="box">
+        <h4>Plano Prata · até 28/11</h4>
+        <div class="meters">
+          <div class="m"><span class="n">3<i>/4</i></span><span class="kk">cortes que sobram</span></div>
+          <div class="m"><span class="n">2<i>/2</i></span><span class="kk">barbas que sobram</span></div>
+          <div class="m"><span class="n">2<i>/2</i></span><span class="kk">sobrancelhas que sobram</span></div>
+        </div>
+        <p class="note">Plano pago. Ele já pode marcar usando o plano.</p>
+      </div>
+      <div class="box">
+        <h4>Últimas visitas</h4>
+        <div class="hist">
+          <div><span>Corte Social · Nathan</span><span>14/10 · pelo plano</span></div>
+          <div><span>Corte e Barba · Nathan</span><span>26/09 · R$ 85</span></div>
+          <div><span>Corte Social · Miguel</span><span>05/09 · R$ 30</span></div>
+          <div><span>Sobrancelha · Nathan</span><span>20/08 · R$ 20</span></div>
+        </div>
+      </div>
+      <div class="box">
+        <h4>Mandar mensagem no WhatsApp</h4>
+        <div class="tpl">
+          <div class="opt on">Está demorando a voltar · lembrar do plano</div>
+          <div class="opt">Está demorando a voltar · convidar a voltar</div>
+          <div class="opt">O plano está acabando</div>
+          <div class="opt">Oferecer o plano</div>
+        </div>
+        <div class="msg">Oi, Rafael! Faz um tempinho que você não passa por aqui. Você ainda tem 3 cortes e 2 barbas no Plano Prata até 28/11. Quer que eu reserve um horário essa semana? 💈</div>
+        <div class="btns"><div class="btn primary">Abrir no WhatsApp</div><div class="btn ghost">Mudar o texto</div></div>
+        <p class="note">O WhatsApp abre com o texto pronto e você aperta enviar. O sistema anota quem chamou e quando: "chamado em 30/10 pelo Nathan".</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rules">
+    <div class="box"><h4>Como o sistema decide</h4><ul>
+      <li><b>De quanto em quanto tempo ele vem:</b> a média dos dias entre as últimas visitas.</li>
+      <li><b>Passou do dia:</b> já devia ter voltado (damos 2 dias de folga).</li>
+      <li><b>Muito tempo sem vir:</b> passou 3 vezes o tempo normal dele.</li>
+      <li><b>Cliente novo:</b> menos de 3 visitas. Ainda não dá para saber o ritmo, então avisamos se ficar 21 dias sem voltar.</li>
+    </ul></div>
+    <div class="box"><h4>De onde vêm os dados</h4><ul>
+      <li>Do que o sistema já tem: cadastros, vendas e agendamentos.</li>
+      <li>O plano e quanto sobra aparecem na hora.</li>
+      <li>O mesmo cliente com telefone escrito de jeitos diferentes conta uma vez só.</li>
+    </ul></div>
+    <div class="box"><h4>Cuidado com o número da barbearia</h4><ul>
+      <li>O botão abre o WhatsApp do próprio barbeiro, um cliente por vez.</li>
+      <li>Nada de mensagem em massa pelo número do Léo: é isso que faz o WhatsApp bloquear o número.</li>
+      <li>Fica anotado quem foi chamado e quando.</li>
+    </ul></div>
+  </div>
+</div>
+
+</body></html>
