@@ -430,6 +430,12 @@ footer{border-top:1px solid var(--dourado-dim);padding:3.5rem clamp(1.2rem,6vw,4
 .wsvc-empty{color:var(--prata-dim);font-size:.85rem;padding:.4rem 0}
 .chip.taken::after{content:"";position:absolute;top:14%;bottom:14%;left:50%;width:2px;background:var(--erro);transform:translateX(-50%) rotate(14deg)}
 .wbarber-list{display:flex;flex-direction:column;gap:.7rem}
+.wplano{display:flex;flex-direction:column;gap:.25rem;width:100%;text-align:left;background:none;border:1px solid rgba(237,237,232,.2);color:var(--prata);padding:.8rem 1rem;font-family:var(--font-body);cursor:pointer;transition:border-color .2s}
+.wplano:hover:not(:disabled){border-color:var(--verde-neon)}
+.wplano:disabled{opacity:.55;cursor:not-allowed}
+.wplano b{font-family:var(--font-display);font-weight:500;font-size:1rem;letter-spacing:.04em}
+.wplano span{font-size:.82rem;color:var(--prata-dim)}
+.wplano em{font-style:normal;font-size:.9rem;color:var(--dourado-claro)}
 .wbarber-card{position:relative;display:flex;align-items:center;gap:1rem;border:1px solid rgba(237,237,232,.2);padding:.9rem 1.1rem;cursor:pointer;transition:all .2s}
 .wbarber-card:hover{border-color:var(--verde-neon)}
 .wbarber-card.active{border-color:var(--verde-prime);background:rgba(53,197,88,.08)}
@@ -1249,15 +1255,36 @@ document.getElementById('wServiceCats').addEventListener('click', e=>{
 });
 // desenha os chips da categoria escolhida a partir do catálogo vindo do banco — reaproveita a seleção
 // já feita em outras categorias (state.services), então trocar de aba não perde o que já foi marcado
+
+// Aba "Planos" no passo do serviço: escolher um plano leva direto para escolher o barbeiro e pagar (o plano tem fluxo próprio)
+async function wRenderPlanosNoAgendamento(box){
+  if(!primeIsLoggedIn()){
+    box.innerHTML = '<div style="text-align:center;padding:.6rem 0"><p class="wsvc-empty" style="margin-bottom:.9rem">Entre na sua conta para ver e assinar os planos.</p><button type="button" class="btn btn-primary" onclick="closeModal();authPromptGo(\'login\')">Entrar ou criar conta</button></div>';
+    return;
+  }
+  box.innerHTML = '<p class="wsvc-empty">Carregando os planos…</p>';
+  let lista;
+  try{ lista = await caCarregaPlanosDb(); await caCarregaPlanoReal(); }catch(e){ console.error('planos', e); box.innerHTML = '<p class="wsvc-empty">Não foi possível carregar os planos agora.</p>'; return; }
+  if(wServiceCat!=='planos') return;   // trocou de aba enquanto carregava
+  const atual = caPlanoReal && caPlanoReal.plano;
+  const money = v=>'R$ '+v.toFixed(2).replace('.',',');
+  box.innerHTML = lista.length ? lista.map(t=>`
+    <button type="button" class="wplano${t.nome===atual?' atual':''}" ${atual?'disabled':''} onclick="wEscolherPlano(${t.id})">
+      <b>${primeEsc(t.nome)}</b><span>${primeEsc(caPlanoItensTxt(t.itens))}</span>
+      <em>${t.nome===atual?'Seu plano atual':atual?'Você já tem um plano':money(t.valor)+'/'+(t.validade_dias===30?'mês':t.validade_dias+' dias')}</em>
+    </button>`).join('') : '<p class="wsvc-empty">Nenhum plano disponível no momento.</p>';
+}
+function wEscolherPlano(id){ closeModal(); openPlansModal(); caChoosePlanBarber(id); }
 function primeRenderServiceChips(){
   const box = document.getElementById('wService');
   const catsBox = document.getElementById('wServiceCats');
   if(!box || !catsBox) return;
-  const cats = primeSvcCategoriesInOrder();
+  const cats = [...primeSvcCategoriesInOrder(), 'planos'];
   if(!cats.includes(wServiceCat)) wServiceCat = cats[0] || 'servico';
   catsBox.innerHTML = cats.map(cat=>
-    `<button class="wsvc-cat${cat===wServiceCat?' active':''}" data-cat="${cat}">${primeSvcCatLabel(cat)}</button>`
+    `<button class="wsvc-cat${cat===wServiceCat?' active':''}" data-cat="${cat}">${cat==='planos'?'Planos':primeSvcCatLabel(cat)}</button>`
   ).join('');
+  if(wServiceCat==='planos'){ wRenderPlanosNoAgendamento(box); return; }
   const items = primeServicesCache.filter(s=>s.category===wServiceCat);
   box.innerHTML = items.length ? items.map(s=>{
     const active = state.services.includes(s.name) ? ' active' : '';
