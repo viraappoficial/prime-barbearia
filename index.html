@@ -4065,6 +4065,17 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-tslot.andamento{border-left-color:var(--alerta)}
 #barberApp .ba-tslot.andamento .ts-time::after{background:var(--alerta);border-color:var(--alerta);animation:giftPulse 1.6s ease-in-out infinite}
 #barberApp .ba-tslot.andamento .ts-card{border-color:rgba(217,164,65,.5);background:rgba(217,164,65,.08)}
+/* ── Visual: Receber como painel lateral no computador (fatia 5); no celular continua janela ── */
+@keyframes prSlideIn{from{transform:translateX(36px);opacity:0}to{transform:none;opacity:1}}
+@media(min-width:900px){
+  #baPagamentoModal{align-items:stretch;justify-content:flex-end;padding:0;background:rgba(5,10,6,.55);backdrop-filter:none}
+  #baPagamentoModal .modal{width:min(460px,100%);max-width:460px;max-height:none;height:100%;border-width:0 0 0 1px;padding:1.6rem 1.4rem 0;display:flex;flex-direction:column}
+  #baPagamentoModal.open .modal{animation:prSlideIn .3s cubic-bezier(.16,1,.3,1)}
+  #baPagamentoModal .modal h3{font-size:1.5rem}
+  #baPagamentoModal #ba-pgto-linhas{flex:1 0 auto}
+  #baPagamentoModal #ba-pgto-confirm{position:sticky;bottom:0;margin:.8rem 0 0 !important;box-shadow:0 -16px 14px 6px var(--grafite-card);min-height:52px}
+}
+@media (prefers-reduced-motion:reduce){#baPagamentoModal.open .modal{animation:none}}
 /* ── Visual: Atendimento (fatia 3) — celular igual; no desktop catálogo à esquerda e comanda fixa à direita ── */
 #barberApp .pdv-sec{box-shadow:inset 0 1px 0 rgba(237,237,232,.06)}
 #barberApp .pdv-lb{align-items:center}
