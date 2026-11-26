@@ -74,7 +74,7 @@ const ia = (chave || tokenIa) ? {
     // sem cache de prompt de propósito: o texto fixo é pequeno, então o cache quase não economiza e cobra a escrita mais cara
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST", headers: { "content-type": "application/json", ...credencial, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODELO, max_tokens: 600, system, tools, messages: mensagens }),
+      body: JSON.stringify({ model: MODELO, max_tokens: 350, system, tools, messages: mensagens }),
     });
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(`Anthropic HTTP ${r.status}: ${JSON.stringify(j?.error ?? j).slice(0, 200)}`);
