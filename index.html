@@ -13181,18 +13181,21 @@ function baApptCardParts(a){
 // ── Agenda geral (admin): vê todos os barbeiros; o admin que também atende escolhe entre a dele e a geral ──
 function baAgendaEuBarbeiro(){ const me = baGetRoster().find(b=>b.id===baCurrentBarberId); return !!(me && me.isBarber); }
 function baAgendaModo(){
-  if(baCurrentRole!=='admin') return 'minha';
-  if(!baAgendaEuBarbeiro()) return 'geral';   // admin que não atende cliente só tem a agenda geral
+  if(baCurrentRole!=='admin' && baCurrentRole!=='vendas') return 'minha';
+  if(baCurrentRole==='admin' && !baAgendaEuBarbeiro()) return 'geral';   // admin que não atende cliente só tem a agenda geral
   let v = null; try{ v = localStorage.getItem('ba-agenda-modo'); }catch(e){}
+  if(baCurrentRole==='vendas') return v==='minha' ? 'minha' : 'geral';   // recepção abre na geral e pode ir para um barbeiro só
   return v==='geral' ? 'geral' : 'minha';
 }
 function baAgendaSetModo(m){ try{ localStorage.setItem('ba-agenda-modo', m); }catch(e){} baAgendaDay = null; baRenderAgenda(); }
 function baAgendaModoUI(){
   const box = document.getElementById('ba-agenda-modo'); if(!box) return;
-  if(baCurrentRole!=='admin' || !baAgendaEuBarbeiro()){ box.style.display = 'none'; box.innerHTML = ''; return; }
-  const m = baAgendaModo();
+  const vendas = baCurrentRole==='vendas';
+  if(!vendas && !(baCurrentRole==='admin' && baAgendaEuBarbeiro())){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const m = baAgendaModo(), bt = (k, t) => `<button type="button" class="${m===k?'on':''}" onclick="baAgendaSetModo('${k}')">${t}</button>`;
   box.style.display = 'flex';
-  box.innerHTML = `<div class="ag-seg" role="group" aria-label="Qual agenda ver"><button type="button" class="${m==='minha'?'on':''}" onclick="baAgendaSetModo('minha')">Minha agenda</button><button type="button" class="${m==='geral'?'on':''}" onclick="baAgendaSetModo('geral')">Agenda geral</button></div>`;
+  box.innerHTML = `<div class="ag-seg" role="group" aria-label="Qual agenda ver">${vendas ? bt('geral','Agenda geral') + bt('minha','Por barbeiro') : bt('minha','Minha agenda') + bt('geral','Agenda geral')}</div>`;
+  const pk = document.getElementById('ba-vendas-picker-agenda'); if(pk) pk.style.display = (vendas && m==='geral') ? 'none' : '';   // na geral a recepção não precisa escolher barbeiro
 }
 async function baFetchPendingTodos(){
   const { data, error } = await sb.from('appointments').select('*').eq('status','pendente');
