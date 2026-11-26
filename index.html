@@ -4520,6 +4520,27 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ts-more-btn{min-width:2.2rem}
 #barberApp .ts-more{display:none;flex-basis:100%;gap:.35rem;flex-wrap:wrap;padding-top:.5rem;border-top:1px solid var(--hair)}
 #barberApp .ts-card.open .ts-more{display:flex}
+#barberApp .ag-seg{display:inline-flex;border:1px solid var(--dourado-dim);border-radius:99px;padding:2px;gap:2px}
+#barberApp .ag-seg button{background:none;border:0;border-radius:99px;padding:.4rem 1rem;font-family:var(--font-body);font-size:.78rem;letter-spacing:.04em;color:var(--prata-dim);cursor:pointer;width:auto;max-width:none;margin:0}
+#barberApp .ag-seg button.on{background:var(--dourado);color:var(--verde-noite);font-weight:500}
+#barberApp .ag-wrap{margin-top:.6rem;overflow:auto;max-height:calc(100vh - 15rem);min-height:260px;border:1px solid var(--hair);border-radius:10px;background:var(--verde-noite);scrollbar-width:thin;scrollbar-color:var(--dourado-dim) transparent}
+#barberApp .ag-grid{display:grid;min-width:max-content}
+#barberApp .ag-h{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:.55rem;padding:.6rem .75rem;background:var(--grafite);border-bottom:1px solid var(--hair);border-left:1px solid var(--hair)}
+#barberApp .ag-h0{left:0;z-index:4;border-left:0}
+#barberApp .ag-hn{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#barberApp .ag-hs{font-size:.7rem;color:var(--prata-dim);white-space:nowrap}
+#barberApp .ag-av{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--dourado-dim);display:flex;align-items:center;justify-content:center;color:var(--dourado-claro);font-family:var(--font-display);font-size:.9rem;flex:none}
+#barberApp .ag-t{position:sticky;left:0;z-index:1;background:var(--verde-noite);font-size:.72rem;color:var(--prata-dim);text-align:right;padding:.6rem .55rem 0 0;border-top:1px solid var(--hair)}
+#barberApp .ag-c{border-top:1px solid var(--hair);border-left:1px solid var(--hair);padding:.3rem;min-height:60px;min-width:0}
+#barberApp .ag-c .ts-card{background:var(--grafite-card);border:1px solid var(--dourado-dim);border-radius:10px;padding:.5rem .65rem;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;box-shadow:inset 0 1px 0 rgba(237,237,232,.06)}
+#barberApp .ag-c.taken .ts-card{border-color:rgba(53,197,88,.3);background:rgba(53,197,88,.06)}
+#barberApp .ag-c.encaixe .ts-card{border-color:rgba(198,167,94,.4);background:rgba(198,167,94,.06)}
+#barberApp .ag-c.andamento .ts-card{border-color:rgba(217,164,65,.5);background:rgba(217,164,65,.08)}
+#barberApp .ag-c .ts-info{flex:1;min-width:0}
+#barberApp .ag-c .ts-name{font-size:.84rem;color:var(--prata)}
+#barberApp .ag-c .ts-detail{font-size:.72rem;color:var(--prata-dim);margin-top:.1rem}
+#barberApp .ag-livre{padding:.5rem .4rem;font-size:.72rem;color:rgba(198,167,94,.35)}
+#barberApp .ag-off{background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(237,237,232,.035) 6px 12px)}
 #barberApp .ts-chip{display:inline-block;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;padding:.1rem .45rem;border-radius:99px;border:1px solid var(--hair);color:var(--prata-dim)}
 #barberApp .ts-chip.ok{color:var(--verde-neon);border-color:var(--verde-neon)}
 #barberApp .ts-chip.warn{color:var(--erro);border-color:var(--erro)}
@@ -5056,11 +5077,12 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
         <div id="ba-pending-wrap"></div>
         <div id="ba-lembretes-wrap"></div>
         <div id="ba-waitlist-wrap"></div>
+        <div id="ba-agenda-modo" style="display:none;margin:.2rem 0 .3rem"></div>
         <div class="ba-slabel" style="margin-top:.4rem">Escolha o dia</div>
         <div class="chips" id="ba-agenda-days"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;gap:.4rem;flex-wrap:wrap">
           <div class="ba-slabel" style="margin:0">Agenda do dia</div>
-          <div style="display:flex;gap:.4rem">
+          <div style="display:flex;gap:.4rem" id="ba-agenda-acoes">
             <button class="ba-btn ghost" id="ba-btn-bloqueio" style="width:auto;max-width:none;padding:.35rem .9rem;margin:0;font-size:.7rem" onclick="baToggleBloqueio()">🚫 Bloquear horário</button>
             <button class="ba-btn" style="width:auto;max-width:none;padding:.35rem .9rem;margin:0;font-size:.7rem" onclick="baToggleEncaixe()">＋ Encaixe</button>
           </div>
@@ -12029,7 +12051,8 @@ async function baAutoStartDueAppointments(){
 }
 async function baRenderAgenda(){
   baRenderVendasPicker('ba-vendas-picker-agenda', '#ba-screen-agenda .ba-head .name');
-  await baAutoStartDueAppointments();
+  baAgendaModoUI();
+  if(baAgendaModo()!=='geral') await baAutoStartDueAppointments();
   baBuildAgendaDays();
   await baBuildAgendaTimes();
   await baRenderPending();
@@ -12063,14 +12086,14 @@ function baUpdateOfflineBanner(){
 async function baRenderPending(){
   const wrap = document.getElementById('ba-pending-wrap');
   if(!wrap) return;
-  const pending = (await baFetchPendingAppointments())
+  const pending = (await (baAgendaModo()==='geral' ? baFetchPendingTodos() : baFetchPendingAppointments()))
     .sort((a,b)=>(a.day+a.time).localeCompare(b.day+b.time));
   if(!pending.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML = `<div class="ba-slabel" style="margin-top:.4rem;color:#E5574B">Solicitações pendentes (${pending.length})</div>` +
     pending.map(a=>`
       <div class="ba-card" style="border-color:#E5574B">
         <div style="font-family:var(--font-display);font-size:1.05rem;margin-bottom:.2rem">${a.services.join(' + ')}</div>
-        <div style="color:var(--prata-dim);font-size:.85rem;margin-bottom:.9rem">${a.name||'Cliente'} · ${a.dayLabel} às ${a.time}</div>
+        <div style="color:var(--prata-dim);font-size:.85rem;margin-bottom:.9rem">${a.name||'Cliente'} · ${a.dayLabel} às ${a.time}${baAgendaModo()==='geral' && baBarbeiroNome(a.barberId) ? ' · com '+primeEsc(baBarbeiroNome(a.barberId)) : ''}</div>
         <div style="display:flex;gap:.6rem;flex-wrap:wrap">
           <button class="ba-btn" style="flex:2;min-width:160px;max-width:none;margin:0" onclick="baAcceptAppt(${a.id})">Aceitar agendamento</button>
           <button class="ba-btn ghost" style="flex:1;min-width:110px;max-width:none;margin:0;border-color:#E5574B;color:#E5574B" onclick="baRejectAppt(${a.id})">Recusar</button>
@@ -12963,7 +12986,7 @@ async function baToggleNotifs(){
 
 function baBuildAgendaDays(){
   const box = document.getElementById('ba-agenda-days'); box.innerHTML='';
-  const me = baGetRoster().find(b=>b.name===baCurrentBarber);
+  const me = baAgendaModo()==='geral' ? null : baGetRoster().find(b=>b.name===baCurrentBarber);   // geral: vale o horário da loja
   const today = new Date();
   for(let i=0;i<10;i++){
     const d = new Date(today); d.setDate(today.getDate()+i);
@@ -13115,13 +13138,117 @@ function leoEnviar(ev){
   i.value = ''; leoChamar({ pergunta:t, historico:leoHist }, t);
 }
 
+const BA_STATUS_LABEL = {pendente:'Pendente', confirmado:'Confirmado', concluido:'Concluído', nao_compareceu:'Não compareceu'};
+// cartão de um agendamento (os mesmos botões na agenda do barbeiro e na agenda geral do admin)
+function baApptCardParts(a){
+  const statusLabel = BA_STATUS_LABEL;
+      const st = a.status||'confirmado';
+      const isEncaixe = a.isEncaixe;
+      const emAndamento = st==='confirmado' && !!a.iniciadoEm;
+      const cls = emAndamento ? 'andamento' : (isEncaixe ? 'encaixe' : 'taken');
+      const svcs = a.services || (a.service ? [a.service] : []);
+      const svcName = svcs.join(' + ');
+      const dur = a.duration ? ` · ~${a.duration}min` : '';
+      const dots = svcs.map(s=>`<span class="svc-dot" style="background:${SVC_COLORS[s]||'var(--prata-dim)'}" title="${s}"></span>`).join('');
+      const pagoChip = a.paymentStatus==='pago' ? `<span style="display:inline-block;margin-left:.4rem;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--verde-neon);border:1px solid var(--verde-neon);border-radius:99px;padding:1px .45rem" title="Pagamento online confirmado">Pago online</span>` : '';
+      const badge = (emAndamento ? `<span class="andamento-badge"><span class="dot"></span>Em atendimento</span>` : '') + pagoChip;
+      const detailText = emAndamento
+        ? `${svcName} · iniciado há ${baElapsedMin(a.iniciadoEm)}min`
+        : `${svcName}${dur} · <span class="ts-chip ${st==='pendente'||st==='nao_compareceu'?'warn':(st==='confirmado'?'ok':'')}">${statusLabel[st]||st}</span>`;
+      const bm='width:auto;max-width:none;margin:0';
+      const statusBtn = st==='pendente' ? `<button class="ba-mini-btn primary" onclick="baAcceptAppt(${a.id})">Aceitar</button>`
+        : emAndamento ? `<button class="ba-mini-btn amber" onclick="baPdvAbrirDoAgendamento(${a.id})">Abrir carrinho</button>`
+        : st==='confirmado' ? `<button class="ba-mini-btn primary" onclick="baIniciarAtendimento(${a.id})">Iniciar</button>`
+        : '';
+      const canManage = (st==='pendente' || st==='confirmado') && !emAndamento;
+      const chamar = (a.clientPhone && (st==='pendente' || st==='confirmado')) ? `<button class="ba-mini-btn ghost" onclick="baChamarCliente(${a.id})">Chamar cliente</button>` : '';
+      const maisBtns = chamar
+        + (emAndamento ? `<button class="ba-mini-btn ghost" onclick="baUndoIniciarAtendimento(${a.id})">Desfazer início</button>` : '')
+        + (canManage ? `<button class="ba-mini-btn ghost" onclick="baOpenReagendar(${a.id})">Remarcar</button><button class="ba-mini-btn ghost" onclick="baOpenAlterar(${a.id})">Alterar</button><button class="ba-mini-btn ghost" onclick="baMarcarNaoCompareceu(${a.id})">Não veio</button><button class="ba-mini-btn danger" onclick="baOpenAdminGateCancel(${a.id})">Cancelar</button>` : '');
+      const action = (statusBtn || maisBtns) ? `<div class="ts-acts">${statusBtn}${maisBtns ? `<button class="ba-mini-btn ghost ts-more-btn" aria-label="Mais ações" onclick="baTsToggle(this)">Ações ▾</button>` : ''}</div>${maisBtns ? `<div class="ts-more">${maisBtns}</div>` : ''}` : '';
+      const notesLine = a.notes ? `<div class="ts-detail" style="color:var(--dourado-dim)">📝 ${primeEsc(a.notes)}</div>` : '';
+  const card = `<div class="ts-card">
+          <div class="ts-info">
+            <div class="ts-name">${dots}${a.name||'Cliente'} ${badge}</div>
+            <div class="ts-detail">${detailText}</div>
+            ${notesLine}
+          </div>
+          ${action}
+        </div>`;
+  return { cls, card };
+}
+
+// ── Agenda geral (admin): vê todos os barbeiros; o admin que também atende escolhe entre a dele e a geral ──
+function baAgendaEuBarbeiro(){ const me = baGetRoster().find(b=>b.id===baCurrentBarberId); return !!(me && me.isBarber); }
+function baAgendaModo(){
+  if(baCurrentRole!=='admin') return 'minha';
+  if(!baAgendaEuBarbeiro()) return 'geral';   // admin que não atende cliente só tem a agenda geral
+  let v = null; try{ v = localStorage.getItem('ba-agenda-modo'); }catch(e){}
+  return v==='geral' ? 'geral' : 'minha';
+}
+function baAgendaSetModo(m){ try{ localStorage.setItem('ba-agenda-modo', m); }catch(e){} baAgendaDay = null; baRenderAgenda(); }
+function baAgendaModoUI(){
+  const box = document.getElementById('ba-agenda-modo'); if(!box) return;
+  if(baCurrentRole!=='admin' || !baAgendaEuBarbeiro()){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const m = baAgendaModo();
+  box.style.display = 'flex';
+  box.innerHTML = `<div class="ag-seg" role="group" aria-label="Qual agenda ver"><button type="button" class="${m==='minha'?'on':''}" onclick="baAgendaSetModo('minha')">Minha agenda</button><button type="button" class="${m==='geral'?'on':''}" onclick="baAgendaSetModo('geral')">Agenda geral</button></div>`;
+}
+async function baFetchPendingTodos(){
+  const { data, error } = await sb.from('appointments').select('*').eq('status','pendente');
+  if(error){ console.error('baFetchPendingTodos', error); return []; }
+  return (data||[]).map(primeApptFromRow);
+}
+const baBarbeiroNome = id => { const b = baGetRoster().find(x=>x.id===id); return b ? b.name : ''; };
+async function baBuildAgendaGeral(tlBox){
+  const dia = baAgendaDay, dow = new Date(dia+'T12:00:00').getDay();
+  const { data, error } = await sb.from('appointments').select('*').eq('day', dia).neq('status','cancelado');
+  if(error){ console.error('baBuildAgendaGeral', error); tlBox.innerHTML = prEmpty('Não foi possível carregar a agenda agora. Tente de novo.'); return; }
+  const appts = (data||[]).map(primeApptFromRow), ids = new Set(appts.map(a=>a.barberId));
+  const valorDe = lista => lista.reduce((s,a)=>s+(a.services||(a.service?[a.service]:[])).reduce((t,n)=>t+(SVC_PRICES[n]||0),0),0);
+  const cols = baGetRoster().filter(b=>b.role!=='vendas' && (b.isBarber || ids.has(b.id))).map(b=>{
+    const h = resolveBarberHours(b, dow), lista = appts.filter(a=>a.barberId===b.id), byTime = {};
+    lista.forEach(a=>{ if(!byTime[a.time]) byTime[a.time] = a; });
+    const ativos = lista.filter(a=>a.status!=='nao_compareceu');
+    return { b, h, lista, byTime, n:ativos.length, valor:valorDe(ativos) };
+  });
+  if(!cols.length){ tlBox.innerHTML = prEmpty('Nenhum barbeiro escalado para este dia.'); return; }
+  const min = x => { const [H,M] = x.split(':').map(Number); return H*60+M; };
+  const dentro = (h, t) => !!h && min(t)>=min(h[0]) && min(t)+SLOT_MIN<=min(h[1]);
+  const horas = new Set();
+  cols.forEach(c=>{
+    if(c.h) for(let t=min(c.h[0]); t+SLOT_MIN<=min(c.h[1]); t+=SLOT_MIN) horas.add(String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'));
+    c.lista.forEach(a=>horas.add(a.time));
+  });
+  const total = cols.reduce((s,c)=>s+c.n,0), valorTotal = cols.reduce((s,c)=>s+c.valor,0);
+  const av = b => b.photoUrl ? `<img class="ag-av" src="${primeEsc(b.photoUrl)}" alt="">` : `<span class="ag-av">${primeEsc((b.name||'?').trim().charAt(0).toUpperCase())}</span>`;
+  let g = `<div class="ag-wrap"><div class="ag-grid" style="grid-template-columns:52px repeat(${cols.length},minmax(230px,1fr))"><div class="ag-h ag-h0"></div>`;
+  cols.forEach(c=>{ g += `<div class="ag-h">${av(c.b)}<div style="min-width:0"><div class="ag-hn">${primeEsc(c.b.name)}</div><div class="ag-hs">${c.h ? `${c.n} atendimento${c.n===1?'':'s'} · ≈ ${baFormatMoney(c.valor)}` : 'Folga neste dia'}</div></div></div>`; });
+  [...horas].sort().forEach(t=>{
+    g += `<div class="ag-t">${t}</div>`;
+    cols.forEach(c=>{
+      const a = c.byTime[t];
+      if(a){ const p = baApptCardParts(a); g += `<div class="ag-c ${p.cls}">${p.card}</div>`; }
+      else if(dentro(c.h, t)) g += '<div class="ag-c"><div class="ag-livre">Horário livre</div></div>';
+      else g += '<div class="ag-c ag-off"></div>';
+    });
+  });
+  g += '</div></div>';
+  const summary = `<div style="display:flex;gap:1.2rem;margin:.5rem 0 .2rem;font-size:.78rem;color:var(--prata-dim)"><span><strong style="color:var(--prata)">${total}</strong> agendamento${total!==1?'s':''} no dia</span><span>≈ <strong style="color:var(--dourado)">${baFormatMoney(valorTotal)}</strong></span></div>`;
+  const legend = `<div class="svc-legend-label">Cores dos serviços</div><div class="svc-legend">${Object.keys(SVC_COLORS).map(name=>`<span class="svc-legend-item"><span class="svc-dot" style="background:${SVC_COLORS[name]}"></span>${name}</span>`).join('')}</div>`;
+  tlBox.innerHTML = summary + legend + g;
+}
+
 async function baBuildAgendaTimes(){
-  await baAutoStartDueAppointments();
-  baRenderBlocksList();
+  const geral = baAgendaModo()==='geral';
+  const acoes = document.getElementById('ba-agenda-acoes'); if(acoes) acoes.style.display = geral ? 'none' : 'flex';   // bloquear horário e encaixe são da agenda de um barbeiro só
+  if(!geral) await baAutoStartDueAppointments();
+  if(geral){ const bl = document.getElementById('ba-blocks-list'); if(bl) bl.innerHTML = ''; } else baRenderBlocksList();
   const tlBox = document.getElementById('ba-agenda-timeline');
   if(!tlBox) return;
   tlBox.innerHTML = prLoading('Carregando a agenda…');
   if(!baAgendaDay) return;
+  if(geral){ await baBuildAgendaGeral(tlBox); return; }
   const d = new Date(baAgendaDay+'T12:00:00');
   if(baCurrentRole==='vendas' && !baActingBarberId){
     tlBox.innerHTML = '<p style="color:var(--prata-dim);padding:.6rem 0">Escolha um barbeiro em "Atendendo em nome de" pra ver a agenda.</p>';
@@ -13148,42 +13275,8 @@ async function baBuildAgendaTimes(){
   for(const timeStr of sortedTimes){
     const a = byTime[timeStr];
     if(a){
-      const st = a.status||'confirmado';
-      const isEncaixe = a.isEncaixe;
-      const emAndamento = st==='confirmado' && !!a.iniciadoEm;
-      const cls = emAndamento ? 'andamento' : (isEncaixe ? 'encaixe' : 'taken');
-      const svcs = a.services || (a.service ? [a.service] : []);
-      const svcName = svcs.join(' + ');
-      const dur = a.duration ? ` · ~${a.duration}min` : '';
-      const dots = svcs.map(s=>`<span class="svc-dot" style="background:${SVC_COLORS[s]||'var(--prata-dim)'}" title="${s}"></span>`).join('');
-      const pagoChip = a.paymentStatus==='pago' ? `<span style="display:inline-block;margin-left:.4rem;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--verde-neon);border:1px solid var(--verde-neon);border-radius:99px;padding:1px .45rem" title="Pagamento online confirmado">Pago online</span>` : '';
-      const badge = (emAndamento ? `<span class="andamento-badge"><span class="dot"></span>Em atendimento</span>` : '') + pagoChip;
-      const detailText = emAndamento
-        ? `${svcName} · iniciado há ${baElapsedMin(a.iniciadoEm)}min`
-        : `${svcName}${dur} · <span class="ts-chip ${st==='pendente'||st==='nao_compareceu'?'warn':(st==='confirmado'?'ok':'')}">${statusLabel[st]||st}</span>`;
-      const bm='width:auto;max-width:none;margin:0';
-      const statusBtn = st==='pendente' ? `<button class="ba-mini-btn primary" onclick="baAcceptAppt(${a.id})">Aceitar</button>`
-        : emAndamento ? `<button class="ba-mini-btn amber" onclick="baPdvAbrirDoAgendamento(${a.id})">Abrir carrinho</button>`
-        : st==='confirmado' ? `<button class="ba-mini-btn primary" onclick="baIniciarAtendimento(${a.id})">Iniciar</button>`
-        : '';
-      const canManage = (st==='pendente' || st==='confirmado') && !emAndamento;
-      const chamar = (a.clientPhone && (st==='pendente' || st==='confirmado')) ? `<button class="ba-mini-btn ghost" onclick="baChamarCliente(${a.id})">Chamar cliente</button>` : '';
-      const maisBtns = chamar
-        + (emAndamento ? `<button class="ba-mini-btn ghost" onclick="baUndoIniciarAtendimento(${a.id})">Desfazer início</button>` : '')
-        + (canManage ? `<button class="ba-mini-btn ghost" onclick="baOpenReagendar(${a.id})">Remarcar</button><button class="ba-mini-btn ghost" onclick="baOpenAlterar(${a.id})">Alterar</button><button class="ba-mini-btn ghost" onclick="baMarcarNaoCompareceu(${a.id})">Não veio</button><button class="ba-mini-btn danger" onclick="baOpenAdminGateCancel(${a.id})">Cancelar</button>` : '');
-      const action = (statusBtn || maisBtns) ? `<div class="ts-acts">${statusBtn}${maisBtns ? `<button class="ba-mini-btn ghost ts-more-btn" aria-label="Mais ações" onclick="baTsToggle(this)">Ações ▾</button>` : ''}</div>${maisBtns ? `<div class="ts-more">${maisBtns}</div>` : ''}` : '';
-      const notesLine = a.notes ? `<div class="ts-detail" style="color:var(--dourado-dim)">📝 ${primeEsc(a.notes)}</div>` : '';
-      html += `<div class="ba-tslot ${cls}">
-        <div class="ts-time">${timeStr}</div>
-        <div class="ts-card">
-          <div class="ts-info">
-            <div class="ts-name">${dots}${a.name||'Cliente'} ${badge}</div>
-            <div class="ts-detail">${detailText}</div>
-            ${notesLine}
-          </div>
-          ${action}
-        </div>
-      </div>`;
+      const p = baApptCardParts(a);
+      html += `<div class="ba-tslot ${p.cls}"><div class="ts-time">${timeStr}</div>${p.card}</div>`;
     } else {
       html += `<div class="ba-tslot">
         <div class="ts-time">${timeStr}</div>
