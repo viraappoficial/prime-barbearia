@@ -4816,12 +4816,12 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-crm-chip.on{border-color:var(--verde-neon);color:var(--verde-neon)}
 #barberApp .ba-crm-scroll{max-height:min(66vh,680px);overflow-y:auto;padding-right:.35rem;scrollbar-width:thin;scrollbar-color:var(--dourado-dim) transparent}
 #barberApp .ba-crm-count{font-size:.72rem;color:var(--prata-dim);margin:.1rem 0 .5rem}
-#barberApp .ba-crm-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.7rem;align-items:center;padding:.6rem .75rem;margin-bottom:.4rem;background:var(--verde-noite);border:1px solid var(--hair);border-left:3px solid var(--hair);border-radius:8px;cursor:pointer;transition:border-color .15s,background .15s}
+#barberApp .ba-crm-row{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:.7rem;align-items:center;padding:.6rem .75rem;margin-bottom:.4rem;background:var(--verde-noite);border:1px solid var(--hair);border-left:3px solid var(--hair);border-radius:8px;cursor:pointer;transition:border-color .15s,background .15s}
 #barberApp .ba-crm-row:hover{border-color:var(--dourado-dim)}
 #barberApp .ba-crm-row.sel{border-color:var(--dourado);background:rgba(198,167,94,.07)}
 #barberApp .ba-crm-row.risk{border-left-color:var(--alerta)} #barberApp .ba-crm-row.lost{border-left-color:var(--erro)} #barberApp .ba-crm-row.plan{border-left-color:var(--dourado)} #barberApp .ba-crm-row.new{border-left-color:var(--violeta)}
 #barberApp .ba-crm-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid var(--dourado-dim);color:var(--dourado-claro);font-family:var(--font-display);font-size:.9rem;flex:none}
-#barberApp .ba-crm-nm{font-size:.88rem;display:flex;align-items:center;gap:.3rem;min-width:0}
+#barberApp .ba-crm-nm{font-size:.88rem;display:flex;align-items:center;flex-wrap:wrap;gap:.1rem .35rem;min-width:0}
 #barberApp .ba-crm-nm>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #barberApp .ba-crm-sub{font-size:.72rem;color:var(--prata-dim);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #barberApp .ba-crm-du{text-align:right;line-height:1.15;min-width:3.4rem}
@@ -4844,6 +4844,27 @@ addEventListener('resize', caApplyMode, {passive:true});
 #barberApp .ba-crm-st{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:.15rem .55rem;border:1px solid var(--hair);white-space:nowrap;color:var(--prata-dim)}
 #barberApp .ba-crm-st.ok{border-color:var(--verde-neon);color:var(--verde-neon)} #barberApp .ba-crm-st.fila{border-color:var(--alerta);color:var(--alerta)} #barberApp .ba-crm-st.erro{border-color:var(--erro);color:var(--erro)}
 #barberApp .ba-crm-envacts{display:flex;flex-direction:column;align-items:flex-end;gap:.35rem}
+#barberApp .ba-crm-ck{appearance:none;-webkit-appearance:none;width:18px;height:18px;margin:0;cursor:pointer;flex:none;display:inline-block;border:1.5px solid var(--dourado-dim);border-radius:4px;background:var(--verde-noite);transition:background .12s,border-color .12s}
+#barberApp .ba-crm-ck:hover{border-color:var(--dourado)}
+#barberApp .ba-crm-ck:checked{background:var(--dourado) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3.5 8.5l3 3 6-7' fill='none' stroke='%230B140D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/82% no-repeat;border-color:var(--dourado)}
+#barberApp .ba-crm-ck:disabled{opacity:.4;cursor:default}
+#barberApp .ba-crm-ck:focus-visible{outline:2px solid var(--dourado-claro);outline-offset:2px}
+#barberApp .ba-crm-ck0{display:inline-block;width:18px;height:18px;flex:none}
+#barberApp .ba-crm-row.marc{background:rgba(198,167,94,.07);border-color:var(--dourado-dim)}
+#barberApp .ba-crm-bar{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.2rem .1rem .55rem;font-size:.78rem;color:var(--prata-dim)}
+#barberApp .ba-crm-bar label{display:flex;align-items:center;gap:.45rem;cursor:pointer}
+#barberApp .ba-crm-bar .sp{flex:1}
+#barberApp .ba-crm-bar .go{width:auto;max-width:none;margin:0;padding:.5rem .9rem;font-size:.7rem}
+#barberApp .ba-crm-link{background:none;border:0;color:var(--dourado);cursor:pointer;font-size:.76rem;text-decoration:underline;padding:0;width:auto;max-width:none;margin:0;font-family:var(--font-body)}
+#barberApp .ba-crm-camp{background:var(--verde-noite);border:1px solid var(--hair);border-radius:10px;padding:.9rem 1rem;margin-bottom:.9rem}
+#barberApp .ba-crm-bar-prog{height:10px;border-radius:99px;background:rgba(237,237,232,.08);overflow:hidden;margin:.55rem 0}
+#barberApp .ba-crm-bar-prog i{display:block;height:100%;background:linear-gradient(90deg,var(--verde-prime),var(--verde-neon));border-radius:99px;transition:width .4s}
+#barberApp .ba-crm-camp-st{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:.4rem;margin-top:.6rem}
+#barberApp .ba-crm-camp-st div{background:var(--grafite);border:1px solid var(--hair);border-radius:8px;padding:.4rem .55rem}
+#barberApp .ba-crm-camp-st b{display:block;font-size:.95rem;font-weight:500}
+#barberApp .ba-crm-camp-st span{font-size:.6rem;color:var(--prata-dim);text-transform:uppercase;letter-spacing:.06em}
+#barberApp .ba-crm-bolha{background:var(--grafite-card);border:1px solid var(--hair);border-radius:10px 10px 10px 3px;padding:.5rem .7rem;font-size:.78rem;line-height:1.4;margin:.3rem 0}
+#barberApp .ba-crm-st.prog{border-color:var(--violeta);color:var(--violeta)}
 #barberApp .ba-item:last-child{border-bottom:none}
 #barberApp .ba-roster-row{border-bottom:1px solid rgba(198,167,94,.12);padding-left:.2rem}
 #barberApp .ba-item .ic{width:38px;height:38px;flex:none;border-radius:50%;background:rgba(198,167,94,.1);border:1px solid var(--dourado-dim);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);color:var(--dourado);font-size:.85rem}
@@ -5665,7 +5686,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
           <div id="ba-crm-kpis" class="ba-crm-kpis"></div>
           <div class="ba-crm-tabs">
             <button type="button" class="ba-crm-tab on" id="ba-crm-tab-clientes" onclick="baCrmAba('clientes')">Clientes</button>
-            <button type="button" class="ba-crm-tab" id="ba-crm-tab-enviados" onclick="baCrmAba('enviados')">Enviados</button>
+            <button type="button" class="ba-crm-tab" id="ba-crm-tab-enviados" onclick="baCrmAba('enviados')">Envios</button>
             <button type="button" class="ba-crm-tab" id="ba-crm-tab-adiados" onclick="baCrmAba('adiados')">Adiados</button>
           </div>
           <div id="ba-crm-pane-clientes">
@@ -5673,10 +5694,11 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div class="ba-crm-grid">
               <div style="min-width:0">
                 <div class="ba-field" style="max-width:100%;margin-bottom:.5rem"><input type="text" id="ba-crm-busca" placeholder="Buscar por nome ou telefone" oninput="baCrmListar()"></div>
+                <div class="ba-crm-bar" id="ba-crm-bar"></div>
                 <div class="ba-crm-count" id="ba-crm-count"></div>
                 <div id="ba-crm-lista" class="ba-crm-scroll"></div>
               </div>
-              <div class="ba-crm-dir"><div id="ba-crm-ficha"><p style="color:var(--prata-dim);font-size:.82rem;padding:.8rem;border:1px dashed var(--hair);border-radius:8px">Clique num cliente da lista para ver o plano, as visitas e mandar mensagem.</p></div></div>
+              <div class="ba-crm-dir"><div id="ba-crm-ficha"><p style="color:var(--prata-dim);font-size:.82rem;padding:.8rem;border:1px dashed var(--hair);border-radius:8px">Clique num cliente da lista para ver o plano, as visitas e mandar mensagem. Para mandar a vários, marque as caixinhas.</p></div></div>
             </div>
           </div>
           <div id="ba-crm-pane-adiados" style="display:none">
@@ -5685,6 +5707,7 @@ c-56 31 -115 101 -142 171 -17 44 -22 157 -8 180 5 7 31 22 58 32 68 28 190
             <div id="ba-crm-adi-lista" class="ba-crm-scroll"></div>
           </div>
           <div id="ba-crm-pane-enviados" style="display:none">
+            <div id="ba-crm-camp" class="ba-crm-camp"></div>
             <div id="ba-crm-env-chips" class="ba-crm-chips"></div>
             <div class="ba-field" style="max-width:100%;margin-bottom:.5rem"><input type="text" id="ba-crm-env-busca" placeholder="Buscar por nome ou telefone" oninput="baCrmEnviadosListar()"></div>
             <div class="ba-crm-count" id="ba-crm-env-count"></div>
@@ -9475,27 +9498,33 @@ async function baCrmBuscarTudo(tabela, cols, ordem){
   }
   return out;
 }
-let baCrmAbaAtual = 'clientes', baCrmEnvFiltro = 'todos', baCrmEnvios = [], baCrmContatosTodos = [], baCrmAdiados = {};
-const BA_CRM_ENV_FILTROS = [['todos','Todos'],['enviado','Enviados'],['fila','Na fila'],['erro','Não saíram']];
+let baCrmAbaAtual = 'clientes', baCrmEnvFiltro = 'todos', baCrmEnvios = [], baCrmContatosTodos = [], baCrmAdiados = {}, baCrmFila = [], baCrmCfg = { limite_dia:6, usado_hoje:0 }, baCrmMarcados = new Set(), baCrmProg = { modelo:'auto', porDia:0, horarios:[] }, baCrmPoll = null;
+const BA_CRM_ENV_FILTROS = [['todos','Todos'],['prog','Programados'],['enviado','Enviados'],['fila','Na fila'],['erro','Não saíram']];
 const BA_CRM_MOTIVOS = ['Falou pelo particular','Vai agendar','Está viajando','Pediu para esperar','Outro motivo'];
+const BA_CRM_MSG_COLS = 'id,contact_phone,chat_id,body,status,error,hold_reason,created_at,sent_at';
+const BA_CRM_VAZIA = '<p style="color:var(--prata-dim);font-size:.82rem;padding:.8rem;border:1px dashed var(--hair);border-radius:8px">Clique num cliente da lista para ver o plano, as visitas e mandar mensagem. Para mandar a vários, marque as caixinhas.</p>';
 const baCrmInicial = n => primeEsc((String(n||'?').trim()[0]||'?').toUpperCase());
 const baCrmFoneFmt = f => f ? `(${f.slice(0,2)}) ${f.slice(2,-4)}-${f.slice(-4)}` : '';
 const baCrmDD = d => String(d||'').slice(0,10).split('-').reverse().slice(0,2).join('/');
 const baCrmDataHora = iso => { if(!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',timeZone:'America/Sao_Paulo'}) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}); };
+const baCrmDiaSP = iso => new Date(iso).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
 const baCrmAdiadosAtivos = hoje => Object.values(baCrmAdiados).filter(a=>a.ate>hoje);
+function baCrmMinSP(d){ const p = new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d); return Number(p.find(x=>x.type==='hour').value)*60 + Number(p.find(x=>x.type==='minute').value); }
 
 async function baRenderCrm(){
   const lista = document.getElementById('ba-crm-lista');
   lista.innerHTML = '<p style="color:var(--prata-dim)">Carregando…</p>';
   const hoje = primeLocalDate();
-  const [vendasRaw, crm, contas, ass, itens, uso, contatos, equipe, envios, adiados] = await Promise.all([
+  const [vendasRaw, crm, contas, ass, itens, uso, contatos, equipe, envios, adiados, fila, cfg] = await Promise.all([
     baCrmBuscarTudo('sales','*','date'), baCrmBuscarTudo('crm_clients','name,phone'), baCrmBuscarTudo('clients','name,phone'),
     sb.from('assinaturas').select('id,plano_id,plano_nome,client_phone,fim,status,pago_em').eq('status','ativa'),
     sb.from('plano_itens').select('plano_id,item,qtd'), sb.from('uso_plano').select('assinatura_id,item'),
     sb.from('crm_contatos').select('phone,barber_id,created_at,client_name,modelo').order('created_at',{ascending:false}).limit(1000),
     Promise.resolve(baGetRoster()),
-    sb.from('whatsapp_messages').select('id,contact_phone,chat_id,body,status,error,hold_reason,created_at,sent_at').eq('origem','crm').eq('direction','outbound').order('created_at',{ascending:false}).limit(300),
+    sb.from('whatsapp_messages').select(BA_CRM_MSG_COLS).eq('origem','crm').eq('direction','outbound').order('created_at',{ascending:false}).limit(300),
     sb.from('crm_adiados').select('*'),
+    sb.from('crm_fila').select('*').order('agendado_para',{ascending:false}).limit(600),
+    sb.rpc('crm_config'),
   ]);
   const qtd = {}; (itens.data||[]).forEach(i=>{ (qtd[i.plano_id] = qtd[i.plano_id]||{})[i.item] = i.qtd; });
   const usado = {}; (uso.data||[]).forEach(u=>{ const m = usado[u.assinatura_id] = usado[u.assinatura_id]||{}; m[u.item] = (m[u.item]||0)+1; });
@@ -9512,7 +9541,11 @@ async function baRenderCrm(){
   baCrmEnvios = envios.error ? [] : (envios.data||[]);
   if(adiados.error) console.error('crm_adiados', adiados.error);
   baCrmAdiados = {}; (adiados.error ? [] : (adiados.data||[])).forEach(a=>{ baCrmAdiados[a.chave] = a; });
+  if(fila.error) console.error('crm_fila', fila.error);
+  baCrmFila = fila.error ? [] : (fila.data||[]);
+  baCrmCfg = (!cfg.error && cfg.data) ? cfg.data : { limite_dia:6, usado_hoje:0 };
   baCrmDados = baCrmMontar(vendasRaw.map(baSaleFromRow), [...crm, ...contas], planos, hoje);
+  [...baCrmMarcados].forEach(k=>{ if(!baCrmDados.some(c=>c.chave===k)) baCrmMarcados.delete(k); });
   baCrmDesenhar();
   baCrmAba(baCrmAbaAtual);
 }
@@ -9523,8 +9556,18 @@ function baCrmAba(a){
     if(p) p.style.display = k===a ? 'block' : 'none';
     if(t) t.classList.toggle('on', k===a);
   });
-  if(a==='enviados') baCrmEnviadosDesenhar();
+  clearInterval(baCrmPoll); baCrmPoll = null;
+  if(a==='enviados'){ baCrmEnviadosDesenhar(); baCrmPoll = setInterval(()=>{ if(!document.hidden && baCrmAbaAtual==='enviados') baCrmRecarregarEnvios(); }, 45000); }   // acompanha o andamento da campanha
   if(a==='adiados') baCrmAdiadosListar();
+}
+async function baCrmRecarregarEnvios(){
+  const [env, fila] = await Promise.all([
+    sb.from('whatsapp_messages').select(BA_CRM_MSG_COLS).eq('origem','crm').eq('direction','outbound').order('created_at',{ascending:false}).limit(300),
+    sb.from('crm_fila').select('*').order('agendado_para',{ascending:false}).limit(600),
+  ]);
+  if(!env.error) baCrmEnvios = env.data||[];
+  if(!fila.error) baCrmFila = fila.data||[];
+  baCrmDesenhar();
 }
 function baCrmDesenhar(){
   const hoje = primeLocalDate();
@@ -9533,7 +9576,7 @@ function baCrmDesenhar(){
   document.getElementById('ba-crm-kpis').innerHTML = kp.map(([k,f,n,t])=>`<button type="button" class="ba-crm-k ${k}${f===baCrmFiltroAtual?' on':''}" onclick="baCrmFiltrar('${f}');baCrmAba('clientes')"><b>${n}</b><span>${t}</span></button>`).join('');
   document.getElementById('ba-crm-chips').innerHTML = BA_CRM_FILTROS.map(([k,t])=>`<button type="button" class="ba-crm-chip${k===baCrmFiltroAtual?' on':''}" onclick="baCrmFiltrar('${k}')">${t}<i>${conta(k)}</i></button>`).join('');
   document.getElementById('ba-crm-tab-clientes').innerHTML = `Clientes<small>${conta('todos')}</small>`;
-  document.getElementById('ba-crm-tab-enviados').innerHTML = `Enviados<small>${baCrmEnvios.length}</small>`;
+  document.getElementById('ba-crm-tab-enviados').innerHTML = `Envios<small>${baCrmEnvios.length + baCrmFila.filter(f=>f.status==='agendado').length}</small>`;
   document.getElementById('ba-crm-tab-adiados').innerHTML = `Adiados<small>${baCrmAdiadosAtivos(hoje).length}</small>`;
   baCrmListar();
   if(baCrmAbaAtual==='enviados') baCrmEnviadosDesenhar();
@@ -9565,16 +9608,110 @@ function baCrmTagUma(c, hoje){
   if(c.primeira && baCrmDias(c.primeira, hoje)<=30 && c.datas.length<3) return '<span class="ba-crm-tag new">Novo</span>';
   return '';
 }
-function baCrmListar(){
+function baCrmOrdem(c){ const s = c.sit; return s && s.passou!=null ? -s.passou : s ? -s.desde : 0; }
+function baCrmVisiveis(){
   const hoje = primeLocalDate(), q = (document.getElementById('ba-crm-busca').value||'').trim().toLowerCase(), qd = q.replace(/\D/g,'');
-  const ordem = c => { const s = c.sit; return s && s.passou!=null ? -s.passou : s ? -s.desde : 0; };
-  const todos = baCrmDados.filter(c=>baCrmFiltro(c, baCrmFiltroAtual, hoje) && (!q || c.nome.toLowerCase().includes(q) || (qd && c.fone.includes(qd)))).sort((a,b)=>ordem(a)-ordem(b));
-  const itens = todos.slice(0,300);
+  return baCrmDados.filter(c=>baCrmFiltro(c, baCrmFiltroAtual, hoje) && (!q || c.nome.toLowerCase().includes(q) || (qd && c.fone.includes(qd)))).sort((a,b)=>baCrmOrdem(a)-baCrmOrdem(b));
+}
+function baCrmListar(){
+  const hoje = primeLocalDate(), lista = document.getElementById('ba-crm-lista'), rolagem = lista.scrollTop;
+  const todos = baCrmVisiveis(), itens = todos.slice(0,300);
   document.getElementById('ba-crm-count').textContent = todos.length ? `${todos.length} cliente${todos.length===1?'':'s'}${todos.length>itens.length?` · mostrando os ${itens.length} primeiros`:''}` : '';
-  document.getElementById('ba-crm-lista').innerHTML = itens.length ? itens.map(c=>{
-    const cls = baCrmClasse(c, hoje), ct = baCrmContatos[c.fone], s = c.sit;
-    return `<div class="ba-crm-row ${cls}${baCrmSel===c.chave?' sel':''}" onclick="baCrmAbrir('${c.chave.replace(/'/g,"\\'")}')"><div class="ba-crm-av">${baCrmInicial(c.nome)}</div><div style="min-width:0"><div class="ba-crm-nm"><span>${primeEsc(c.nome)}</span>${baCrmTagUma(c, hoje)}</div><div class="ba-crm-sub">${primeEsc(baCrmResumo(c))}${ct?` · chamado ${baCrmDD(ct.created_at)}`:''}</div></div><div class="ba-crm-du ${cls==='risk'||cls==='lost'?cls:''}">${s?`<b>${s.desde}</b><span>dias sem vir</span>`:'<b>—</b><span>sem visita</span>'}</div></div>`;
+  lista.innerHTML = itens.length ? itens.map(c=>{
+    const cls = baCrmClasse(c, hoje), ct = baCrmContatos[c.fone], s = c.sit, marcado = baCrmMarcados.has(c.chave);
+    const ck = c.fone ? `<input type="checkbox" class="ba-crm-ck" ${marcado?'checked':''} onclick="event.stopPropagation();baCrmMarcar('${encodeURIComponent(c.chave)}',this.checked)" aria-label="Selecionar ${primeEsc(c.nome)}">` : '<span class="ba-crm-ck0"></span>';
+    return `<div class="ba-crm-row ${cls}${baCrmSel===c.chave?' sel':''}${marcado?' marc':''}" onclick="baCrmAbrir('${c.chave.replace(/'/g,"\\'")}')">${ck}<div class="ba-crm-av">${baCrmInicial(c.nome)}</div><div style="min-width:0"><div class="ba-crm-nm"><span>${primeEsc(c.nome)}</span>${baCrmTagUma(c, hoje)}</div><div class="ba-crm-sub">${primeEsc(baCrmResumo(c))}${ct?` · chamado ${baCrmDD(ct.created_at)}`:''}</div></div><div class="ba-crm-du ${cls==='risk'||cls==='lost'?cls:''}">${s?`<b>${s.desde}</b><span>dias sem vir</span>`:'<b>—</b><span>sem visita</span>'}</div></div>`;
   }).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhum cliente neste filtro.</p>';
+  lista.scrollTop = rolagem;
+  baCrmBarra();
+}
+// ── Seleção: marcar vários clientes para programar o envio ──
+function baCrmBarra(){
+  const vis = baCrmVisiveis().filter(c=>c.fone), n = baCrmMarcados.size, todos = vis.length>0 && vis.every(c=>baCrmMarcados.has(c.chave));
+  document.getElementById('ba-crm-bar').innerHTML = `<label><input type="checkbox" class="ba-crm-ck" ${todos?'checked':''} ${vis.length?'':'disabled'} onchange="baCrmMarcarTodos(this.checked)"> Selecionar todos <small>(${vis.length})</small></label><span class="sp"></span>${n ? `<span>${n} selecionado${n===1?'':'s'}</span><button type="button" class="ba-crm-link" onclick="baCrmLimparSel()">Limpar</button><button type="button" class="ba-btn go" onclick="baCrmProgramar()">Programar envio</button>` : '<span>Marque clientes para mandar mensagem a vários</span>'}`;
+}
+function baCrmMarcar(chaveEnc, on){
+  const k = decodeURIComponent(chaveEnc);
+  if(on){ if(baCrmMarcados.size>=200){ alert('Dá para selecionar até 200 clientes por vez.'); } else baCrmMarcados.add(k); } else baCrmMarcados.delete(k);
+  baCrmListar();
+}
+function baCrmMarcarTodos(on){
+  const vis = baCrmVisiveis().filter(c=>c.fone);
+  if(on){ for(const c of vis){ if(baCrmMarcados.size>=200) break; baCrmMarcados.add(c.chave); } } else vis.forEach(c=>baCrmMarcados.delete(c.chave));
+  baCrmListar();
+}
+function baCrmLimparSel(){ baCrmMarcados.clear(); baCrmListar(); document.getElementById('ba-crm-ficha').innerHTML = BA_CRM_VAZIA; }
+const baCrmSelecionados = () => [...baCrmMarcados].map(k=>baCrmDados.find(x=>x.chave===k)).filter(c=>c && c.fone);
+// reparte os envios entre 9h e 19h, sem domingo, respeitando o que já foi programado para hoje e o limite diário do número
+function baCrmPlanejar(n, porDia, usadoHoje){
+  const JI = 9*60, JF = 19*60, hoje = primeLocalDate(), agoraMin = baCrmMinSP(new Date()) + 5, out = [];
+  let dia = hoje, resto = n;
+  for(let g=0; resto>0 && g<200; g++, dia = baCrmSomaDias(dia,1)){
+    if(new Date(dia+'T12:00:00Z').getUTCDay()===0) continue;
+    const eHoje = dia===hoje;
+    let cap = Math.max(0, porDia - (eHoje ? usadoHoje : 0)), inicio = JI;
+    if(eHoje){ inicio = Math.max(JI, agoraMin); if(inicio > JF-20) cap = 0; }
+    const take = Math.min(cap, resto); if(!take) continue;
+    const slot = (JF-inicio)/take, folga = Math.min(12, slot/4);
+    for(let k=0; k<take; k++){ const min = Math.round(inicio + slot*(k+0.5) + (Math.random()*2-1)*folga); out.push(new Date(new Date(dia+'T00:00:00-03:00').getTime()+min*60000).toISOString()); }
+    resto -= take;
+  }
+  return out.sort();
+}
+function baCrmProgramar(){
+  if(!baCrmSelecionados().length) return;
+  baCrmProgramarDesenhar();
+  const dir = document.querySelector('.ba-crm-dir'); if(dir && window.innerWidth<=900) setTimeout(()=>dir.scrollIntoView({behavior:'smooth',block:'start'}),50);
+}
+function baCrmProgMudar(){
+  baCrmProg.modelo = document.getElementById('ba-crm-p-modelo').value;
+  baCrmProg.porDia = Number(document.getElementById('ba-crm-p-dia').value);
+  baCrmProgramarDesenhar();
+}
+function baCrmProgramarDesenhar(){
+  const sel = baCrmSelecionados(), hoje = primeLocalDate(), limite = Number(baCrmCfg.limite_dia)||6, usado = Number(baCrmCfg.usado_hoje)||0;
+  const opcoes = [...new Set([3,6,10,15,20].filter(n=>n<=limite).concat([limite]))].sort((a,b)=>a-b);
+  if(!opcoes.includes(baCrmProg.porDia)) baCrmProg.porDia = limite;
+  const jaNaFila = sel.filter(c=>baCrmFila.some(f=>f.status==='agendado' && f.chave===c.chave)).length, n = sel.length - jaNaFila;
+  const horarios = baCrmPlanejar(n, baCrmProg.porDia, usado); baCrmProg.horarios = horarios;
+  const dias = new Set(horarios.map(baCrmDiaSP)).size;
+  const recentes = sel.filter(c=>{ const ct = baCrmContatos[c.fone]; return ct && baCrmDias(String(ct.created_at).slice(0,10), hoje)<7; }).length;
+  const m0 = baCrmProg.modelo, semPlano = m0!=='auto' && (m0==='plano' || m0==='acabando') && sel.some(c=>!c.plano);
+  const exemplo = sel.slice(0,2).map(c=>{ const m = m0==='auto' ? baCrmModeloPadrao(c,hoje) : m0; return `<div class="ba-crm-bolha"><b style="color:var(--dourado-claro)">${primeEsc(c.nome)}</b><br>${primeEsc(baCrmTexto(m,c))}</div>`; }).join('');
+  document.getElementById('ba-crm-ficha').innerHTML = `<div class="ba-card" style="margin:0">
+    <div style="font-family:var(--font-display);font-size:1.05rem">Programar envio</div>
+    <div class="ba-crm-sub" style="white-space:normal">${sel.length} cliente${sel.length===1?'':'s'} selecionado${sel.length===1?'':'s'}</div>
+    <div class="ba-crm-sec">Mensagem</div>
+    <select id="ba-crm-p-modelo" class="add-input" style="width:100%" onchange="baCrmProgMudar()"><option value="auto"${m0==='auto'?' selected':''}>Automático: o modelo certo para cada cliente</option>${Object.entries(BA_CRM_MODELOS).map(([k,m])=>`<option value="${k}"${k===m0?' selected':''}>${m.rotulo}</option>`).join('')}</select>
+    ${semPlano?'<p class="ba-err" style="display:block">Esse modelo usa dados do plano e tem cliente sem plano. Use o Automático.</p>':''}
+    <div style="margin-top:.5rem">${exemplo}</div>
+    <div class="ba-crm-sec">Ritmo</div>
+    <select id="ba-crm-p-dia" class="add-input" style="width:100%" onchange="baCrmProgMudar()">${opcoes.map(o=>`<option value="${o}"${o===baCrmProg.porDia?' selected':''}>${o} por dia${o===limite?' (limite do número)':''}</option>`).join('')}</select>
+    <p style="font-size:.78rem;color:var(--prata-dim);margin:.5rem 0 0;line-height:1.5">Sai entre 9h e 19h, sem domingo, com horários espalhados.${horarios.length?` Começa <b style="color:var(--prata)">${baCrmDataHora(horarios[0])}</b> e termina <b style="color:var(--prata)">${baCrmDataHora(horarios[horarios.length-1])}</b> (${dias} dia${dias===1?'':'s'}).`:''}</p>
+    ${recentes?`<p class="ba-err" style="display:block">${recentes} já ${recentes===1?'foi chamado':'foram chamados'} nos últimos 7 dias.</p>`:''}
+    ${jaNaFila?`<p class="ba-err" style="display:block">${jaNaFila} já ${jaNaFila===1?'está programado e será ignorado':'estão programados e serão ignorados'}.</p>`:''}
+    <button class="ba-btn" id="ba-crm-p-ok" style="margin-top:.6rem" ${n&&!semPlano?'':'disabled'} onclick="baCrmProgConfirmar()">Programar ${n} ${n===1?'mensagem':'mensagens'}</button>
+    <button type="button" class="ba-crm-link" style="margin-top:.6rem" onclick="baCrmProgVoltar()">Voltar</button>
+    <p id="ba-crm-p-aviso" style="font-size:.78rem;margin-top:.4rem"></p></div>`;
+}
+function baCrmProgVoltar(){ document.getElementById('ba-crm-ficha').innerHTML = BA_CRM_VAZIA; }
+async function baCrmProgConfirmar(){
+  const btn = document.getElementById('ba-crm-p-ok'), aviso = document.getElementById('ba-crm-p-aviso'), hoje = primeLocalDate();
+  const sel = baCrmSelecionados().filter(c=>!baCrmFila.some(f=>f.status==='agendado' && f.chave===c.chave)).sort((a,b)=>baCrmOrdem(a)-baCrmOrdem(b));   // quem está mais atrasado sai primeiro
+  const horarios = baCrmProg.horarios;
+  const erro = m => { aviso.textContent = m; aviso.style.color = 'var(--erro)'; };
+  if(!sel.length) return erro('Ninguém para programar.');
+  if(horarios.length!==sel.length) return erro('Não foi possível calcular os horários. Tente de novo.');
+  const lote = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch=>{ const r = Math.random()*16|0; return (ch==='x' ? r : (r&3|8)).toString(16); });
+  const rows = sel.map((c,i)=>{ const m = baCrmProg.modelo==='auto' ? baCrmModeloPadrao(c,hoje) : baCrmProg.modelo; return { lote, chave:c.chave, phone:c.fone, client_name:c.nome, modelo:m, body:baCrmTexto(m,c), agendado_para:horarios[i] }; });
+  btn.disabled = true;
+  const { data, error } = await sb.from('crm_fila').insert(rows).select();
+  if(error){ console.error('crm_fila', error); btn.disabled = false; return erro('Não foi possível programar agora. Tente de novo.'); }
+  baCrmFila = [...(data||[]), ...baCrmFila];
+  baCrmCfg.usado_hoje = (Number(baCrmCfg.usado_hoje)||0) + rows.filter(r=>baCrmDiaSP(r.agendado_para)===hoje).length;
+  baCrmMarcados.clear(); baCrmProg = { modelo:'auto', porDia:0, horarios:[] };
+  document.getElementById('ba-crm-ficha').innerHTML = BA_CRM_VAZIA;
+  baCrmDesenhar(); baCrmAba('enviados');
 }
 function baCrmAbrir(chave){
   baCrmSel = chave; baCrmListar();
@@ -9598,7 +9735,7 @@ function baCrmAbrir(chave){
     <textarea id="ba-crm-texto" class="add-input" rows="4" style="width:100%">${primeEsc(baCrmTexto(modelo,c))}</textarea>
     ${c.fone?`<button class="ba-btn" id="ba-crm-enviar" style="margin-top:.5rem" onclick="baCrmWhatsapp('${k}')">Enviar pelo WhatsApp da Prime</button>`:'<p class="ba-err" style="display:block">Sem telefone: não dá para chamar.</p>'}
     <p id="ba-crm-aviso" style="font-size:.78rem;margin-top:.4rem"></p>
-    <details style="font-size:.74rem;color:var(--prata-dim);margin-top:.3rem"><summary style="cursor:pointer;color:var(--dourado)">Como funciona o envio</summary><p style="margin-top:.4rem">A mensagem sai pelo WhatsApp da Prime (aparece no Zap) e o sistema anota quem chamou e quando. Se o cliente nunca falou com a Prime, o envio pode esperar um pouco na fila (proteção do número).${ct?` Último chamado: ${ct.created_at.slice(0,10).split('-').reverse().join('/')}${baCrmBarbeiros[ct.barber_id]?' pelo '+primeEsc(baCrmBarbeiros[ct.barber_id]):''}.`:''}</p></details>
+    <details style="font-size:.74rem;color:var(--prata-dim);margin-top:.3rem"><summary style="cursor:pointer;color:var(--dourado)">Como funciona o envio</summary><p style="margin-top:.4rem">A mensagem sai pelo WhatsApp da Prime (aparece no Zap) e o sistema anota quem chamou e quando. Se o cliente nunca falou com a Prime, o envio pode esperar um pouco na fila (proteção do número). Para mandar a vários, marque as caixinhas na lista e use "Programar envio".${ct?` Último chamado: ${ct.created_at.slice(0,10).split('-').reverse().join('/')}${baCrmBarbeiros[ct.barber_id]?' pelo '+primeEsc(baCrmBarbeiros[ct.barber_id]):''}.`:''}</p></details>
     <div class="ba-crm-sec">Já falou com ele?</div>
     <p style="font-size:.76rem;color:var(--prata-dim);margin:0 0 .5rem">Tire da lista e escolha o dia em que ele volta para o CRM.</p>
     <select id="ba-crm-ad-motivo" class="add-input" style="width:100%;margin-bottom:.4rem">${BA_CRM_MOTIVOS.map(m=>`<option>${m}</option>`).join('')}</select>
@@ -9619,7 +9756,7 @@ async function baCrmAdiar(chaveEnc){
   const { error } = await sb.from('crm_adiados').upsert(row, { onConflict:'chave' });
   if(error){ console.error('crm_adiados', error); aviso.textContent = 'Não foi possível adiar agora. Tente de novo.'; aviso.style.color = 'var(--erro)'; return; }
   baCrmAdiados[chave] = { ...row, created_at:new Date().toISOString() };
-  baCrmSel = null;
+  baCrmSel = null; baCrmMarcados.delete(chave);
   document.getElementById('ba-crm-ficha').innerHTML = `<p style="color:var(--verde-neon);font-size:.82rem;padding:.8rem;border:1px dashed var(--hair);border-radius:8px">${primeEsc(c.nome)} saiu da lista e volta ao CRM em ${baCrmDD(ate)}.</p>`;
   baCrmDesenhar();
 }
@@ -9645,7 +9782,7 @@ async function baCrmVoltarAgora(chaveEnc){
   if(error){ console.error('crm_adiados voltar', error); return; }
   delete baCrmAdiados[chave]; baCrmDesenhar();
 }
-// ── Enviados: tudo o que saiu pelo CRM, com o estado de cada mensagem ──
+// ── Envios: a campanha em andamento e tudo o que saiu (ou vai sair) pelo CRM ──
 function baCrmEnvioInfo(m){
   const fone = baCrmFone(m.contact_phone || m.chat_id), t = Date.parse(m.created_at);
   const ct = baCrmContatosTodos.find(x=>baCrmFone(x.phone)===fone && Math.abs(Date.parse(x.created_at)-t)<5*60000);
@@ -9656,24 +9793,63 @@ function baCrmEnvioInfo(m){
   else if(m.status==='failed'){ st = 'erro'; rotulo = 'Não saiu'; dica = /expirou/i.test(m.error||'') ? 'Ninguém autorizou a tempo' : /parar/i.test(m.error||'') ? 'O cliente pediu para parar' : 'Falha no envio'; }
   else if(m.hold_reason==='aguardando_autorizacao'){ rotulo = 'Aguardando autorização'; dica = 'Autorize no Zap para sair'; }
   else if(/^cuidado_/.test(m.hold_reason||'')){ dica = 'Proteção do número: sai quando liberar'; }
-  return { m, fone, nome, st, rotulo, dica, modelo: ct && BA_CRM_MODELOS[ct.modelo] ? BA_CRM_MODELOS[ct.modelo].rotulo : '', quem: (ct && baCrmBarbeiros[ct.barber_id]) || '' };
+  return { tipo:'msg', m, fone, nome, st, rotulo, dica, corpo:m.body||'', quando:m.sent_at||m.created_at, modelo: ct && BA_CRM_MODELOS[ct.modelo] ? BA_CRM_MODELOS[ct.modelo].rotulo : '', quem: (ct && baCrmBarbeiros[ct.barber_id]) || '' };
+}
+function baCrmFilaInfo(f){
+  return { tipo:'prog', f, fone:f.phone, nome:f.client_name, st:'prog', rotulo:'Programado', dica:'', corpo:f.body||'', quando:f.agendado_para, modelo: BA_CRM_MODELOS[f.modelo] ? BA_CRM_MODELOS[f.modelo].rotulo : '', quem: baCrmBarbeiros[f.barber_id] || '' };
+}
+function baCrmItensEnvio(){
+  const prog = baCrmFila.filter(f=>f.status==='agendado').sort((a,b)=>String(a.agendado_para).localeCompare(String(b.agendado_para))).map(baCrmFilaInfo);
+  return [...prog, ...baCrmEnvios.map(baCrmEnvioInfo)];
+}
+function baCrmCampDesenhar(){
+  const box = document.getElementById('ba-crm-camp'); if(!box) return;
+  if(!baCrmFila.length){ box.innerHTML = '<p style="color:var(--prata-dim);font-size:.8rem;margin:0">Nenhuma campanha ainda. Na aba Clientes, marque várias pessoas e use "Programar envio": o sistema manda aos poucos ao longo do dia, para proteger o número.</p>'; return; }
+  const recente = baCrmFila.reduce((a,f)=>String(f.created_at)>String(a.created_at)?f:a, baCrmFila[0]), L = baCrmFila.filter(f=>f.lote===recente.lote);
+  const msg = Object.fromEntries(baCrmEnvios.map(m=>[m.id,m])), c = { ok:0, fila:0, erro:0, prog:0, canc:0 };
+  L.forEach(f=>{ if(f.status==='agendado') c.prog++; else if(f.status==='cancelado') c.canc++; else { const m = msg[f.mensagem_id]; if(m && m.status==='sent') c.ok++; else if(m && m.status==='failed') c.erro++; else c.fila++; } });
+  const total = L.length - c.canc, pct = total ? Math.round(c.ok/total*100) : 0, hoje = primeLocalDate();
+  const hojeEnv = baCrmEnvios.filter(m=>m.status==='sent' && m.sent_at && baCrmDiaSP(m.sent_at)===hoje).length;
+  const prox = L.filter(f=>f.status==='agendado').sort((a,b)=>String(a.agendado_para).localeCompare(String(b.agendado_para)))[0];
+  const andamento = c.prog>0 || c.fila>0, limite = Number(baCrmCfg.limite_dia)||6;
+  box.innerHTML = `<div style="display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;flex-wrap:wrap"><div class="ba-crm-sec" style="margin:0;padding:0;border:0">${andamento?'Campanha em andamento':'Última campanha'}</div><span class="ba-crm-sub" style="margin:0">${baCrmDD(recente.created_at)} · ${baCrmBarbeiros[recente.barber_id]?'por '+primeEsc(baCrmBarbeiros[recente.barber_id]):''}</span></div>
+    <div class="ba-crm-bar-prog" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
+    <div style="font-size:.86rem"><b style="font-family:var(--font-display);font-size:1.15rem">${c.ok}</b> de ${total} enviadas <span style="color:var(--prata-dim)">(${pct}%)</span> · hoje <b>${hojeEnv}</b> de ${limite}</div>
+    <div class="ba-crm-camp-st"><div><b>${c.ok}</b><span>enviadas</span></div><div><b>${c.fila}</b><span>na fila</span></div><div><b>${c.prog}</b><span>programadas</span></div><div><b${c.erro?' style="color:var(--erro)"':''}>${c.erro}</b><span>não saíram</span></div></div>
+    ${prox?`<p class="ba-crm-sub" style="margin:.6rem 0 0">Próximo envio: <b style="color:var(--prata)">${baCrmDataHora(prox.agendado_para)}</b> · ${primeEsc(prox.client_name)}</p>`:''}
+    ${c.prog?`<button type="button" class="ba-crm-link" style="margin-top:.5rem" onclick="baCrmCancelarRestantes('${recente.lote}')">Cancelar os ${c.prog} que faltam</button>`:''}`;
+}
+async function baCrmCancelarRestantes(lote){
+  if(!confirm('Cancelar os envios que ainda não saíram desta campanha? Os que já foram enviados não mudam.')) return;
+  const { error } = await sb.from('crm_fila').update({ status:'cancelado' }).eq('lote', lote).eq('status','agendado');
+  if(error){ console.error('crm_fila cancelar', error); return; }
+  baCrmFila.forEach(f=>{ if(f.lote===lote && f.status==='agendado') f.status = 'cancelado'; });
+  baCrmDesenhar();
+}
+async function baCrmCancelarUm(id){
+  const { error } = await sb.from('crm_fila').update({ status:'cancelado' }).eq('id', id).eq('status','agendado');
+  if(error){ console.error('crm_fila cancelar um', error); return; }
+  const f = baCrmFila.find(x=>x.id===id); if(f) f.status = 'cancelado';
+  baCrmDesenhar();
 }
 function baCrmEnvFiltrar(f){ baCrmEnvFiltro = f; baCrmEnviadosDesenhar(); }
 function baCrmEnviadosDesenhar(){
-  const infos = baCrmEnvios.map(baCrmEnvioInfo), alvo = { enviado:'ok', fila:'fila', erro:'erro' };
+  baCrmCampDesenhar();
+  const infos = baCrmItensEnvio(), alvo = { prog:'prog', enviado:'ok', fila:'fila', erro:'erro' };
   const conta = f => f==='todos' ? infos.length : infos.filter(i=>i.st===alvo[f]).length;
   document.getElementById('ba-crm-env-chips').innerHTML = BA_CRM_ENV_FILTROS.map(([k,t])=>`<button type="button" class="ba-crm-chip${k===baCrmEnvFiltro?' on':''}" onclick="baCrmEnvFiltrar('${k}')">${t}<i>${conta(k)}</i></button>`).join('');
   baCrmEnviadosListar(infos);
 }
 function baCrmEnviadosListar(infosIn){
-  const infos = infosIn || baCrmEnvios.map(baCrmEnvioInfo), alvo = { enviado:'ok', fila:'fila', erro:'erro' }[baCrmEnvFiltro];
+  const infos = infosIn || baCrmItensEnvio(), alvo = { prog:'prog', enviado:'ok', fila:'fila', erro:'erro' }[baCrmEnvFiltro];
   const q = (document.getElementById('ba-crm-env-busca').value||'').trim().toLowerCase(), qd = q.replace(/\D/g,'');
   const itens = infos.filter(i=>(!alvo || i.st===alvo) && (!q || i.nome.toLowerCase().includes(q) || (qd && i.fone.includes(qd))));
   document.getElementById('ba-crm-env-count').textContent = itens.length ? `${itens.length} ${itens.length===1?'mensagem':'mensagens'}` : '';
   document.getElementById('ba-crm-env-lista').innerHTML = itens.length ? itens.map(i=>{
     const cli = baCrmDados.find(x=>x.fone===i.fone);
-    return `<div class="ba-crm-env"><div class="ba-crm-av">${baCrmInicial(i.nome)}</div><div style="min-width:0"><div class="ba-crm-nm"><span>${primeEsc(i.nome)}</span></div><div class="ba-crm-sub">${i.fone?baCrmFoneFmt(i.fone):''}${i.modelo?' · '+primeEsc(i.modelo):''}${i.quem?' · por '+primeEsc(i.quem):''}</div><div class="corpo" onclick="this.classList.toggle('aberto')">${primeEsc(i.m.body||'')}</div>${i.dica?`<div class="ba-crm-sub" style="margin-top:.3rem;color:var(--prata-dim)">${primeEsc(i.dica)}</div>`:''}</div><div class="ba-crm-envacts"><span class="ba-crm-st ${i.st}">${primeEsc(i.rotulo)}</span><span class="ba-crm-sub">${baCrmDataHora(i.m.sent_at||i.m.created_at)}</span>${cli?`<button type="button" class="ba-mini-btn ghost" onclick="baCrmVerCliente('${cli.chave.replace(/'/g,"\\'")}')">Ver cliente</button>`:''}</div></div>`;
-  }).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhuma mensagem aqui ainda. O que você mandar pelo botão "Enviar pelo WhatsApp da Prime" aparece nesta lista.</p>';
+    const acao = i.tipo==='prog' ? `<button type="button" class="ba-mini-btn ghost" onclick="baCrmCancelarUm(${i.f.id})">Cancelar</button>` : (cli ? `<button type="button" class="ba-mini-btn ghost" onclick="baCrmVerCliente('${cli.chave.replace(/'/g,"\\'")}')">Ver cliente</button>` : '');
+    return `<div class="ba-crm-env"><div class="ba-crm-av">${baCrmInicial(i.nome)}</div><div style="min-width:0"><div class="ba-crm-nm"><span>${primeEsc(i.nome)}</span></div><div class="ba-crm-sub">${i.fone?baCrmFoneFmt(i.fone):''}${i.modelo?' · '+primeEsc(i.modelo):''}${i.quem?' · por '+primeEsc(i.quem):''}</div><div class="corpo" onclick="this.classList.toggle('aberto')">${primeEsc(i.corpo)}</div>${i.dica?`<div class="ba-crm-sub" style="margin-top:.3rem">${primeEsc(i.dica)}</div>`:''}</div><div class="ba-crm-envacts"><span class="ba-crm-st ${i.st}">${primeEsc(i.rotulo)}</span><span class="ba-crm-sub">${i.tipo==='prog'?'Sai ':''}${baCrmDataHora(i.quando)}</span>${acao}</div></div>`;
+  }).join('') : '<p style="color:var(--prata-dim);font-size:.8rem">Nenhuma mensagem aqui ainda. O que você mandar pelo CRM aparece nesta lista.</p>';
 }
 function baCrmVerCliente(chave){
   baCrmFiltroAtual = 'todos'; baCrmAba('clientes'); baCrmDesenhar(); baCrmAbrir(chave);
@@ -9693,7 +9869,7 @@ async function baCrmWhatsapp(chave){
   baCrmContatos[c.fone] = { phone:c.fone, barber_id:baCurrentBarberId, created_at:agora, client_name:c.nome, modelo };
   baCrmContatosTodos.unshift(baCrmContatos[c.fone]);
   baCrmEnvios.unshift({ id:'novo'+Date.now(), contact_phone:`55${c.fone}`, chat_id:`55${c.fone}@c.us`, body:texto, status:'pending', created_at:agora });
-  btn.textContent = 'Enviado ✓'; aviso.textContent = 'Na fila do WhatsApp da Prime: a mensagem sai em instantes. Acompanhe na aba Enviados.'; aviso.style.color = 'var(--verde-neon)';
+  btn.textContent = 'Enviado ✓'; aviso.textContent = 'Na fila do WhatsApp da Prime: a mensagem sai em instantes. Acompanhe na aba Envios.'; aviso.style.color = 'var(--verde-neon)';
   baCrmDesenhar();
 }
 
