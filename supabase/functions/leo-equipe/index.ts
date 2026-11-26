@@ -1,5 +1,5 @@
 // Edge Function leo-equipe: o app da equipe chama com { atalho } ou { pergunta, historico } e recebe a resposta do Léo da equipe.
-// Deploy COM verificação de JWT (quem chama é alguém logado). Variáveis: ANTHROPIC_API_KEY (segredo; sem ela só os atalhos funcionam).
+// Deploy COM verificação de JWT (quem chama é alguém logado). Variáveis: ANTHROPIC_API_KEY ou ANTHROPIC_AUTH_TOKEN (segredo; sem uma delas só os atalhos funcionam).
 // Só LÊ: as consultas usam o acesso de quem está logado (RLS), então barbeiro só enxerga o que é dele.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { atender, custo, type Controle, type Leitura, type Perfil } from "./handler.ts";
@@ -64,12 +64,16 @@ const controle: Controle = {
   },
 };
 
+// Chave clássica (sk-ant-api…) vai em ANTHROPIC_API_KEY (cabeçalho x-api-key); chave de usuário (sk-ant-usr-…) vai em
+// ANTHROPIC_AUTH_TOKEN (cabeçalho Authorization: Bearer). Vale a que estiver configurada, igual ao bot do WhatsApp.
 const chave = Deno.env.get("ANTHROPIC_API_KEY");
-const ia = chave ? {
+const tokenIa = Deno.env.get("ANTHROPIC_AUTH_TOKEN");
+const credencial: Record<string, string> = tokenIa ? { authorization: `Bearer ${tokenIa}` } : chave ? { "x-api-key": chave } : {};
+const ia = (chave || tokenIa) ? {
   async responder({ system, tools, mensagens }: { system: string; tools: any[]; mensagens: any[] }) {
     // sem cache de prompt de propósito: o texto fixo é pequeno, então o cache quase não economiza e cobra a escrita mais cara
     const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST", headers: { "content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01" },
+      method: "POST", headers: { "content-type": "application/json", ...credencial, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({ model: MODELO, max_tokens: 600, system, tools, messages: mensagens }),
     });
     const j: any = await r.json().catch(() => ({}));
