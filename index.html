@@ -1745,7 +1745,7 @@ document.getElementById('wNext').addEventListener('click', async ()=>{
   if(!savedAppt){
     errEl.textContent = primeApptErrorMessage();
     errEl.style.display = 'block';
-    if(primeLastApptErrorCode==='SLOT_BLOCKED'){ alert(primeApptErrorMessage()); state.step = 4; state.time = null; await buildTimes(); render(); }   // horário ficou indisponível: volta a escolher
+    if((primeLastApptErrorCode==='SLOT_BLOCKED'||primeLastApptErrorCode==='SLOT_TAKEN')){ alert(primeApptErrorMessage()); state.step = 4; state.time = null; await buildTimes(); render(); }   // horário ficou indisponível: volta a escolher
     return;
   }
   // notifica o barbeiro sobre o novo pedido de agendamento
@@ -2655,8 +2655,8 @@ async function primeUpdateAppointment(id, patch){
   return primeApptFromRow(data);
 }
 function primeApptErrorMessage(){
-  return primeLastApptErrorCode === 'SLOT_BLOCKED'
-    ? 'Esse horário não está disponível. Escolha outro.'
+  return (primeLastApptErrorCode === 'SLOT_BLOCKED' || primeLastApptErrorCode === 'SLOT_TAKEN')
+    ? 'Esse horário acabou de ser ocupado. Escolha outro.'
     : 'Não foi possível salvar. Tente de novo.';
 }
 async function primeFetchAppointmentById(id){
@@ -13579,6 +13579,7 @@ function baAlterarRpcMsg(code){
   const m = {
     BARBER_BUSY:'Esse profissional já tem agendamento nesse horário.',
     SLOT_BLOCKED:'A agenda desse profissional está bloqueada nesse horário.',
+    SLOT_TAKEN:'Esse profissional já tem agendamento nesse horário.',
     NOT_ALLOWED:'Você não tem permissão pra transferir esse agendamento.',
     BAD_STATUS:'Só dá pra alterar agendamento pendente ou confirmado.',
     BAD_BARBER:'Esse profissional não atende clientes.',
